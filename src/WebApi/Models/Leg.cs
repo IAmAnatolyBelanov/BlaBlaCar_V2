@@ -14,7 +14,5 @@ namespace WebApi.Models
 		public DateTimeOffset EndTime { get; set; }
 		public int PriceInRub { get; set; }
 		public string Description { get; set; } = default!;
-
-		public ulong[] Passangers { get; set; } = default!;
 	}
 }
