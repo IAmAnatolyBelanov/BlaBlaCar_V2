@@ -50,9 +50,9 @@ namespace WebApi.DataAccess
 			modelBuilder.Entity<CompositeLeg>(builder =>
 			{
 				builder.HasKey(x => new { x.MasterLegId, x.SubLegId });
-				//builder.HasNoKey();
-				//builder.HasIndex(x => new { x.MasterLegId, x.SubLegId });
 
+				// Эти 2 индекса не то чтобы очень нужны, но ef насильно создаёт 1 из них.
+				// Победить ef я не смог, так что решил возглавить.
 				builder.HasIndex(x => x.MasterLegId);
 				builder.HasIndex(x => x.SubLegId);
 
