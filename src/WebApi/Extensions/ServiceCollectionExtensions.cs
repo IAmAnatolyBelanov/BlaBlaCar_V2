@@ -59,7 +59,8 @@ namespace WebApi.Extensions
 
 			foreach (var mapper in mappers)
 			{
-				var mapperInterface = mapper.GetInterfaces().Single();
+				var mapperInterface = mapper.GetInterfaces()
+					.Single(x => !x.IsGenericType);
 				services.AddSingleton(mapperInterface, mapper);
 			}
 		}

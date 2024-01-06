@@ -5,6 +5,8 @@ namespace WebApi.Models
 	public class LegDto
 	{
 		public Guid Id { get; set; }
+		[System.Text.Json.Serialization.JsonIgnore]
+		[Newtonsoft.Json.JsonIgnore]
 		public RideDto Ride { get; set; } = default!;
 		public Guid RideId { get; set; }
 
@@ -16,16 +18,12 @@ namespace WebApi.Models
 		public string Description { get; set; } = default!;
 	}
 
-	public interface ILegDtoMapper
+	public interface ILegDtoMapper : IBaseMapper<Leg, LegDto>
 	{
-		LegDto FromDto(Leg from);
-		Leg FromDto(LegDto from);
-		void FromDto(LegDto from, Leg to);
-		void ToDto(Leg from, LegDto to);
 	}
 
 	[Mapper]
-	public partial class LegDtoMapper : ILegDtoMapper
+	public partial class LegDtoMapper : BaseMapper<Leg, LegDto>, ILegDtoMapper
 	{
 		private readonly Lazy<IRideDtoMapper> _rideDtoMpper;
 
@@ -34,34 +32,33 @@ namespace WebApi.Models
 			_rideDtoMpper = rideDtoMpper;
 		}
 
+		[MapperIgnoreTarget(nameof(LegDto.Ride))]
+		private partial void ToDtoAuto(Leg leg, LegDto dto);
+
 		[MapperIgnoreTarget(nameof(Leg.Ride))]
-		private partial void FromDtoInternal(LegDto from, Leg to);
-		public void FromDto(LegDto from, Leg to)
+		private partial void FromDtoAuto(LegDto legDto, Leg leg);
+
+		private partial void BetweenDtosAuto(LegDto from, LegDto to);
+		private partial void BetweenEntitiesAuto(Leg from, Leg to);
+
+
+		protected override void BetweenDtos(LegDto from, LegDto to)
+			=> BetweenDtosAuto(from, to);
+
+		protected override void BetweenEntities(Leg from, Leg to)
+			=> BetweenEntitiesAuto(from, to);
+		protected override void FromDtoAbstract(LegDto dto, Leg entity, IDictionary<object, object> mappedObjects)
 		{
-			FromDtoInternal(from, to);
-			if (from.Ride is not null)
-				to.Ride = _rideDtoMpper.Value.FromDto(from.Ride);
-		}
-		public Leg FromDto(LegDto from)
-		{
-			var result = new Leg();
-			FromDto(from, result);
-			return result;
+			FromDtoAuto(dto, entity);
+			if (dto.Ride is not null)
+				entity.Ride = _rideDtoMpper.Value.FromDto(dto.Ride, mappedObjects);
 		}
 
-		[MapperIgnoreTarget(nameof(LegDto.Ride))]
-		private partial void ToDtoInternal(Leg from, LegDto to);
-		public void ToDto(Leg from, LegDto to)
+		protected override void ToDtoAbstract(Leg entity, LegDto dto, IDictionary<object, object> mappedObjects)
 		{
-			ToDtoInternal(from, to);
-			if (from.Ride is not null)
-				to.Ride = _rideDtoMpper.Value.ToDto(from.Ride);
-		}
-		public LegDto FromDto(Leg from)
-		{
-			var result = new LegDto();
-			ToDto(from, result);
-			return result;
+			ToDtoAuto(entity, dto);
+			if (entity.Ride is not null)
+				dto.Ride = _rideDtoMpper.Value.ToDto(entity.Ride, mappedObjects);
 		}
 	}
 }

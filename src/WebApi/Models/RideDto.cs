@@ -8,31 +8,28 @@ namespace WebApi.Models
 		public ulong DriverId { get; set; }
 	}
 
-	public interface IRideDtoMapper
+	public interface IRideDtoMapper : IBaseMapper<Ride, RideDto>
 	{
-		Ride FromDto(RideDto from);
-		void FromDto(RideDto from, Ride to);
-		RideDto ToDto(Ride from);
-		void ToDto(Ride from, RideDto to);
 	}
 
 	[Mapper]
-	public partial class RideDtoMapper : IRideDtoMapper
+	public partial class RideDtoMapper : BaseMapper<Ride, RideDto>, IRideDtoMapper
 	{
-		public partial void FromDto(RideDto from, Ride to);
-		public Ride FromDto(RideDto from)
-		{
-			var result = new Ride();
-			FromDto(from, result);
-			return result;
-		}
+		private partial void ToDtoAuto(Ride ride, RideDto dto);
 
-		public partial void ToDto(Ride from, RideDto to);
-		public RideDto ToDto(Ride from)
-		{
-			var result = new RideDto();
-			ToDto(from, result);
-			return result;
-		}
+		private partial void FromDtoAuto(RideDto dto, Ride ride);
+
+		private partial void BetweenDtosAuto(RideDto from, RideDto to);
+		private partial void BetweenEntitiesAuto(Ride from, Ride to);
+
+
+		protected override void BetweenDtos(RideDto from, RideDto to)
+			=> BetweenDtosAuto(from, to);
+		protected override void BetweenEntities(Ride from, Ride to)
+			=> BetweenEntitiesAuto(from, to);
+		protected override void FromDtoAbstract(RideDto dto, Ride entity, IDictionary<object, object> mappedObjects)
+			=> FromDtoAuto(dto, entity);
+		protected override void ToDtoAbstract(Ride entity, RideDto dto, IDictionary<object, object> mappedObjects)
+			=> ToDtoAuto(entity, dto);
 	}
 }

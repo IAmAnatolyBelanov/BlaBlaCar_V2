@@ -1,8 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
-using NetTopologySuite.Geometries;
-
 using WebApi.DataAccess;
 using WebApi.Models;
 using WebApi.Services.Core;
@@ -112,12 +110,16 @@ namespace WebApi.Controllers
 		[HttpGet]
 		public void TestMapper()
 		{
-			var leg = new LegDto
+			var ride = new RideDto { Id = Guid.NewGuid(), };
+
+			var legs = new LegDto[]
 			{
-				Ride = new RideDto { Id = Guid.NewGuid(), }
+				new () { Ride = ride, Id = Guid.NewGuid(), },
+				new () { Ride = ride, Id = Guid.NewGuid(), },
+				new () { Ride = ride, Id = Guid.NewGuid(), },
 			};
 
-			var res = _legDtoMapper.FromDto(leg);
+			var res = _legDtoMapper.FromDtoList(legs);
 			Console.WriteLine(res);
 		}
 	}

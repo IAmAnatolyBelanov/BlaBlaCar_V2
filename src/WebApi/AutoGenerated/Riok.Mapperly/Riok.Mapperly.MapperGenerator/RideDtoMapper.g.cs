@@ -4,13 +4,25 @@ namespace WebApi.Models
 {
     public partial class RideDtoMapper
     {
-        public partial void FromDto(global::WebApi.Models.RideDto from, global::WebApi.Models.Ride to)
+        private partial void ToDtoAuto(global::WebApi.Models.Ride ride, global::WebApi.Models.RideDto dto)
+        {
+            dto.Id = ride.Id;
+            dto.DriverId = ride.DriverId;
+        }
+
+        private partial void FromDtoAuto(global::WebApi.Models.RideDto dto, global::WebApi.Models.Ride ride)
+        {
+            ride.Id = dto.Id;
+            ride.DriverId = dto.DriverId;
+        }
+
+        private partial void BetweenDtosAuto(global::WebApi.Models.RideDto from, global::WebApi.Models.RideDto to)
         {
             to.Id = from.Id;
             to.DriverId = from.DriverId;
         }
 
-        public partial void ToDto(global::WebApi.Models.Ride from, global::WebApi.Models.RideDto to)
+        private partial void BetweenEntitiesAuto(global::WebApi.Models.Ride from, global::WebApi.Models.Ride to)
         {
             to.Id = from.Id;
             to.DriverId = from.DriverId;

@@ -11,5 +11,22 @@
 				yield return item;
 			}
 		}
+
+		public static T[] ToArray<T>(this IEnumerable<T> values, int capasity)
+		{
+			if (capasity == 0)
+				return Array.Empty<T>();
+
+			var result = new T[capasity];
+
+			int iterator = 0;
+			foreach (var value in values)
+			{
+				result[iterator] = value;
+				iterator++;
+			}
+
+			return result;
+		}
 	}
 }
