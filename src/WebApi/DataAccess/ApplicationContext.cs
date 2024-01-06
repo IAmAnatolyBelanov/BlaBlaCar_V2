@@ -53,6 +53,9 @@ namespace WebApi.DataAccess
 				//builder.HasNoKey();
 				//builder.HasIndex(x => new { x.MasterLegId, x.SubLegId });
 
+				builder.HasIndex(x => x.MasterLegId);
+				builder.HasIndex(x => x.SubLegId);
+
 				builder.HasOne(x => x.MasterLeg)
 					.WithMany()
 					.HasForeignKey(x => x.MasterLegId);
