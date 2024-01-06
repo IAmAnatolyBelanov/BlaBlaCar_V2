@@ -18,13 +18,20 @@ namespace WebApi.Controllers
 		private readonly IGeocodeService _geocodeService;
 		private readonly RideService _rideService;
 		private readonly ApplicationContext _context;
+		private readonly ILegDtoMapper _legDtoMapper;
 
-		public SuggestionTest(ISuggestService suggestService, IGeocodeService geocodeService, RideService rideService, ApplicationContext context)
+		public SuggestionTest(
+			ISuggestService suggestService,
+			IGeocodeService geocodeService,
+			RideService rideService,
+			ApplicationContext context,
+			ILegDtoMapper legDtoMapper)
 		{
 			_suggestService = suggestService;
 			_geocodeService = geocodeService;
 			_rideService = rideService;
 			_context = context;
+			_legDtoMapper = legDtoMapper;
 		}
 
 		[HttpGet]
@@ -100,6 +107,18 @@ namespace WebApi.Controllers
 			await _context.SaveChangesAsync();
 
 			return leg;
+		}
+
+		[HttpGet]
+		public void TestMapper()
+		{
+			var leg = new LegDto
+			{
+				Ride = new RideDto { Id = Guid.NewGuid(), }
+			};
+
+			var res = _legDtoMapper.FromDto(leg);
+			Console.WriteLine(res);
 		}
 	}
 }

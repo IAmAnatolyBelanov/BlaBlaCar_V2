@@ -1,6 +1,10 @@
 ﻿using Newtonsoft.Json;
 
+using Riok.Mapperly.Abstractions;
+
 using System.Reflection;
+
+using WebApi.Models;
 
 namespace WebApi.Extensions
 {
@@ -43,6 +47,29 @@ namespace WebApi.Extensions
 		private static string RenderErrors(string[] errors)
 		{
 			return string.Join(Environment.NewLine, errors.Select(x => $"{x.Trim('.', ' ')}."));
+		}
+
+		public static void RegisterMappers(this IServiceCollection services)
+		{
+			services.AddSingleton(typeof(Lazy<>), typeof(Lazier<>));
+
+			var mappers = Assembly.GetExecutingAssembly().GetTypes()
+				.Where(x => x.GetCustomAttribute<MapperAttribute>() is not null)
+				.ToArray();
+
+			foreach (var mapper in mappers)
+			{
+				var mapperInterface = mapper.GetInterfaces().Single();
+				services.AddSingleton(mapperInterface, mapper);
+			}
+		}
+
+		private class Lazier<T> : Lazy<T> where T : class
+		{
+			public Lazier(IServiceProvider provider)
+				: base(() => provider.GetRequiredService<T>())
+			{
+			}
 		}
 	}
 

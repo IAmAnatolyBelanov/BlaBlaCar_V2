@@ -45,6 +45,7 @@ public class Program
 		Log.Debug(builder.Configuration.GetDebugView());
 
 		builder.Services.RegisterConfigs(builder.Configuration.Bind);
+		builder.Services.RegisterMappers();
 
 		builder.Services.AddDbContext<ApplicationContext>((serviceProvider, options) =>
 			options.UseNpgsql(
