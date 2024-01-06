@@ -16,6 +16,7 @@ namespace WebApi.DataAccess
 
 		public DbSet<Ride> Rides { get; set; }
 		public DbSet<Leg> Legs { get; set; }
+		public DbSet<CompositeLeg> CompositeLegs { get; set; }
 
 		protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 		{
@@ -44,6 +45,11 @@ namespace WebApi.DataAccess
 				builder.HasIndex(x => x.EndTime);
 
 				builder.Property(x => x.Description).HasDefaultValue("empty");
+			});
+
+			modelBuilder.Entity<CompositeLeg>(builder =>
+			{
+				builder.HasKey(x => new { x.MasterLegId, x.SubLegId });
 			});
 		}
 	}
