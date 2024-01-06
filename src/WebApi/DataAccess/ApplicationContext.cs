@@ -49,9 +49,17 @@ namespace WebApi.DataAccess
 
 			modelBuilder.Entity<CompositeLeg>(builder =>
 			{
-				//builder.HasKey(x => new { x.MasterLegId, x.SubLegId });
-				builder.HasNoKey();
-				builder.HasIndex(x => new { x.MasterLegId, x.SubLegId });
+				builder.HasKey(x => new { x.MasterLegId, x.SubLegId });
+				//builder.HasNoKey();
+				//builder.HasIndex(x => new { x.MasterLegId, x.SubLegId });
+
+				builder.HasOne(x => x.MasterLeg)
+					.WithMany()
+					.HasForeignKey(x => x.MasterLegId);
+
+				builder.HasOne(x => x.SubLeg)
+					.WithMany()
+					.HasForeignKey(x => x.SubLegId);
 			});
 		}
 	}
