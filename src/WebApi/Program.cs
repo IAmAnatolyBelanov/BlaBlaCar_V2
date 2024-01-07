@@ -13,7 +13,6 @@ using NpgsqlTypes;
 using System.Data;
 
 using WebApi.DataAccess;
-using WebApi.Extensions;
 using WebApi.Services.Core;
 using WebApi.Services.Redis;
 using WebApi.Services.Validators;
@@ -25,7 +24,8 @@ public class Program
 	{
 		var builder = WebApplication.CreateBuilder(args);
 
-		builder.Services.AddControllers();
+		builder.Services.AddControllers(options
+			=> options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true);
 
 		// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 		builder.Services.AddEndpointsApiExplorer();
@@ -61,7 +61,7 @@ public class Program
 		builder.Services.AddSingleton<ISuggestService, SuggestService>();
 		builder.Services.AddSingleton<IGeocodeService, GeocodeService>();
 		builder.Services.AddSingleton<IRouteService, RouteService>();
-		builder.Services.AddSingleton<RideService>();
+		builder.Services.AddSingleton<IRideService, RideService>();
 
 		builder.Services.AddHttpClient(Constants.DefaultHttpClientName)
 			.SetHandlerLifetime(TimeSpan.FromHours(1));
@@ -109,5 +109,4 @@ public class Program
 			throw new ArgumentException();
 		}
 	}
-
 }

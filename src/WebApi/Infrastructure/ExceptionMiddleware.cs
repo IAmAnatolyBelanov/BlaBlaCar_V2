@@ -46,7 +46,7 @@ namespace WebApi.Infrastructure
 				context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
 				context.Response.ContentType = "application/json";
 
-				EmptyResponse result = new()
+				StringResponse result = new()
 				{
 					Errors = ex.Errors,
 					Success = false,

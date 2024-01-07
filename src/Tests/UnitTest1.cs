@@ -117,7 +117,7 @@ namespace Tests
 		public async Task Test1()
 		{
 			using var scope = _provider.CreateScope();
-			var lol = scope.ServiceProvider.GetRequiredService<RideService>();
+			var lol = scope.ServiceProvider.GetRequiredService<IRideService>();
 			var from = GetUniquePoint().ToPoint();
 			var to = GetUniquePoint().ToPoint();
 			var kek = await lol.GetRecommendedPriceAsync(from, to, CancellationToken.None);
@@ -128,7 +128,7 @@ namespace Tests
 		{
 			using var scope = _provider.CreateScope();
 			var context = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
-			var rideService = scope.ServiceProvider.GetRequiredService<RideService>();
+			var rideService = scope.ServiceProvider.GetRequiredService<IRideService>();
 
 			var fixture = new Fixture();
 
@@ -175,7 +175,7 @@ namespace Tests
 		{
 			using var scope = _provider.CreateScope();
 			var context = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
-			var rideService = scope.ServiceProvider.GetRequiredService<RideService>();
+			var rideService = scope.ServiceProvider.GetRequiredService<IRideService>();
 
 			var fixture = new Fixture();
 
@@ -221,7 +221,7 @@ namespace Tests
 		{
 			using var scope = _provider.CreateScope();
 			var context = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
-			var rideService = scope.ServiceProvider.GetRequiredService<RideService>();
+			var rideService = scope.ServiceProvider.GetRequiredService<IRideService>();
 
 			var fixture = new Fixture();
 
@@ -266,7 +266,7 @@ namespace Tests
 		{
 			using var scope = _provider.CreateScope();
 			var context = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
-			var rideService = scope.ServiceProvider.GetRequiredService<RideService>();
+			var rideService = scope.ServiceProvider.GetRequiredService<IRideService>();
 
 			var point = GetUniquePoint().ToPoint();
 

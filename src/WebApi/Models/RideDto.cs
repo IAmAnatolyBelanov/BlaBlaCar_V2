@@ -6,6 +6,8 @@ namespace WebApi.Models
 	{
 		public Guid Id { get; set; }
 		public ulong DriverId { get; set; }
+
+		public IReadOnlyList<LegDto>? Legs { get; set; }
 	}
 
 	public interface IRideDtoMapper : IBaseMapper<Ride, RideDto>

@@ -109,7 +109,7 @@ namespace WebApi.Controllers
 		}
 
 		[HttpGet]
-		public async ValueTask<EmptyResponse> TestMapper(CancellationToken ct)
+		public async ValueTask<StringResponse> TestMapper(CancellationToken ct)
 		{
 			var ride = new RideDto { Id = Guid.NewGuid(), };
 
@@ -121,11 +121,12 @@ namespace WebApi.Controllers
 			};
 
 			var res = _legDtoMapper.FromDtoList(legs);
+			ride.Legs = legs;
 			Console.WriteLine(res);
 
-			await _rideService.CreateRide(_context, ride, legs, ct);
+			await _rideService.CreateRide(_context, ride, ct);
 
-			return EmptyResponse.Empty;
+			return StringResponse.Empty;
 		}
 	}
 }

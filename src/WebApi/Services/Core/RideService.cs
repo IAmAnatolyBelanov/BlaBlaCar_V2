@@ -8,42 +8,58 @@ using NetTopologySuite.Geometries;
 
 using WebApi.DataAccess;
 using WebApi.Models;
+using WebApi.Services.Yandex;
 
 namespace WebApi.Services.Core
 {
-	public class RideService
+	public interface IRideService
 	{
+		ValueTask<RideDto> CreateRide(ApplicationContext context, RideDto rideDto, CancellationToken ct);
+		ValueTask<RideDto> CreateRide(RideDto rideDto, CancellationToken ct);
+		ValueTask<(decimal low, decimal high)> GetRecommendedPriceAsync(ApplicationContext context, Point pointFrom, Point pointTo, CancellationToken ct);
+		ValueTask<(decimal low, decimal high)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct);
+	}
+
+	public class RideService : IRideService
+	{
+		private const char _addressesDelimiter = '@';
+
 		private readonly IServiceScopeFactory _serviceScopeFactory;
 		private readonly IRideServiceConfig _config;
 		private readonly IRideDtoMapper _rideDtoMapper;
 		private readonly ILegDtoMapper _legDtoMapper;
 		private readonly IValidator<IReadOnlyList<LegDto>> _legsCollectionValidatior;
+		private readonly IGeocodeService _geocodeService;
 
 		public RideService(
 			IServiceScopeFactory serviceScopeFactory,
 			IRideServiceConfig config,
 			IRideDtoMapper rideDtoMapper,
 			ILegDtoMapper legDtoMapper,
-			IValidator<IReadOnlyList<LegDto>> legsCollectionValidatior)
+			IValidator<IReadOnlyList<LegDto>> legsCollectionValidatior,
+			IGeocodeService geocodeService)
 		{
 			_serviceScopeFactory = serviceScopeFactory;
 			_config = config;
 			_rideDtoMapper = rideDtoMapper;
 			_legDtoMapper = legDtoMapper;
 			_legsCollectionValidatior = legsCollectionValidatior;
+			_geocodeService = geocodeService;
 		}
 
-		public async ValueTask CreateRide(RideDto rideDto, IReadOnlyList<LegDto> legDtos, CancellationToken ct)
+		public async ValueTask<RideDto> CreateRide(RideDto rideDto, CancellationToken ct)
 		{
 			using var scope = BuildScope();
 			using var context = GetDbContext(scope);
-			await CreateRide(context, rideDto, legDtos, ct);
+			return await CreateRide(context, rideDto, ct);
 		}
 
-		public async ValueTask CreateRide(ApplicationContext context, RideDto rideDto, IReadOnlyList<LegDto> legDtos, CancellationToken ct)
+		public async ValueTask<RideDto> CreateRide(ApplicationContext context, RideDto rideDto, CancellationToken ct)
 		{
 			if (rideDto.Id == default)
 				rideDto.Id = Guid.NewGuid();
+
+			var legDtos = rideDto.Legs ?? Array.Empty<LegDto>();
 
 			for (var i = 0; i < legDtos.Count; i++)
 			{
@@ -56,18 +72,46 @@ namespace WebApi.Services.Core
 
 			_legsCollectionValidatior.ValidateAndThrowFriendly(legDtos);
 
+			if (legDtos.Count > 10)
+			{
+				await Parallel.ForEachAsync(legDtos, ct, FillLegDesription);
+			}
+			else
+			{
+				for (var i = 0; i < legDtos.Count; i++)
+				{
+					var leg = legDtos[i];
+					await FillLegDesription(leg, ct);
+				}
+			}
+
 			var mappedObjects = new Dictionary<object, object>((legDtos.Count + 1) * 2);
 
 			var ride = _rideDtoMapper.FromDto(rideDto, mappedObjects);
 
 			var legs = _legDtoMapper.FromDtoList(legDtos, mappedObjects);
 
-			// Не очевидно, как высчитывать.
-			var compositeLegs = new List<CompositeLeg>();
-			//for (int i = )
-
 			context.Rides.Add(ride);
 			context.Legs.AddRange(legs);
+
+			await context.SaveChangesAsync(ct);
+
+			mappedObjects.Clear();
+			var result = _rideDtoMapper.ToDto(ride, mappedObjects);
+			result.Legs = _legDtoMapper.ToDtoList(legs, mappedObjects);
+
+			return result;
+		}
+
+		private async ValueTask FillLegDesription(LegDto leg, CancellationToken ct)
+		{
+			var from = await _geocodeService.PointToGeoCode(leg.From.Point, ct);
+			var to = await _geocodeService.PointToGeoCode(leg.To.Point, ct);
+
+			var fromStr = from!.Response.GeoObjectCollection.FeatureMember[0].GeoObject.MetaDataProperty.GeocoderMetaData.Address.Formatted;
+			var toStr = to!.Response.GeoObjectCollection.FeatureMember[0].GeoObject.MetaDataProperty.GeocoderMetaData.Address.Formatted;
+
+			leg.Description = $"{fromStr}{_addressesDelimiter}{toStr}";
 		}
 
 		public async ValueTask<(decimal low, decimal high)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct)

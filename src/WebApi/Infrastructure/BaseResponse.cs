@@ -37,22 +37,31 @@
 				Errors = errors,
 			};
 		}
+
+		public static implicit operator BaseResponse<T>(T instance)
+		{
+			return new BaseResponse<T>()
+			{
+				Data = instance,
+				Success = true,
+			};
+		}
 	}
 
-	public class EmptyResponse : BaseResponse<object>
+	public class StringResponse : BaseResponse<object>
 	{
-		public static new EmptyResponse Empty { get; } = new()
+		public static new StringResponse Empty { get; } = new()
 		{
 			Success = true,
 		};
 
-		public static implicit operator EmptyResponse(ValidationResult? validationResult)
+		public static implicit operator StringResponse(ValidationResult? validationResult)
 		{
 			var errors = validationResult?.IsValid != false
 				? Array.Empty<ErrorDetails>()
 				: _errorDetailsMapper.ToDtoListLight(validationResult.Errors)!;
 
-			return new EmptyResponse()
+			return new StringResponse()
 			{
 				Success = false,
 				Errors = errors,
