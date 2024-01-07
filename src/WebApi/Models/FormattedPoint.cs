@@ -30,5 +30,20 @@ namespace WebApi.Models
 			else
 				return new() { Longitude = from.X, Latitude = from.Y };
 		}
+
+		public static bool operator ==(FormattedPoint a, FormattedPoint b)
+			=> a.Latitude == b.Latitude && a.Longitude == b.Longitude;
+		public static bool operator !=(FormattedPoint a, FormattedPoint b)
+			=> !(a == b);
+
+		public override bool Equals(object? obj)
+		{
+			if (obj == null) return false;
+			if (obj is not FormattedPoint other) return false;
+			return this == other;
+		}
+
+		public override int GetHashCode()
+			=> HashCode.Combine(Longitude, Latitude);
 	}
 }

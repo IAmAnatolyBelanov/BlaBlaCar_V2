@@ -68,8 +68,8 @@ namespace WebApi.Shared
 			IEnumerator IEnumerable.GetEnumerator() => _fake.GetEnumerator();
 		}
 
-		private readonly Func<TEntity> _entityFactory;
-		private readonly Func<TDto> _dtoFactory;
+		protected readonly Func<TEntity> _entityFactory;
+		protected readonly Func<TDto> _dtoFactory;
 
 		protected BaseMapper(Func<TEntity> entityFactory, Func<TDto> dtoFactory)
 		{

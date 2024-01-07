@@ -8,10 +8,6 @@ namespace WebApi.Models
         {
             dto.Id = leg.Id;
             dto.RideId = leg.RideId;
-            dto.From = (global::WebApi.Models.FormattedPoint)leg.From;
-            dto.To = (global::WebApi.Models.FormattedPoint)leg.To;
-            dto.StartTime = leg.StartTime;
-            dto.EndTime = leg.EndTime;
             dto.PriceInRub = leg.PriceInRub;
             dto.Description = leg.Description;
         }
@@ -20,10 +16,6 @@ namespace WebApi.Models
         {
             leg.Id = legDto.Id;
             leg.RideId = legDto.RideId;
-            leg.From = (global::NetTopologySuite.Geometries.Point)legDto.From;
-            leg.To = (global::NetTopologySuite.Geometries.Point)legDto.To;
-            leg.StartTime = legDto.StartTime;
-            leg.EndTime = legDto.EndTime;
             leg.PriceInRub = legDto.PriceInRub;
             leg.Description = legDto.Description;
         }
@@ -35,8 +27,6 @@ namespace WebApi.Models
             to.RideId = from.RideId;
             to.From = from.From;
             to.To = from.To;
-            to.StartTime = from.StartTime;
-            to.EndTime = from.EndTime;
             to.PriceInRub = from.PriceInRub;
             to.Description = from.Description;
         }

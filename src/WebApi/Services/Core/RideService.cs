@@ -1,5 +1,7 @@
 ﻿using Dapper;
 
+using FluentValidation;
+
 using Microsoft.EntityFrameworkCore;
 
 using NetTopologySuite.Geometries;
@@ -13,13 +15,60 @@ namespace WebApi.Services.Core
 	{
 		private readonly IServiceScopeFactory _serviceScopeFactory;
 		private readonly IRideServiceConfig _config;
+		private readonly IRideDtoMapper _rideDtoMapper;
+		private readonly ILegDtoMapper _legDtoMapper;
+		private readonly IValidator<IReadOnlyList<LegDto>> _legsCollectionValidatior;
 
 		public RideService(
 			IServiceScopeFactory serviceScopeFactory,
-			IRideServiceConfig config)
+			IRideServiceConfig config,
+			IRideDtoMapper rideDtoMapper,
+			ILegDtoMapper legDtoMapper,
+			IValidator<IReadOnlyList<LegDto>> legsCollectionValidatior)
 		{
 			_serviceScopeFactory = serviceScopeFactory;
 			_config = config;
+			_rideDtoMapper = rideDtoMapper;
+			_legDtoMapper = legDtoMapper;
+			_legsCollectionValidatior = legsCollectionValidatior;
+		}
+
+		public async ValueTask CreateRide(RideDto rideDto, IReadOnlyList<LegDto> legDtos, CancellationToken ct)
+		{
+			using var scope = BuildScope();
+			using var context = GetDbContext(scope);
+			await CreateRide(context, rideDto, legDtos, ct);
+		}
+
+		public async ValueTask CreateRide(ApplicationContext context, RideDto rideDto, IReadOnlyList<LegDto> legDtos, CancellationToken ct)
+		{
+			if (rideDto.Id == default)
+				rideDto.Id = Guid.NewGuid();
+
+			for (var i = 0; i < legDtos.Count; i++)
+			{
+				var legDto = legDtos[i];
+				legDto.Ride = rideDto;
+				legDto.RideId = rideDto.Id;
+			}
+
+			var validationResult = _legsCollectionValidatior.Validate(legDtos);
+			if (!validationResult.IsValid)
+				throw new UserFriendlyException(validationResult);
+
+			var mappedObjects = new Dictionary<object, object>((legDtos.Count + 1) * 2);
+
+			var ride = _rideDtoMapper.FromDto(rideDto, mappedObjects);
+
+			// Не все леги. Есть те, что фронт не присылает, так как они дефолтные.
+			var legs = _legDtoMapper.FromDtoList(legDtos, mappedObjects)!;
+
+			// Не очевидно, как высчитывать.
+			var compositeLegs = new List<CompositeLeg>();
+			//for (int i = )
+
+			context.Rides.Add(ride);
+			context.Legs.AddRange(legs);
 		}
 
 		public async ValueTask<(decimal low, decimal high)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct)

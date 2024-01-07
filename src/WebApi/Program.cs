@@ -1,5 +1,7 @@
 using Dapper;
 
+using FluentValidation;
+
 using Microsoft.EntityFrameworkCore;
 
 using NetTopologySuite.Geometries;
@@ -14,6 +16,7 @@ using WebApi.DataAccess;
 using WebApi.Extensions;
 using WebApi.Services.Core;
 using WebApi.Services.Redis;
+using WebApi.Services.Validators;
 using WebApi.Services.Yandex;
 
 public class Program
@@ -46,6 +49,7 @@ public class Program
 
 		builder.Services.RegisterConfigs(builder.Configuration.Bind);
 		builder.Services.RegisterMappers();
+		builder.Services.AddValidatorsFromAssemblyContaining<LegDtoValidator>(lifetime: ServiceLifetime.Singleton);
 
 		builder.Services.AddDbContext<ApplicationContext>((serviceProvider, options) =>
 			options.UseNpgsql(
@@ -63,6 +67,8 @@ public class Program
 			.SetHandlerLifetime(TimeSpan.FromHours(1));
 
 		var app = builder.Build();
+
+		app.UseMiddleware<ExceptionMiddleware>();
 
 		// Configure the HTTP request pipeline.
 		if (app.Environment.IsDevelopment())

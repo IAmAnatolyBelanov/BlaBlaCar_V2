@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 
 using WebApi.DataAccess;
+using WebApi.Infrastructure;
 using WebApi.Models;
 using WebApi.Services.Core;
 using WebApi.Services.Yandex;
@@ -108,7 +109,7 @@ namespace WebApi.Controllers
 		}
 
 		[HttpGet]
-		public void TestMapper()
+		public async ValueTask<EmptyResponse> TestMapper(CancellationToken ct)
 		{
 			var ride = new RideDto { Id = Guid.NewGuid(), };
 
@@ -121,6 +122,10 @@ namespace WebApi.Controllers
 
 			var res = _legDtoMapper.FromDtoList(legs);
 			Console.WriteLine(res);
+
+			await _rideService.CreateRide(_context, ride, legs, ct);
+
+			return EmptyResponse.Empty;
 		}
 	}
 }

@@ -20,6 +20,10 @@ namespace WebApi.Services.Core
 		/// Минимальное число записей в бд, при котором можно ориентироваться на статистику и на нормальное распределение.
 		/// </summary>
 		int PriceStatisticsMinRowsCount { get; }
+		/// <summary>
+		/// Максимальное число точек в поездке, включая конечные.
+		/// </summary>
+		int MaxWaypoints { get; }
 	}
 
 	public class RideServiceConfig : IBaseConfig, IRideServiceConfig
@@ -38,6 +42,9 @@ namespace WebApi.Services.Core
 		/// <inheritdoc/>
 		public int PriceStatisticsMinRowsCount { get; set; } = 300;
 
+		/// <inheritdoc/>
+		public int MaxWaypoints { get; set; } = 10;
+
 		public IEnumerable<string> GetValidationErrors()
 		{
 			if (PriceStatisticsRadiusMeters <= 0)
@@ -51,6 +58,9 @@ namespace WebApi.Services.Core
 
 			if (PriceStatisticsMinRowsCount <= 0)
 				yield return $"{nameof(PriceStatisticsMinRowsCount)} must be > 0";
+
+			if (MaxWaypoints < 2)
+				yield return $"{nameof(MaxWaypoints)} must be >= 2";
 		}
 	}
 }

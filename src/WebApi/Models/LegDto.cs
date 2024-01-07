@@ -1,5 +1,7 @@
 ﻿using Riok.Mapperly.Abstractions;
 
+using System.Diagnostics.CodeAnalysis;
+
 namespace WebApi.Models
 {
 	public class LegDto
@@ -10,12 +12,32 @@ namespace WebApi.Models
 		public RideDto Ride { get; set; } = default!;
 		public Guid RideId { get; set; }
 
-		public FormattedPoint From { get; set; }
-		public FormattedPoint To { get; set; }
-		public DateTimeOffset StartTime { get; set; }
-		public DateTimeOffset EndTime { get; set; }
+		public PlaceAndTime From { get; set; }
+		public PlaceAndTime To { get; set; }
 		public int PriceInRub { get; set; }
 		public string Description { get; set; } = default!;
+	}
+
+	public struct PlaceAndTime
+	{
+		public FormattedPoint Point { get; set; }
+		public DateTimeOffset DateTime { get; set; }
+
+		public static bool operator ==(PlaceAndTime left, PlaceAndTime right)
+			=> left.Point == right.Point && left.DateTime == right.DateTime;
+		public static bool operator !=(PlaceAndTime left, PlaceAndTime right)
+			=> !(left == right);
+
+		public override bool Equals([NotNullWhen(true)] object? obj)
+		{
+			if (obj == null) return false;
+			if (obj is not PlaceAndTime other)
+				return false;
+
+			return this == other;
+		}
+
+		public override int GetHashCode() => HashCode.Combine(Point, DateTime);
 	}
 
 	public interface ILegDtoMapper : IBaseMapper<Leg, LegDto>
@@ -56,8 +78,10 @@ namespace WebApi.Models
 		{
 			FromDtoAuto(dto, entity);
 
-			entity.From = dto.From.ToPoint();
-			entity.To = dto.To.ToPoint();
+			entity.From = dto.From.Point.ToPoint();
+			entity.To = dto.To.Point.ToPoint();
+			entity.StartTime = dto.From.DateTime;
+			entity.EndTime = dto.To.DateTime;
 
 			if (dto.Ride is not null)
 				entity.Ride = _rideDtoMpper.Value.FromDto(dto.Ride, mappedObjects);
@@ -67,8 +91,16 @@ namespace WebApi.Models
 		{
 			ToDtoAuto(entity, dto);
 
-			dto.From = FormattedPoint.FromPoint(entity.From);
-			dto.To = FormattedPoint.FromPoint(entity.To);
+			dto.From = new PlaceAndTime
+			{
+				Point = FormattedPoint.FromPoint(entity.From),
+				DateTime = entity.StartTime,
+			};
+			dto.To = new PlaceAndTime
+			{
+				Point = FormattedPoint.FromPoint(entity.To),
+				DateTime = entity.EndTime,
+			};
 
 			if (entity.Ride is not null)
 				dto.Ride = _rideDtoMpper.Value.ToDto(entity.Ride, mappedObjects);
