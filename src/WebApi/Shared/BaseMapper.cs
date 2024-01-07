@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 
 using WebApi.Extensions;
 
@@ -15,7 +14,9 @@ namespace WebApi.Shared
 		TEntity FromDtoLight(TDto dto);
 		void FromDtoLight(TDto dto, TEntity entity);
 		void FromDtoLight(TDto dto, TEntity entity, Action<TEntity> setter);
+		[return: NotNullIfNotNull(nameof(values))]
 		IReadOnlyList<TEntity>? FromDtoList(IEnumerable<TDto>? values, IDictionary<object, object>? mappedObjects = null);
+		[return: NotNullIfNotNull(nameof(values))]
 		IReadOnlyList<TEntity>? FromDtoListLight(IEnumerable<TDto>? values);
 		TDto ToDto(TEntity entity, IDictionary<object, object>? mappedObjects = null);
 		void ToDto(TEntity entity, TDto dto, IDictionary<object, object>? mappedObjects = null);
@@ -23,7 +24,9 @@ namespace WebApi.Shared
 		TDto ToDtoLight(TEntity entity);
 		void ToDtoLight(TEntity entity, TDto dto);
 		void ToDtoLight(TEntity entity, TDto dto, Action<TDto> setter);
+		[return: NotNullIfNotNull(nameof(values))]
 		IReadOnlyList<TDto>? ToDtoList(IEnumerable<TEntity>? values, IDictionary<object, object>? mappedObjects = null);
+		[return: NotNullIfNotNull(nameof(values))]
 		IReadOnlyList<TDto>? ToDtoListLight(IEnumerable<TEntity>? values);
 	}
 
@@ -77,9 +80,11 @@ namespace WebApi.Shared
 			_dtoFactory = dtoFactory;
 		}
 
+		[return: NotNullIfNotNull(nameof(values))]
 		public IReadOnlyList<TDto>? ToDtoListLight(IEnumerable<TEntity>? values)
 			=> ToDtoList(values, FakeDict.Shared);
 
+		[return: NotNullIfNotNull(nameof(values))]
 		public IReadOnlyList<TDto>? ToDtoList(IEnumerable<TEntity>? values, IDictionary<object, object>? mappedObjects = null)
 		{
 			if (values is null)
@@ -190,9 +195,11 @@ namespace WebApi.Shared
 			ToDtoAbstract(entity, dto, mappedObjects);
 		}
 
+		[return: NotNullIfNotNull(nameof(values))]
 		public IReadOnlyList<TEntity>? FromDtoListLight(IEnumerable<TDto>? values)
 			=> FromDtoList(values, FakeDict.Shared);
 
+		[return: NotNullIfNotNull(nameof(values))]
 		public IReadOnlyList<TEntity>? FromDtoList(IEnumerable<TDto>? values, IDictionary<object, object>? mappedObjects = null)
 		{
 			if (values is null)

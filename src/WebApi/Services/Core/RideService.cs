@@ -61,7 +61,7 @@ namespace WebApi.Services.Core
 			var ride = _rideDtoMapper.FromDto(rideDto, mappedObjects);
 
 			// Не все леги. Есть те, что фронт не присылает, так как они дефолтные.
-			var legs = _legDtoMapper.FromDtoList(legDtos, mappedObjects)!;
+			var legs = _legDtoMapper.FromDtoList(legDtos, mappedObjects);
 
 			// Не очевидно, как высчитывать.
 			var compositeLegs = new List<CompositeLeg>();
