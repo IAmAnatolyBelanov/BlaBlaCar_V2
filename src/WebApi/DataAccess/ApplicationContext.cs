@@ -70,7 +70,7 @@ namespace WebApi.DataAccess
 			{
 				builder.HasIndex(x => new { x.LegId, x.UserId })
 					.IsUnique()
-					.HasFilter($"\"{nameof(Reservation.IsActive)}\" = 1");
+					.HasFilter($"\"{nameof(Reservation.IsActive)}\" IS TRUE");
 
 				builder.HasOne(x => x.Leg)
 					.WithMany()
