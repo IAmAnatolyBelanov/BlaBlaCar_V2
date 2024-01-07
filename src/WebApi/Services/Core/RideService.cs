@@ -50,6 +50,8 @@ namespace WebApi.Services.Core
 				var legDto = legDtos[i];
 				legDto.Ride = rideDto;
 				legDto.RideId = rideDto.Id;
+				if (legDto.Id == default)
+					legDto.Id = Guid.NewGuid();
 			}
 
 			var validationResult = _legsCollectionValidatior.Validate(legDtos);
@@ -60,7 +62,6 @@ namespace WebApi.Services.Core
 
 			var ride = _rideDtoMapper.FromDto(rideDto, mappedObjects);
 
-			// Не все леги. Есть те, что фронт не присылает, так как они дефолтные.
 			var legs = _legDtoMapper.FromDtoList(legDtos, mappedObjects);
 
 			// Не очевидно, как высчитывать.

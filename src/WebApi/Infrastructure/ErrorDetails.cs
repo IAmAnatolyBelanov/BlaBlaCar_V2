@@ -1,6 +1,4 @@
-﻿using FluentValidation.Results;
-
-using Riok.Mapperly.Abstractions;
+﻿using Riok.Mapperly.Abstractions;
 
 namespace WebApi.Infrastructure
 {
@@ -33,7 +31,9 @@ namespace WebApi.Infrastructure
 		{
 			dto.Code = entity.ErrorCode;
 			dto.Message = entity.ErrorMessage;
-			dto.AdditionalInfo = $"{nameof(ValidationFailure.PropertyName)} - {entity.PropertyName}";
+			dto.AdditionalInfo = string.IsNullOrWhiteSpace(entity.PropertyName)
+				? null
+				: $"{nameof(ValidationFailure.PropertyName)} - {entity.PropertyName}";
 		}
 	}
 }
