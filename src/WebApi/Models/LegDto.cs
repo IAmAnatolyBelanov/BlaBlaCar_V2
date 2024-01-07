@@ -28,14 +28,19 @@ namespace WebApi.Models
 		private readonly Lazy<IRideDtoMapper> _rideDtoMpper;
 
 		public LegDtoMapper(Lazy<IRideDtoMapper> rideDtoMpper)
+			: base(() => new(), () => new())
 		{
 			_rideDtoMpper = rideDtoMpper;
 		}
 
 		[MapperIgnoreTarget(nameof(LegDto.Ride))]
+		[MapperIgnoreTarget(nameof(LegDto.From))]
+		[MapperIgnoreTarget(nameof(LegDto.To))]
 		private partial void ToDtoAuto(Leg leg, LegDto dto);
 
 		[MapperIgnoreTarget(nameof(Leg.Ride))]
+		[MapperIgnoreTarget(nameof(Leg.From))]
+		[MapperIgnoreTarget(nameof(Leg.To))]
 		private partial void FromDtoAuto(LegDto legDto, Leg leg);
 
 		private partial void BetweenDtosAuto(LegDto from, LegDto to);
@@ -50,6 +55,10 @@ namespace WebApi.Models
 		protected override void FromDtoAbstract(LegDto dto, Leg entity, IDictionary<object, object> mappedObjects)
 		{
 			FromDtoAuto(dto, entity);
+
+			entity.From = dto.From.ToPoint();
+			entity.To = dto.To.ToPoint();
+
 			if (dto.Ride is not null)
 				entity.Ride = _rideDtoMpper.Value.FromDto(dto.Ride, mappedObjects);
 		}
@@ -57,6 +66,10 @@ namespace WebApi.Models
 		protected override void ToDtoAbstract(Leg entity, LegDto dto, IDictionary<object, object> mappedObjects)
 		{
 			ToDtoAuto(entity, dto);
+
+			dto.From = FormattedPoint.FromPoint(entity.From);
+			dto.To = FormattedPoint.FromPoint(entity.To);
+
 			if (entity.Ride is not null)
 				dto.Ride = _rideDtoMpper.Value.ToDto(entity.Ride, mappedObjects);
 		}

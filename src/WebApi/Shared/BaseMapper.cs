@@ -6,8 +6,8 @@ using WebApi.Extensions;
 namespace WebApi.Shared
 {
 	public interface IBaseMapper<TEntity, TDto>
-		where TEntity : class, new()
-		where TDto : class, new()
+		where TEntity : class
+		where TDto : class
 	{
 		TEntity FromDto(TDto dto, IDictionary<object, object>? mappedObjects = null);
 		void FromDto(TDto dto, TEntity entity, IDictionary<object, object>? mappedObjects = null);
@@ -27,8 +27,9 @@ namespace WebApi.Shared
 		IReadOnlyList<TDto>? ToDtoListLight(IEnumerable<TEntity>? values);
 	}
 
-	public abstract class BaseMapper<TEntity, TDto> : IBaseMapper<TEntity, TDto> where TEntity : class, new()
-			where TDto : class, new()
+	public abstract class BaseMapper<TEntity, TDto> : IBaseMapper<TEntity, TDto>
+		where TEntity : class
+		where TDto : class
 	{
 		private class FakeDict : IDictionary<object, object>
 		{
@@ -65,6 +66,15 @@ namespace WebApi.Shared
 			}
 
 			IEnumerator IEnumerable.GetEnumerator() => _fake.GetEnumerator();
+		}
+
+		private readonly Func<TEntity> _entityFactory;
+		private readonly Func<TDto> _dtoFactory;
+
+		protected BaseMapper(Func<TEntity> entityFactory, Func<TDto> dtoFactory)
+		{
+			_entityFactory = entityFactory;
+			_dtoFactory = dtoFactory;
 		}
 
 		public IReadOnlyList<TDto>? ToDtoListLight(IEnumerable<TEntity>? values)
@@ -148,7 +158,7 @@ namespace WebApi.Shared
 			if (mappedObjects.TryGetValue(entity!, out var mappedObject))
 				return (TDto)mappedObject;
 
-			var dto = new TDto();
+			var dto = _dtoFactory();
 			ToDto(entity, dto, mappedObjects);
 			return dto;
 		}
@@ -261,7 +271,7 @@ namespace WebApi.Shared
 			if (mappedObjects.TryGetValue(dto, out var mappedObject))
 				return (TEntity)mappedObject;
 
-			var entity = new TEntity();
+			var entity = _entityFactory();
 			FromDto(dto, entity, mappedObjects);
 			return entity;
 		}

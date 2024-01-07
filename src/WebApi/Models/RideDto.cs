@@ -15,6 +15,10 @@ namespace WebApi.Models
 	[Mapper]
 	public partial class RideDtoMapper : BaseMapper<Ride, RideDto>, IRideDtoMapper
 	{
+		public RideDtoMapper() : base(() => new(), () => new())
+		{
+		}
+
 		private partial void ToDtoAuto(Ride ride, RideDto dto);
 
 		private partial void FromDtoAuto(RideDto dto, Ride ride);
