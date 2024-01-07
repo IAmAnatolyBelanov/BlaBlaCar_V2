@@ -54,9 +54,7 @@ namespace WebApi.Services.Core
 					legDto.Id = Guid.NewGuid();
 			}
 
-			var validationResult = _legsCollectionValidatior.Validate(legDtos);
-			if (!validationResult.IsValid)
-				throw new UserFriendlyException(validationResult);
+			_legsCollectionValidatior.ValidateAndThrowFriendly(legDtos);
 
 			var mappedObjects = new Dictionary<object, object>((legDtos.Count + 1) * 2);
 
