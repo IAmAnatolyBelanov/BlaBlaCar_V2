@@ -71,12 +71,23 @@ namespace WebApi.DataAccess
 				builder.HasIndex(x => new { x.LegId, x.UserId })
 					.IsUnique()
 					.HasFilter($"\"{nameof(Reservation.IsActive)}\" IS TRUE")
-					.HasDatabaseName(Constants.DbIndexName_UniqueIfActiveReservation);
+					.HasDatabaseName(DbConstants.IndexName_UniqueIfActiveReservation);
 
 				builder.HasOne(x => x.Leg)
 					.WithMany()
 					.HasForeignKey(x => x.LegId);
 			});
 		}
+	}
+
+	public static class DbConstants
+	{
+		public static readonly IReadOnlyDictionary<string, string> AllConstants
+			= typeof(DbConstants).GetAllStringConstants().ToDictionary();
+
+		public static readonly IReadOnlySet<string> AllConstantValues
+			= AllConstants.Values.ToHashSet();
+
+		public const string IndexName_UniqueIfActiveReservation = "Custom_DbIndexName_Reservations_UserId_LegId_UniqueIfActive";
 	}
 }

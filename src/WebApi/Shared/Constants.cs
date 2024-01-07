@@ -2,8 +2,12 @@
 {
 	public static class Constants
 	{
-		public const string DefaultHttpClientName = "Default";
+		public static readonly IReadOnlyDictionary<string, string> AllConstants
+			= typeof(Constants).GetAllStringConstants().ToDictionary();
 
-		public const string DbIndexName_UniqueReservation = "Custom_DbIndexName_UniqueReservation";
+		public static readonly IReadOnlySet<string> AllConstantValues
+			= AllConstants.Values.ToHashSet();
+
+		public const string DefaultHttpClientName = "Default";
 	}
 }
