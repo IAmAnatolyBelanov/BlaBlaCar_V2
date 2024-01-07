@@ -21,6 +21,8 @@ namespace WebApi.Models
             to.Id = from.Id;
             to.DriverId = from.DriverId;
             to.Legs = from.Legs;
+            to.FullyLegId = from.FullyLegId;
+            to.FullyLeg = from.FullyLeg;
         }
 
         private partial void BetweenEntitiesAuto(global::WebApi.Models.Ride from, global::WebApi.Models.Ride to)

@@ -8,6 +8,11 @@ namespace WebApi.Models
 		public ulong DriverId { get; set; }
 
 		public IReadOnlyList<LegDto>? Legs { get; set; }
+
+		public Guid FullyLegId { get; set; }
+		[System.Text.Json.Serialization.JsonIgnore]
+		[Newtonsoft.Json.JsonIgnore]
+		public LegDto FullyLeg { get; set; } = default!;
 	}
 
 	public interface IRideDtoMapper : IBaseMapper<Ride, RideDto>
