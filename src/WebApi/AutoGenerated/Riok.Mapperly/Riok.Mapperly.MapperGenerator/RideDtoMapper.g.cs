@@ -8,12 +8,14 @@ namespace WebApi.Models
         {
             dto.Id = ride.Id;
             dto.DriverId = ride.DriverId;
+            dto.AvailablePlacesCount = ride.AvailablePlacesCount;
         }
 
         private partial void FromDtoAuto(global::WebApi.Models.RideDto dto, global::WebApi.Models.Ride ride)
         {
             ride.Id = dto.Id;
             ride.DriverId = dto.DriverId;
+            ride.AvailablePlacesCount = dto.AvailablePlacesCount;
         }
 
         private partial void BetweenDtosAuto(global::WebApi.Models.RideDto from, global::WebApi.Models.RideDto to)
@@ -23,12 +25,15 @@ namespace WebApi.Models
             to.Legs = from.Legs;
             to.FullyLegId = from.FullyLegId;
             to.FullyLeg = from.FullyLeg;
+            to.AvailablePlacesCount = from.AvailablePlacesCount;
+            to.FreePlacesCount = from.FreePlacesCount;
         }
 
         private partial void BetweenEntitiesAuto(global::WebApi.Models.Ride from, global::WebApi.Models.Ride to)
         {
             to.Id = from.Id;
             to.DriverId = from.DriverId;
+            to.AvailablePlacesCount = from.AvailablePlacesCount;
         }
     }
 }

@@ -17,6 +17,7 @@ namespace WebApi.DataAccess
 		public DbSet<Ride> Rides { get; set; }
 		public DbSet<Leg> Legs { get; set; }
 		public DbSet<CompositeLeg> CompositeLegs { get; set; }
+		public DbSet<Reservation> Reservations { get; set; }
 
 		protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 		{
@@ -63,6 +64,17 @@ namespace WebApi.DataAccess
 				builder.HasOne(x => x.SubLeg)
 					.WithMany()
 					.HasForeignKey(x => x.SubLegId);
+			});
+
+			modelBuilder.Entity<Reservation>(builder =>
+			{
+				builder.HasIndex(x => new { x.LegId, x.UserId })
+					.IsUnique()
+					.HasFilter($"\"{nameof(Reservation.IsActive)}\" = 1");
+
+				builder.HasOne(x => x.Leg)
+					.WithMany()
+					.HasForeignKey(x => x.LegId);
 			});
 		}
 	}

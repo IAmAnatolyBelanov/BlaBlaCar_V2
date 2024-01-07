@@ -13,6 +13,9 @@ namespace WebApi.Models
 		[System.Text.Json.Serialization.JsonIgnore]
 		[Newtonsoft.Json.JsonIgnore]
 		public LegDto FullyLeg { get; set; } = default!;
+
+		public int AvailablePlacesCount { get; set; }
+		public int? FreePlacesCount { get; set; }
 	}
 
 	public interface IRideDtoMapper : IBaseMapper<Ride, RideDto>

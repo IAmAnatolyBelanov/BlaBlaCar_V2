@@ -29,6 +29,7 @@ namespace WebApi.Models
             to.To = from.To;
             to.PriceInRub = from.PriceInRub;
             to.Description = from.Description;
+            to.FreePlaces = from.FreePlaces;
         }
 
         private partial void BetweenEntitiesAuto(global::WebApi.Models.Leg from, global::WebApi.Models.Leg to)

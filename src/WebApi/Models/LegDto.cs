@@ -16,6 +16,7 @@ namespace WebApi.Models
 		public PlaceAndTime To { get; set; }
 		public int PriceInRub { get; set; }
 		public string Description { get; set; } = default!;
+		public int? FreePlaces { get; set; }
 	}
 
 	public struct PlaceAndTime
