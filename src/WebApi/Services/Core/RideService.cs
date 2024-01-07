@@ -56,8 +56,7 @@ namespace WebApi.Services.Core
 
 		public async ValueTask<RideDto> CreateRide(ApplicationContext context, RideDto rideDto, CancellationToken ct)
 		{
-			if (rideDto.Id == default)
-				rideDto.Id = Guid.NewGuid();
+			rideDto.Id = Guid.NewGuid();
 
 			var legDtos = rideDto.Legs ?? Array.Empty<LegDto>();
 
@@ -66,8 +65,7 @@ namespace WebApi.Services.Core
 				var legDto = legDtos[i];
 				legDto.Ride = rideDto;
 				legDto.RideId = rideDto.Id;
-				if (legDto.Id == default)
-					legDto.Id = Guid.NewGuid();
+				legDto.Id = Guid.NewGuid();
 			}
 
 			_legsCollectionValidatior.ValidateAndThrowFriendly(legDtos);
