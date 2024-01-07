@@ -11,6 +11,7 @@ namespace WebApi.Models
             dto.UserId = entity.UserId;
             dto.IsActive = entity.IsActive;
             dto.CreateDateTime = entity.CreateDateTime;
+            dto.Count = entity.Count;
         }
 
         private partial void FromDtoAuto(global::WebApi.Models.ReservationDto dto, global::WebApi.Models.Reservation entity)
@@ -20,6 +21,7 @@ namespace WebApi.Models
             entity.UserId = dto.UserId;
             entity.IsActive = dto.IsActive;
             entity.CreateDateTime = dto.CreateDateTime;
+            entity.Count = dto.Count;
         }
 
         private partial void BetweenDtosAuto(global::WebApi.Models.ReservationDto from, global::WebApi.Models.ReservationDto to)
@@ -30,6 +32,7 @@ namespace WebApi.Models
             to.UserId = from.UserId;
             to.IsActive = from.IsActive;
             to.CreateDateTime = from.CreateDateTime;
+            to.Count = from.Count;
         }
 
         private partial void BetweenEntitiesAuto(global::WebApi.Models.Reservation from, global::WebApi.Models.Reservation to)
@@ -40,6 +43,7 @@ namespace WebApi.Models
             to.UserId = from.UserId;
             to.IsActive = from.IsActive;
             to.CreateDateTime = from.CreateDateTime;
+            to.Count = from.Count;
         }
     }
 }

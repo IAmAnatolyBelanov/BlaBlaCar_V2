@@ -15,14 +15,14 @@ namespace WebApi.Controllers
 	{
 		private readonly ISuggestService _suggestService;
 		private readonly IGeocodeService _geocodeService;
-		private readonly RideService _rideService;
+		private readonly IRideService _rideService;
 		private readonly ApplicationContext _context;
 		private readonly ILegDtoMapper _legDtoMapper;
 
 		public SuggestionTest(
 			ISuggestService suggestService,
 			IGeocodeService geocodeService,
-			RideService rideService,
+			IRideService rideService,
 			ApplicationContext context,
 			ILegDtoMapper legDtoMapper)
 		{
@@ -125,6 +125,28 @@ namespace WebApi.Controllers
 			Console.WriteLine(res);
 
 			await _rideService.CreateRide(_context, ride, ct);
+
+			return StringResponse.Empty;
+		}
+
+		[HttpPost]
+		public async ValueTask<StringResponse> TestReservations(CancellationToken ct)
+		{
+			var leg = _context.Legs.AsTracking()
+				.First(x => x.Id == Guid.Parse("47604cea-ebf5-4982-9322-c04efb885678"));
+
+			var reserv = new Reservation
+			{
+				CreateDateTime = DateTimeOffset.UtcNow,
+				IsActive = true,
+				Leg = leg,
+				LegId = leg.Id,
+				UserId = 15,
+				Count = 1,
+			};
+
+			_context.Reservations.Add(reserv);
+			await _context.SaveChangesAsync(ct);
 
 			return StringResponse.Empty;
 		}

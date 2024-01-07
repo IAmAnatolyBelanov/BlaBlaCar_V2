@@ -9,6 +9,6 @@
 		public ulong UserId { get; set; }
 		public bool IsActive { get; set; }
 		public DateTimeOffset CreateDateTime { get; set; }
-
+		public int Count { get; set; }
 	}
 }
