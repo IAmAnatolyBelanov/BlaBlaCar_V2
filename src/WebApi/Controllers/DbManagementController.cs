@@ -20,7 +20,7 @@ namespace WebApi.Controllers
 		[HttpGet]
 		public async ValueTask Migrate(CancellationToken ct)
 		{
-			await _context.Database.MigrateAsync(ct);
+			await _context.MigrateAsync(ct);
 		}
 	}
 }

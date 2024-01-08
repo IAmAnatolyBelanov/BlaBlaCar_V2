@@ -1,17 +1,9 @@
 using AutoFixture;
 
-using DotNet.Testcontainers.Builders;
-
 using FluentAssertions;
 
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-
-using Testcontainers.PostgreSql;
 
 using WebApi.DataAccess;
 using WebApi.Extensions;
@@ -20,39 +12,7 @@ using WebApi.Services.Core;
 
 namespace Tests
 {
-	public class TestApp : WebApplicationFactory<Program>, IDisposable
-	{
-		private readonly PostgreSqlContainer _postgreSqlContainer = new PostgreSqlBuilder()
-			.WithImage("postgis/postgis:16-3.4")
-			.WithWaitStrategy(Wait.ForUnixContainer())
-			.Build();
-
-		public TestApp()
-		{
-			Task.Run(async () => await _postgreSqlContainer.StartAsync()).Wait();
-		}
-
-		protected override void ConfigureWebHost(IWebHostBuilder builder)
-		{
-			base.ConfigureWebHost(builder);
-			builder.ConfigureTestServices(services =>
-			{
-				services.RemoveAll<IApplicationContextConfig>();
-				var conf = new ApplicationContextConfig
-				{
-					ConnectionString = _postgreSqlContainer.GetConnectionString()
-				};
-				services.AddSingleton<IApplicationContextConfig>(conf);
-			});
-		}
-
-		public void Dispose()
-		{
-			Task.Run(async () => await _postgreSqlContainer.DisposeAsync()).Wait();
-		}
-	}
-
-	public class UnitTest1 : IClassFixture<TestApp>
+	public class UnitTest1 : IClassFixture<TestAppFactoryWithDb>
 	{
 		private static IEnumerable<FormattedPoint> _formattedPoints = BuildFormattedPoints();
 		private static IEnumerable<FormattedPoint> BuildFormattedPoints()
@@ -82,35 +42,15 @@ namespace Tests
 
 		private readonly IServiceProvider _provider;
 
-		public UnitTest1(TestApp fixture)
+		public UnitTest1(TestAppFactoryWithDb fixture)
 		{
 			_provider = fixture.Services;
 
-			Exception? ex = null;
+			fixture.MigrateDb();
 
-			// Хз, в чём дело, но без такой херни подключение к бд падает.
-			for (int i = 0; i < 5; i++)
-			{
-				try
-				{
-					using var scope = _provider.CreateScope();
-					using var context = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
-					context.Database.Migrate();
-					var rideServiceConfig = (RideServiceConfig)scope.ServiceProvider.GetRequiredService<IRideServiceConfig>();
-					rideServiceConfig.PriceStatisticsRadiusMeters = 10;
-
-					ex = null;
-					break;
-				}
-				catch (Exception exc)
-				{
-					ex = exc;
-					Thread.Sleep(500);
-				}
-			}
-
-			if (ex != null)
-				throw ex;
+			using var scope = _provider.CreateScope();
+			var rideServiceConfig = (RideServiceConfig)scope.ServiceProvider.GetRequiredService<IRideServiceConfig>();
+			rideServiceConfig.PriceStatisticsRadiusMeters = 10;
 		}
 
 		[Fact]
