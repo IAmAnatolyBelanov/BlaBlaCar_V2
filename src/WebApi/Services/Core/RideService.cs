@@ -97,7 +97,11 @@ namespace WebApi.Services.Core
 			mappedObjects.Clear();
 			var result = _rideDtoMapper.ToDto(ride, mappedObjects);
 			result.Legs = _legDtoMapper.ToDtoList(legs, mappedObjects);
-			result.FullyLeg = result.Legs.OrderByDescending(x => x.To.DateTime - x.From.DateTime).First();
+
+			result.FullyLeg = result.Legs
+				.OrderByDescending(x => x.Duration)
+				.First();
+
 			result.FullyLegId = result.FullyLeg.Id;
 
 			return result;

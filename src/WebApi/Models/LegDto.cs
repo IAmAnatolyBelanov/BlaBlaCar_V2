@@ -14,6 +14,9 @@ namespace WebApi.Models
 
 		public PlaceAndTime From { get; set; }
 		public PlaceAndTime To { get; set; }
+		[System.Text.Json.Serialization.JsonIgnore]
+		[Newtonsoft.Json.JsonIgnore]
+		public TimeSpan Duration => To.DateTime - From.DateTime;
 		public int PriceInRub { get; set; }
 		public string Description { get; set; } = default!;
 		public int? FreePlaces { get; set; }

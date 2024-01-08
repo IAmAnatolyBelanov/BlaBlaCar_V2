@@ -79,7 +79,7 @@ namespace WebApi.Services.Yandex
 
 		public async ValueTask<YandexGeocodeResponse?> PointToGeoCode(FormattedPoint point, CancellationToken ct)
 		{
-			var request = $"https://geocode-maps.yandex.ru/1.x?apikey={_config.ApiKey}&geocode={point.Longitude} {point.Latitude}&sco=longlat&format=json&results=1";
+			var request = $"https://geocode-maps.yandex.ru/1.x?apikey={_config.ApiKey}&geocode={point.Longitude:F6} {point.Latitude:F6}&sco=longlat&format=json&results=1";
 
 			return await GetGeocode(request, ct);
 		}
