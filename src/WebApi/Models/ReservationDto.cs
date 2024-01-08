@@ -6,6 +6,8 @@ namespace WebApi.Models
 	{
 		public Guid Id { get; set; }
 		public Guid LegId { get; set; }
+		[System.Text.Json.Serialization.JsonIgnore]
+		[Newtonsoft.Json.JsonIgnore]
 		public LegDto Leg { get; set; } = default!;
 		public ulong UserId { get; set; }
 		public bool IsActive { get; set; }
