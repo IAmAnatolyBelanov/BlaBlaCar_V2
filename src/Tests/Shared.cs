@@ -22,6 +22,10 @@ namespace Tests
 				DateTime = fixture.Create<DateTimeOffset>(),
 			});
 
+			fixture.Customize<RideDto>(x => x
+				.Without(r => r.Legs)
+				.Without(r => r.FullyLeg));
+
 			return fixture;
 		}
 	}

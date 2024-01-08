@@ -72,9 +72,7 @@ namespace Tests
 		{
 			var legs = BuildMinimalValidLegsCollection();
 
-			var result = _validatorCollectionOfLegs.Validate(legs);
-
-			result.IsValid.Should().BeTrue();
+			_validatorCollectionOfLegs.ValidateAndThrow(legs);
 		}
 
 		[Fact]
@@ -122,12 +120,13 @@ namespace Tests
 
 			temp.DateTime = now;
 			legs[0].To = temp;
+			temp = legs[0].From;
 			temp.DateTime = now.AddHours(-2);
 			legs[0].From = temp;
 
 			legs[1].From = legs[0].From;
-			temp = legs[1].From;
-			temp.DateTime = temp.DateTime.AddHours(1);
+			temp = legs[1].To;
+			temp.DateTime = legs[1].From.DateTime.AddHours(1);
 			legs[1].To = temp;
 
 			legs[2].From = legs[1].To;
