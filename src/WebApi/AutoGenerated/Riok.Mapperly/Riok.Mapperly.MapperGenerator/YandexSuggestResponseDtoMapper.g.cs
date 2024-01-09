@@ -8,5 +8,11 @@ namespace WebApi.Models
         {
             dto.Success = entity.Success;
         }
+
+        private partial void BetweenDtosAuto(global::WebApi.Models.YandexSuggestResponseDto from, global::WebApi.Models.YandexSuggestResponseDto to)
+        {
+            to.Results = from.Results;
+            to.Success = from.Success;
+        }
     }
 }

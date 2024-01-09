@@ -1,10 +1,8 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 
-using WebApi.Extensions;
-
 namespace WebApi.Shared
 {
-	public interface IBaseMapper<TEntity, TDto>
+	public interface IBaseMapper<TEntity, TDto> : IBaseOneWayMapper<TEntity, TDto>
 		where TEntity : class
 		where TDto : class
 	{
@@ -18,16 +16,6 @@ namespace WebApi.Shared
 		IReadOnlyList<TEntity>? FromDtoList(IEnumerable<TDto>? values, IDictionary<object, object>? mappedObjects = null);
 		[return: NotNullIfNotNull(nameof(values))]
 		IReadOnlyList<TEntity>? FromDtoListLight(IEnumerable<TDto>? values);
-		TDto ToDto(TEntity entity, IDictionary<object, object>? mappedObjects = null);
-		void ToDto(TEntity entity, TDto dto, IDictionary<object, object>? mappedObjects = null);
-		void ToDto(TEntity entity, TDto dto, Action<TDto> setter, IDictionary<object, object> mappedObjects);
-		TDto ToDtoLight(TEntity entity);
-		void ToDtoLight(TEntity entity, TDto dto);
-		void ToDtoLight(TEntity entity, TDto dto, Action<TDto> setter);
-		[return: NotNullIfNotNull(nameof(values))]
-		IReadOnlyList<TDto>? ToDtoList(IEnumerable<TEntity>? values, IDictionary<object, object>? mappedObjects = null);
-		[return: NotNullIfNotNull(nameof(values))]
-		IReadOnlyList<TDto>? ToDtoListLight(IEnumerable<TEntity>? values);
 	}
 
 	public abstract class BaseMapper<TEntity, TDto> : IBaseMapper<TEntity, TDto>
@@ -316,5 +304,4 @@ namespace WebApi.Shared
 		protected abstract void BetweenDtos(TDto from, TDto to);
 		protected abstract void BetweenEntities(TEntity from, TEntity to);
 	}
-
 }

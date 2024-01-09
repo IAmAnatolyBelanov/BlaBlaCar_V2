@@ -18,27 +18,27 @@ namespace WebApi.Models
 		}
 	}
 
-	public interface IYandexSuggestResponseDtoMapper : IBaseMapper<YandexSuggestResponse, YandexSuggestResponseDto>
+	public interface IYandexSuggestResponseDtoMapper : IBaseOneWayMapper<YandexSuggestResponse, YandexSuggestResponseDto>
 	{
 	}
 
 	[Mapper]
-	public partial class YandexSuggestResponseDtoMapper : BaseMapper<YandexSuggestResponse, YandexSuggestResponseDto>, IYandexSuggestResponseDtoMapper
+	public partial class YandexSuggestResponseDtoMapper : BaseOneWayMapper<YandexSuggestResponse, YandexSuggestResponseDto>, IYandexSuggestResponseDtoMapper
 	{
 		private readonly IYandexSuggestResponseDtoResultMapper _yandexSuggestResponseDtoResultMapper;
 
 		public YandexSuggestResponseDtoMapper(IYandexSuggestResponseDtoResultMapper yandexSuggestResponseDtoResultMapper)
-			: base(() => throw new NotSupportedException(), () => new())
+			: base(() => new())
 		{
 			_yandexSuggestResponseDtoResultMapper = yandexSuggestResponseDtoResultMapper;
 		}
 
 		[MapperIgnoreTarget(nameof(YandexSuggestResponseDto.Results))]
 		private partial void ToDtoAuto(YandexSuggestResponse entity, YandexSuggestResponseDto dto);
+		private partial void BetweenDtosAuto(YandexSuggestResponseDto from, YandexSuggestResponseDto to);
 
-		protected override void BetweenDtos(YandexSuggestResponseDto from, YandexSuggestResponseDto to) => throw new NotSupportedException();
-		protected override void BetweenEntities(YandexSuggestResponse from, YandexSuggestResponse to) => throw new NotSupportedException();
-		protected override void FromDtoAbstract(YandexSuggestResponseDto dto, YandexSuggestResponse entity, IDictionary<object, object> mappedObjects) => throw new NotSupportedException();
+		protected override void BetweenDtos(YandexSuggestResponseDto from, YandexSuggestResponseDto to)
+			=> BetweenDtosAuto(from, to);
 		protected override void ToDtoAbstract(YandexSuggestResponse entity, YandexSuggestResponseDto dto, IDictionary<object, object> mappedObjects)
 		{
 			ToDtoAuto(entity, dto);
@@ -47,25 +47,26 @@ namespace WebApi.Models
 		}
 	}
 
-	public interface IYandexSuggestResponseDtoResultMapper : IBaseMapper<YandexSuggestResponse.Result, YandexSuggestResponseDto.YandexSuggestResponseDtoResult>
+	public interface IYandexSuggestResponseDtoResultMapper : IBaseOneWayMapper<YandexSuggestResponse.Result, YandexSuggestResponseDto.YandexSuggestResponseDtoResult>
 	{
 	}
 
 	[Mapper]
-	public partial class YandexSuggestResponseDtoResultMapper : BaseMapper<YandexSuggestResponse.Result, YandexSuggestResponseDto.YandexSuggestResponseDtoResult>, IYandexSuggestResponseDtoResultMapper
+	public partial class YandexSuggestResponseDtoResultMapper : BaseOneWayMapper<YandexSuggestResponse.Result, YandexSuggestResponseDto.YandexSuggestResponseDtoResult>, IYandexSuggestResponseDtoResultMapper
 	{
 		public YandexSuggestResponseDtoResultMapper()
-			: base(() => throw new NotSupportedException(), () => new())
+			: base(() => new())
 		{
 		}
 
 		[MapperIgnoreTarget(nameof(YandexSuggestResponseDto.YandexSuggestResponseDtoResult.Title))]
 		[MapperIgnoreTarget(nameof(YandexSuggestResponseDto.YandexSuggestResponseDtoResult.SubTitle))]
 		private partial void ToDtoAuto(YandexSuggestResponse.Result entity, YandexSuggestResponseDto.YandexSuggestResponseDtoResult dto);
+		private partial void BetweenDtosAuto(YandexSuggestResponseDto.YandexSuggestResponseDtoResult from, YandexSuggestResponseDto.YandexSuggestResponseDtoResult to);
 
-		protected override void BetweenDtos(YandexSuggestResponseDto.YandexSuggestResponseDtoResult from, YandexSuggestResponseDto.YandexSuggestResponseDtoResult to) => throw new NotSupportedException();
-		protected override void BetweenEntities(YandexSuggestResponse.Result from, YandexSuggestResponse.Result to) => throw new NotSupportedException();
-		protected override void FromDtoAbstract(YandexSuggestResponseDto.YandexSuggestResponseDtoResult dto, YandexSuggestResponse.Result entity, IDictionary<object, object> mappedObjects) => throw new NotSupportedException();
+		protected override void BetweenDtos(YandexSuggestResponseDto.YandexSuggestResponseDtoResult from, YandexSuggestResponseDto.YandexSuggestResponseDtoResult to)
+			=> BetweenDtosAuto(from, to);
+
 		protected override void ToDtoAbstract(YandexSuggestResponse.Result entity, YandexSuggestResponseDto.YandexSuggestResponseDtoResult dto, IDictionary<object, object> mappedObjects)
 		{
 			ToDtoAuto(entity, dto);
