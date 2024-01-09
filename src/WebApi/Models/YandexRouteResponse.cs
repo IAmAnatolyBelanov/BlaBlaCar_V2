@@ -54,8 +54,11 @@ namespace WebApi.Models
 				var result = new FormattedPoint[Points.Length];
 				for (int i = 0; i < Points.Length; i++)
 				{
-					result[i].Latitude = Points[i][0];
-					result[i].Longitude = Points[i][1];
+					result[i] = new FormattedPoint
+					{
+						Latitude = Points[i][0],
+						Longitude = Points[i][1],
+					};
 				}
 				return result;
 			}

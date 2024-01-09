@@ -1,4 +1,6 @@
-﻿using Riok.Mapperly.Abstractions;
+﻿using Newtonsoft.Json;
+
+using Riok.Mapperly.Abstractions;
 
 using System.Diagnostics.CodeAnalysis;
 
@@ -42,6 +44,9 @@ namespace WebApi.Models
 		}
 
 		public override int GetHashCode() => HashCode.Combine(Point, DateTime);
+
+		public override string ToString()
+			=> $"{{\"{nameof(Point)}\":{Point},\"{nameof(DateTime)}\":{JsonConvert.SerializeObject(DateTime)}}}";
 	}
 
 	public interface ILegDtoMapper : IBaseMapper<Leg, LegDto>

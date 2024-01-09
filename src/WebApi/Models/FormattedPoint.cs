@@ -2,17 +2,17 @@
 
 namespace WebApi.Models
 {
-	public struct FormattedPoint
+	public readonly struct FormattedPoint
 	{
 		/// <summary>
 		/// Широта.
 		/// </summary>
-		public double Latitude { get; set; }
+		public double Latitude { get; init; }
 
 		/// <summary>
 		/// Долгота.
 		/// </summary>
-		public double Longitude { get; set; }
+		public double Longitude { get; init; }
 
 		public static explicit operator Point(FormattedPoint from)
 			=> from.ToPoint();
@@ -45,5 +45,8 @@ namespace WebApi.Models
 
 		public override int GetHashCode()
 			=> HashCode.Combine(Longitude, Latitude);
+
+		public override string ToString()
+			=> $"{{\"{nameof(Latitude)}\":{Latitude},\"{nameof(Longitude)}\":{Longitude}}}";
 	}
 }

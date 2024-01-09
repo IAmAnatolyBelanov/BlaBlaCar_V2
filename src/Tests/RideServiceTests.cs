@@ -4,6 +4,8 @@ using FluentAssertions;
 
 using Microsoft.Extensions.DependencyInjection;
 
+using Newtonsoft.Json;
+
 using WebApi.DataAccess;
 using WebApi.Models;
 using WebApi.Services.Core;
@@ -44,6 +46,26 @@ namespace Tests
 			var result = await _rideService.CreateRide(context, ride, CancellationToken.None);
 
 			result.FullyLeg.Should().Be(result.Legs!.OrderByDescending(x => x.Duration).First());
+		}
+
+		[Fact]
+		public void TestFormatOfPoint()
+		{
+			var point = _fixture.Create<PlaceAndTime>();
+
+			var pointAsJson = JsonConvert.SerializeObject(point);
+			var pointAsStr = $"{point}";
+
+			var pointFromJson = JsonConvert.DeserializeObject<PlaceAndTime>(pointAsJson);
+			var pointFromStr = JsonConvert.DeserializeObject<PlaceAndTime>(pointAsStr);
+
+			pointAsStr.Should().Be(pointAsJson);
+
+			pointFromStr.Should().BeEquivalentTo(point);
+			pointFromStr.Should().BeEquivalentTo(pointFromJson);
+
+			pointFromJson.Should().BeEquivalentTo(point);
+			pointFromJson.Should().BeEquivalentTo(pointFromStr);
 		}
 
 		private static IEnumerable<(int legsCount, int waypointsCount)> ValidLegWaypointCounts(int maxWaypointsCount)

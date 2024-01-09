@@ -40,19 +40,19 @@ namespace WebApi.Controllers
 		}
 
 		[HttpGet]
-		public async ValueTask<YandexGeocodeResponse?> GetGeocodeByAddress(string input, CancellationToken ct)
+		public async ValueTask<YandexGeocodeResponseDto?> GetGeocodeByAddress(string input, CancellationToken ct)
 		{
 			return await _geocodeService.AddressToGeoCode(input, ct);
 		}
 
 		[HttpGet]
-		public async ValueTask<YandexGeocodeResponse?> GetGeocodeByUri(string input, CancellationToken ct)
+		public async ValueTask<YandexGeocodeResponseDto?> GetGeocodeByUri(string input, CancellationToken ct)
 		{
 			return await _geocodeService.UriToGeoCode(input, ct);
 		}
 
 		[HttpPost]
-		public async ValueTask<YandexGeocodeResponse?> GetGeocodeByPoint(FormattedPoint point, CancellationToken ct)
+		public async ValueTask<YandexGeocodeResponseDto?> GetGeocodeByPoint(FormattedPoint point, CancellationToken ct)
 		{
 			return await _geocodeService.PointToGeoCode(point, ct);
 		}
@@ -86,7 +86,7 @@ namespace WebApi.Controllers
 			var to = new FormattedPoint { Latitude = 55.755484, Longitude = 37.618237 };
 			var fromGeocode = await _geocodeService.PointToGeoCode(from, ct);
 			var toGeocode = await _geocodeService.PointToGeoCode(to, ct);
-			var description = $"{fromGeocode!.Response.GeoObjectCollection.FeatureMember[0].GeoObject.MetaDataProperty.GeocoderMetaData.Address.Formatted}@{toGeocode!.Response.GeoObjectCollection.FeatureMember[0].GeoObject.MetaDataProperty.GeocoderMetaData.Address.Formatted}";
+			var description = $"{fromGeocode!.Geoobjects[0].FormattedAddress}@{toGeocode!.Geoobjects[0].FormattedAddress}";
 
 			var leg = new Leg
 			{

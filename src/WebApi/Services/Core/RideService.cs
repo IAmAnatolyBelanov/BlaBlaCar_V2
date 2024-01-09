@@ -8,6 +8,7 @@ using NetTopologySuite.Geometries;
 
 using WebApi.DataAccess;
 using WebApi.Models;
+using WebApi.Services.Validators;
 using WebApi.Services.Yandex;
 
 namespace WebApi.Services.Core
@@ -110,10 +111,20 @@ namespace WebApi.Services.Core
 		private async ValueTask FillLegDesription(LegDto leg, CancellationToken ct)
 		{
 			var from = await _geocodeService.PointToGeoCode(leg.From.Point, ct);
-			var to = await _geocodeService.PointToGeoCode(leg.To.Point, ct);
+			if (from?.Success != true)
+				throw new UserFriendlyException(
+					message: $"Failed to get geo code for {leg.From.Point}",
+					code: ValidationCodes.YaGeocodeResponse_Fail);
 
-			var fromStr = from!.Response.GeoObjectCollection.FeatureMember[0].GeoObject.MetaDataProperty.GeocoderMetaData.Address.Formatted;
-			var toStr = to!.Response.GeoObjectCollection.FeatureMember[0].GeoObject.MetaDataProperty.GeocoderMetaData.Address.Formatted;
+			var to = await _geocodeService.PointToGeoCode(leg.To.Point, ct);
+			if (to?.Success != true)
+				throw new UserFriendlyException(
+					message: $"Failed to get geo code for {leg.To.Point}",
+					code: ValidationCodes.YaGeocodeResponse_Fail);
+
+
+			var fromStr = from!.Geoobjects[0].FormattedAddress;
+			var toStr = to!.Geoobjects[0].FormattedAddress;
 
 			leg.Description = $"{fromStr}{_addressesDelimiter}{toStr}";
 		}

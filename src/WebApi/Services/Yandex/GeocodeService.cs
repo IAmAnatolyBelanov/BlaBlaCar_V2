@@ -1,22 +1,25 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Extensions.Caching.Memory;
+
+using Newtonsoft.Json;
 
 using Polly;
 
 using WebApi.Models;
+using WebApi.Services.InMemoryCaches;
 using WebApi.Services.Redis;
 
 namespace WebApi.Services.Yandex
 {
 	public interface IGeocodeService
 	{
-		ValueTask<YandexGeocodeResponse?> AddressToGeoCode(string address, CancellationToken ct);
-		ValueTask<YandexGeocodeResponse?> PointToGeoCode(FormattedPoint point, CancellationToken ct);
-		ValueTask<YandexGeocodeResponse?> UriToGeoCode(string uri, CancellationToken ct);
+		ValueTask<YandexGeocodeResponseDto?> AddressToGeoCode(string address, CancellationToken ct);
+		ValueTask<YandexGeocodeResponseDto?> PointToGeoCode(FormattedPoint point, CancellationToken ct);
+		ValueTask<YandexGeocodeResponseDto?> UriToGeoCode(string uri, CancellationToken ct);
 	}
 
 	public class GeocodeService : IGeocodeService
 	{
-		private static readonly YandexGeocodeResponse _failResponse = new()
+		private static readonly YandexGeocodeResponseDto _failResponse = new()
 		{
 			Success = false,
 		};
@@ -31,15 +34,19 @@ namespace WebApi.Services.Yandex
 
 		private readonly IGeocodeServiceConfig _config;
 		private readonly IRedisCacheService _redisCacheService;
+		private readonly IYandexGeocodeResponseDtoMapper _yandexGeocodeResponseDtoMapper;
 
 		private readonly IAsyncPolicy<YandexGeocodeResponse?> _asyncPolicy;
+		private readonly IInMemoryCache<string, YandexGeocodeResponseDto> _memoryCache;
 
 		public GeocodeService(
 			IGeocodeServiceConfig config,
-			IRedisCacheService redisCacheService)
+			IRedisCacheService redisCacheService,
+			IYandexGeocodeResponseDtoMapper yandexGeocodeResponseDtoMapper)
 		{
 			_config = config;
 			_redisCacheService = redisCacheService;
+			_yandexGeocodeResponseDtoMapper = yandexGeocodeResponseDtoMapper;
 
 			_asyncPolicy = Policy<YandexGeocodeResponse?>
 				.Handle<HttpRequestException>()
@@ -61,36 +68,52 @@ namespace WebApi.Services.Yandex
 						LastExternalRequestLimitSet = DateTimeOffset.UtcNow;
 					}
 				});
+
+			_memoryCache = new InMemoryCache<string, YandexGeocodeResponseDto>(new MemoryCacheOptions
+			{
+				SizeLimit = _config.InMemoryCacheMaxObjects
+			});
 		}
 
-		public async ValueTask<YandexGeocodeResponse?> AddressToGeoCode(string address, CancellationToken ct)
+		public async ValueTask<YandexGeocodeResponseDto?> AddressToGeoCode(string address, CancellationToken ct)
 		{
 			var request = $"https://geocode-maps.yandex.ru/1.x?apikey={_config.ApiKey}&geocode={address}&format=json&results=1";
 
 			return await GetGeocode(request, ct);
 		}
 
-		public async ValueTask<YandexGeocodeResponse?> UriToGeoCode(string uri, CancellationToken ct)
+		public async ValueTask<YandexGeocodeResponseDto?> UriToGeoCode(string uri, CancellationToken ct)
 		{
 			var request = $"https://geocode-maps.yandex.ru/1.x?apikey={_config.ApiKey}&uri={uri}&format=json&results=1";
 
 			return await GetGeocode(request, ct);
 		}
 
-		public async ValueTask<YandexGeocodeResponse?> PointToGeoCode(FormattedPoint point, CancellationToken ct)
+		public async ValueTask<YandexGeocodeResponseDto?> PointToGeoCode(FormattedPoint point, CancellationToken ct)
 		{
 			var request = $"https://geocode-maps.yandex.ru/1.x?apikey={_config.ApiKey}&geocode={point.Longitude:F6} {point.Latitude:F6}&sco=longlat&format=json&results=1";
 
 			return await GetGeocode(request, ct);
 		}
 
-		private async ValueTask<YandexGeocodeResponse?> GetGeocode(string request, CancellationToken ct)
+		private async ValueTask<YandexGeocodeResponseDto?> GetGeocode(string request, CancellationToken ct)
 		{
+			if (_memoryCache.TryGetValue(request, out var cachedResponseDto))
+				return cachedResponseDto;
+
 			using var redis = _redisCacheService.Connect();
-			var (cacheExists, cacheValue) = _redisCacheService.TryGet<YandexGeocodeResponse>(redis, request);
+			var (cacheExists, cachedResponse
+				) = _redisCacheService.TryGet<YandexGeocodeResponse>(redis, request);
 
 			if (cacheExists)
-				return cacheValue;
+			{
+				if (cachedResponse is null)
+					return _failResponse;
+
+				cachedResponseDto = _yandexGeocodeResponseDtoMapper.ToDtoLight(cachedResponse);
+				_memoryCache.Set(request, cachedResponseDto, _config.InMemoryCacheObjectLifetime);
+				return cachedResponseDto;
+			}
 
 			if (_config.IsDebug && ExternalRequstsCount > 999)
 				throw new Exception($"Для дебага достпуно только 1000 запросов в день. Лимит исчерпан. Лимит будет сброшен через {TimeSpan.FromHours(24) - (DateTimeOffset.UtcNow - LastExternalRequestLimitSet)}. Всё ещё можно использовать запросы к кешу.");
@@ -114,20 +137,22 @@ namespace WebApi.Services.Yandex
 			}
 			catch (Exception exception)
 			{
-				_logger.Error("Fail to get geocode for {Input}. Exception: {Exception}", request, exception);
-				_ = _redisCacheService.SetAsync(redis, request, _failResponse, _config.FailExpiry);
+				_logger.Error(exception, "Fail to get suggestion for {Input}", request);
+				_memoryCache.Set(request, _failResponse, _config.FailExpiry);
 				return _failResponse;
 			}
 
 			if (result.Outcome == OutcomeType.Failure)
 			{
-				_logger.Error("Fail to get deocode for {Input}. Exception: {Exception}", request, result.FinalException);
-				_ = _redisCacheService.SetAsync(redis, request, _failResponse, _config.FailExpiry);
+				_logger.Error(result.FinalException, "Fail to get suggestion for {Input}", request);
+				_memoryCache.Set(request, _failResponse, _config.FailExpiry);
 				return _failResponse;
 			}
 
-			_ = _redisCacheService.SetAsync(redis, request, result.Result, _config.Expiry);
-			return result.Result;
+			_ = _redisCacheService.SetAsync(redis, request, result.Result, _config.DistributedCacheExpiry);
+			cachedResponseDto = _yandexGeocodeResponseDtoMapper.ToDtoLight(result.Result!);
+			_memoryCache.Set(request, cachedResponseDto, _config.DistributedCacheExpiry);
+			return cachedResponseDto;
 		}
 	}
 }
