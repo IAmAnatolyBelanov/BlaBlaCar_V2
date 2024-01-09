@@ -1,8 +1,11 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Extensions.Caching.Memory;
+
+using Newtonsoft.Json;
 
 using Polly;
 
 using WebApi.Models;
+using WebApi.Services.InMemoryCaches;
 using WebApi.Services.Redis;
 
 namespace WebApi.Services.Yandex
@@ -32,6 +35,7 @@ namespace WebApi.Services.Yandex
 		private readonly IYandexSuggestResponseDtoMapper _yandexSuggestResponseDtoMapper;
 
 		private readonly IAsyncPolicy<YandexSuggestResponse?> _asyncPolicy;
+		private readonly IInMemoryCache<string, YandexSuggestResponseDto> _memoryCache;
 
 		public SuggestService(
 			ISuggestServiceConfig config,
@@ -62,6 +66,11 @@ namespace WebApi.Services.Yandex
 						LastExternalRequestLimitSet = DateTimeOffset.UtcNow;
 					}
 				});
+
+			_memoryCache = new InMemoryCache<string, YandexSuggestResponseDto>(new MemoryCacheOptions
+			{
+				SizeLimit = _config.InMemoryCacheMaxObjects
+			});
 		}
 
 		public async ValueTask<YandexSuggestResponseDto?> GetSuggestion(string input, CancellationToken ct)
@@ -69,16 +78,23 @@ namespace WebApi.Services.Yandex
 			if (string.IsNullOrWhiteSpace(input) || input.Length < _config.MinInput)
 				return _failResponse;
 
+			if (_memoryCache.TryGetValue(input, out var cachedResponseDto))
+				return cachedResponseDto;
+
 			var request = $"https://suggest-maps.yandex.ru/v1/suggest?apikey={_config.ApiKey}&text={input}&highlight=0&print_address=1&attrs=uri";
 
 			using var redis = _redisCacheService.Connect();
-			var (cacheExists, cacheValue) = _redisCacheService.TryGet<YandexSuggestResponse>(redis, request);
+			var (cacheExists, cachedResponse) = _redisCacheService.TryGet<YandexSuggestResponse>(redis, request);
 
 			if (cacheExists)
-				if (cacheValue is not null)
-					return _yandexSuggestResponseDtoMapper.ToDtoLight(cacheValue);
-				else
+			{
+				if (cachedResponse is null)
 					return _failResponse;
+
+				cachedResponseDto = _yandexSuggestResponseDtoMapper.ToDtoLight(cachedResponse);
+				_memoryCache.Set(input, cachedResponseDto, _config.InMemoryCacheObjectLifetime);
+					return cachedResponseDto;
+			}
 
 			if (_config.IsDebug && ExternalRequstsCount > 999)
 				throw new Exception($"Для дебага достпуно только 1000 запросов в день. Лимит исчерпан. Лимит будет сброшен через {TimeSpan.FromHours(24) - (DateTimeOffset.UtcNow - LastExternalRequestLimitSet)}. Всё ещё можно использовать запросы к кешу.");
@@ -103,20 +119,22 @@ namespace WebApi.Services.Yandex
 			}
 			catch (Exception exception)
 			{
-				_logger.Error("Fail to get suggestion for {Input}. Exception: {Exception}", input, exception);
-				_ = _redisCacheService.SetAsync(redis, request, _failResponse, _config.FailExpiry);
+				_logger.Error(exception, "Fail to get suggestion for {Input}", input);
+				_memoryCache.Set(input, _failResponse, _config.FailExpiry);
 				return _failResponse;
 			}
 
 			if (result.Outcome == OutcomeType.Failure)
 			{
-				_logger.Error("Fail to get suggestion for {Input}. Exception: {Exception}", input, result.FinalException);
-				_ = _redisCacheService.SetAsync(redis, request, _failResponse, _config.FailExpiry);
+				_logger.Error(result.FinalException, "Fail to get suggestion for {Input}", input);
+				_memoryCache.Set(input, _failResponse, _config.FailExpiry);
 				return _failResponse;
 			}
 
-			_ = _redisCacheService.SetAsync(redis, request, result.Result, _config.Expiry);
-			return _yandexSuggestResponseDtoMapper.ToDtoLight(result.Result!);
+			_ = _redisCacheService.SetAsync(redis, request, result.Result, _config.DistributedCacheExpiry);
+			cachedResponseDto = _yandexSuggestResponseDtoMapper.ToDtoLight(result.Result!);
+			_memoryCache.Set(input, cachedResponseDto, _config.DistributedCacheExpiry);
+			return cachedResponseDto;
 		}
 	}
 }
