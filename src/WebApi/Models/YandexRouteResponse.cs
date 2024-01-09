@@ -13,6 +13,43 @@ namespace WebApi.Models
 		// Единственное добавленное поле. Яндекс его не присылает.
 		public bool Success { get; set; } = true;
 
+		[System.Text.Json.Serialization.JsonIgnore]
+		[Newtonsoft.Json.JsonIgnore]
+		public TimeSpan TotalDuration { get
+			{
+				float seconds = 0;
+
+				for (int i = 0; i < Route.Legs.Length; i++)
+				{
+					var leg = Route.Legs[i];
+					for (int j = 0; j < leg.Steps.Length; j++)
+					{
+						seconds += leg.Steps[j].DurationInSeconds;
+					}
+				}
+
+				return TimeSpan.FromSeconds(seconds);
+			} }
+
+		[System.Text.Json.Serialization.JsonIgnore]
+		[Newtonsoft.Json.JsonIgnore]
+		public float TotalLengthInMeters { get
+			{
+				float length = 0;
+
+				for (int i = 0; i < Route.Legs.Length; i++)
+				{
+					var leg = Route.Legs[i];
+					for (int j = 0; j < leg.Steps.Length; j++)
+					{
+						length += leg.Steps[j].LengthInMeters;
+					}
+				}
+
+				return length;
+			}
+		}
+
 		public class RouteClass
 		{
 			public YandexLeg[] Legs { get; set; } = default!;
