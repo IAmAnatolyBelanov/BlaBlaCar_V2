@@ -34,7 +34,7 @@ namespace WebApi.Controllers
 		}
 
 		[HttpGet]
-		public async ValueTask<YandexSuggestResponse?> GetSuggest(string input, CancellationToken ct)
+		public async ValueTask<YandexSuggestResponseDto?> GetSuggest(string input, CancellationToken ct)
 		{
 			return await _suggestService.GetSuggestion(input, ct);
 		}

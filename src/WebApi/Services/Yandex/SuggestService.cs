@@ -4,20 +4,18 @@ using Polly;
 
 using WebApi.Models;
 using WebApi.Services.Redis;
-using WebApi.Shared;
 
 namespace WebApi.Services.Yandex
 {
 	public interface ISuggestService
 	{
-		ValueTask<YandexSuggestResponse?> GetSuggestion(string input, CancellationToken ct);
+		ValueTask<YandexSuggestResponseDto?> GetSuggestion(string input, CancellationToken ct);
 	}
 
 	public class SuggestService : ISuggestService
 	{
-		private static readonly YandexSuggestResponse _failResponse = new()
+		private static readonly YandexSuggestResponseDto _failResponse = new()
 		{
-			SuggestReqId = "Fail",
 			Success = false,
 		};
 		private static readonly HttpClient _httpClient = new(new SocketsHttpHandler
@@ -31,15 +29,18 @@ namespace WebApi.Services.Yandex
 
 		private readonly ISuggestServiceConfig _config;
 		private readonly IRedisCacheService _redisCacheService;
+		private readonly IYandexSuggestResponseDtoMapper _yandexSuggestResponseDtoMapper;
 
 		private readonly IAsyncPolicy<YandexSuggestResponse?> _asyncPolicy;
 
 		public SuggestService(
 			ISuggestServiceConfig config,
-			IRedisCacheService redisCacheService)
+			IRedisCacheService redisCacheService,
+			IYandexSuggestResponseDtoMapper yandexSuggestResponseDtoMapper)
 		{
 			_config = config;
 			_redisCacheService = redisCacheService;
+			_yandexSuggestResponseDtoMapper = yandexSuggestResponseDtoMapper;
 
 			_asyncPolicy = Policy<YandexSuggestResponse?>
 				.Handle<HttpRequestException>()
@@ -63,7 +64,7 @@ namespace WebApi.Services.Yandex
 				});
 		}
 
-		public async ValueTask<YandexSuggestResponse?> GetSuggestion(string input, CancellationToken ct)
+		public async ValueTask<YandexSuggestResponseDto?> GetSuggestion(string input, CancellationToken ct)
 		{
 			if (string.IsNullOrWhiteSpace(input) || input.Length < _config.MinInput)
 				return _failResponse;
@@ -74,7 +75,10 @@ namespace WebApi.Services.Yandex
 			var (cacheExists, cacheValue) = _redisCacheService.TryGet<YandexSuggestResponse>(redis, request);
 
 			if (cacheExists)
-				return cacheValue;
+				if (cacheValue is not null)
+					return _yandexSuggestResponseDtoMapper.ToDtoLight(cacheValue);
+				else
+					return _failResponse;
 
 			if (_config.IsDebug && ExternalRequstsCount > 999)
 				throw new Exception($"Для дебага достпуно только 1000 запросов в день. Лимит исчерпан. Лимит будет сброшен через {TimeSpan.FromHours(24) - (DateTimeOffset.UtcNow - LastExternalRequestLimitSet)}. Всё ещё можно использовать запросы к кешу.");
@@ -112,7 +116,7 @@ namespace WebApi.Services.Yandex
 			}
 
 			_ = _redisCacheService.SetAsync(redis, request, result.Result, _config.Expiry);
-			return result.Result;
+			return _yandexSuggestResponseDtoMapper.ToDtoLight(result.Result!);
 		}
 	}
 }
