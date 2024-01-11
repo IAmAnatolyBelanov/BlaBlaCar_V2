@@ -11,10 +11,14 @@ namespace Tests
 		{
 			var fixture = new Fixture();
 			fixture.Customize(new AutoNSubstituteCustomization());
-			fixture.Register<FormattedPoint>(() => new FormattedPoint
+			fixture.Register<FormattedPoint>(() =>
 			{
-				Latitude = Random.Shared.Next(-88, 88) + Random.Shared.NextDouble(),
-				Longitude = Random.Shared.Next(-178, 178) + Random.Shared.NextDouble(),
+				var randomCity = CityInfoManager.GetUnique();
+				return new FormattedPoint
+				{
+					Latitude = randomCity.Latitude,
+					Longitude = randomCity.Longitude,
+				};
 			});
 			fixture.Register<PlaceAndTime>(() => new PlaceAndTime
 			{
