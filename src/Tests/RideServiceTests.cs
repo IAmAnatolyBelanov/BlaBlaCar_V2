@@ -6,9 +6,12 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Newtonsoft.Json;
 
+using Serilog;
+
 using WebApi.DataAccess;
 using WebApi.Models;
 using WebApi.Services.Core;
+using WebApi.Services.Yandex;
 
 namespace Tests
 {
@@ -66,6 +69,39 @@ namespace Tests
 
 			pointFromJson.Should().BeEquivalentTo(point);
 			pointFromJson.Should().BeEquivalentTo(pointFromStr);
+		}
+
+		[Fact]
+		public async Task CollectPoints()
+		{
+			var points = Enumerable.Range(0, 90)
+				.Select(x=> new FormattedPoint
+				{
+					Latitude = Random.Shared.Next(41, 81) + Random.Shared.NextDouble(),
+					Longitude = Random.Shared.Next(82, 189) + Random.Shared.NextDouble()
+				})
+				.ToArray();
+
+			using var scope = _provider.CreateScope();
+			var geocodeService = scope.ServiceProvider.GetRequiredService<IGeocodeService>();
+
+			var geocodeTasks = points.Select(x => geocodeService.PointToGeoCode(x, CancellationToken.None).AsTask())
+				.ToArray();
+			await Task.WhenAll(geocodeTasks);
+			var geocodes = geocodeTasks.Select(x => x.Result).ToArray();
+
+			Log.Information("Take geocodes: {Geocodes}", JsonConvert.SerializeObject(geocodes));
+
+			await Task.Delay(10_000);
+
+			var strings = geocodes.Select(x => $"{x!.Geoobjects[0].Point.Longitude},{x.Geoobjects[0].Point.Latitude},\"{x.Geoobjects[0].FormattedAddress}\"").ToArray();
+			Log.Information("geocodes: {Geocodes}", strings);
+
+			var russiaGeocodes = geocodes.Where(x => x.Geoobjects[0].FormattedAddress.StartsWith("Россия,"))
+				.Select(x => $"{x!.Geoobjects[0].Point.Longitude},{x.Geoobjects[0].Point.Latitude},\"{x.Geoobjects[0].FormattedAddress}\"").ToArray();
+			Log.Information("russiaGeocodes: {RussiaGeocodes}", russiaGeocodes);
+
+			await Task.Delay(10_000);
 		}
 
 		private static IEnumerable<(int legsCount, int waypointsCount)> ValidLegWaypointCounts(int maxWaypointsCount)

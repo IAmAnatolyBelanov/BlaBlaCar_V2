@@ -12,9 +12,9 @@ namespace WebApi.Services.Yandex
 {
 	public interface IGeocodeService
 	{
-		ValueTask<YandexGeocodeResponseDto?> AddressToGeoCode(string address, CancellationToken ct);
-		ValueTask<YandexGeocodeResponseDto?> PointToGeoCode(FormattedPoint point, CancellationToken ct);
-		ValueTask<YandexGeocodeResponseDto?> UriToGeoCode(string uri, CancellationToken ct);
+		ValueTask<YandexGeocodeResponseDto> AddressToGeoCode(string address, CancellationToken ct);
+		ValueTask<YandexGeocodeResponseDto> PointToGeoCode(FormattedPoint point, CancellationToken ct);
+		ValueTask<YandexGeocodeResponseDto> UriToGeoCode(string uri, CancellationToken ct);
 	}
 
 	public class GeocodeService : IGeocodeService
@@ -22,6 +22,11 @@ namespace WebApi.Services.Yandex
 		private static readonly YandexGeocodeResponseDto _failResponse = new()
 		{
 			Success = false,
+		};
+		private static readonly YandexGeocodeResponseDto _emptyResponse = new()
+		{
+			Success = true,
+			Geoobjects = Array.Empty<YandexGeocodeResponseDto.YandexGeocodeResponseGeoobjectDto>(),
 		};
 		private static readonly HttpClient _httpClient = new(new SocketsHttpHandler
 		{
@@ -75,28 +80,28 @@ namespace WebApi.Services.Yandex
 			});
 		}
 
-		public async ValueTask<YandexGeocodeResponseDto?> AddressToGeoCode(string address, CancellationToken ct)
+		public async ValueTask<YandexGeocodeResponseDto> AddressToGeoCode(string address, CancellationToken ct)
 		{
 			var request = $"https://geocode-maps.yandex.ru/1.x?apikey={_config.ApiKey}&geocode={address}&format=json&results=1";
 
 			return await GetGeocode(request, ct);
 		}
 
-		public async ValueTask<YandexGeocodeResponseDto?> UriToGeoCode(string uri, CancellationToken ct)
+		public async ValueTask<YandexGeocodeResponseDto> UriToGeoCode(string uri, CancellationToken ct)
 		{
 			var request = $"https://geocode-maps.yandex.ru/1.x?apikey={_config.ApiKey}&uri={uri}&format=json&results=1";
 
 			return await GetGeocode(request, ct);
 		}
 
-		public async ValueTask<YandexGeocodeResponseDto?> PointToGeoCode(FormattedPoint point, CancellationToken ct)
+		public async ValueTask<YandexGeocodeResponseDto> PointToGeoCode(FormattedPoint point, CancellationToken ct)
 		{
 			var request = $"https://geocode-maps.yandex.ru/1.x?apikey={_config.ApiKey}&geocode={point.Longitude:F6} {point.Latitude:F6}&sco=longlat&format=json&results=1";
 
 			return await GetGeocode(request, ct);
 		}
 
-		private async ValueTask<YandexGeocodeResponseDto?> GetGeocode(string request, CancellationToken ct)
+		private async ValueTask<YandexGeocodeResponseDto> GetGeocode(string request, CancellationToken ct)
 		{
 			if (_memoryCache.TryGetValue(request, out var cachedResponseDto))
 				return cachedResponseDto;
@@ -110,7 +115,9 @@ namespace WebApi.Services.Yandex
 				if (cachedResponse is null)
 					return _failResponse;
 
-				cachedResponseDto = _yandexGeocodeResponseDtoMapper.ToDtoLight(cachedResponse);
+				cachedResponseDto = cachedResponse.Response.GeoObjectCollection.FeatureMember.Length > 0
+					? _yandexGeocodeResponseDtoMapper.ToDtoLight(cachedResponse)
+					: _emptyResponse;
 				_memoryCache.Set(request, cachedResponseDto, _config.InMemoryCacheObjectLifetime);
 				return cachedResponseDto;
 			}
@@ -150,7 +157,9 @@ namespace WebApi.Services.Yandex
 			}
 
 			_ = _redisCacheService.SetAsync(redis, request, result.Result, _config.DistributedCacheExpiry);
-			cachedResponseDto = _yandexGeocodeResponseDtoMapper.ToDtoLight(result.Result!);
+			cachedResponseDto = result.Result!.Response.GeoObjectCollection.FeatureMember.Length > 0
+				? _yandexGeocodeResponseDtoMapper.ToDtoLight(result.Result!)
+				: _emptyResponse;
 			_memoryCache.Set(request, cachedResponseDto, _config.DistributedCacheExpiry);
 			return cachedResponseDto;
 		}

@@ -10,6 +10,18 @@ namespace WebApi.Extensions
 			if (!validationResult.IsValid)
 				throw new UserFriendlyException(validationResult);
 		}
+		public static void ValidateAndThrowFriendly<T>(this IValidator<T> validator, T instance, ErrorInterpolatedStringHandler additionalMessage)
+		{
+			var validationResult = validator.Validate(instance);
+			if (!validationResult.IsValid)
+				throw new UserFriendlyException(validationResult, additionalMessage);
+		}
+		public static void ValidateAndThrowFriendly<T>(this IValidator<T> validator, T instance, string additionalMessage)
+		{
+			var validationResult = validator.Validate(instance);
+			if (!validationResult.IsValid)
+				throw new UserFriendlyException(validationResult, additionalMessage);
+		}
 
 		public static async Task ValidateAndThrowFriendlyAsync<T>(this IValidator<T> validator, T instance, CancellationToken ct = default)
 		{

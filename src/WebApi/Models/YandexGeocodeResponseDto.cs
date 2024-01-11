@@ -7,6 +7,7 @@ namespace WebApi.Models
 		// Единственное добавленное поле. Яндекс его не присылает.
 		public bool Success { get; set; } = true;
 
+		// Может не содержать ни одного элемента!
 		public IReadOnlyList<YandexGeocodeResponseGeoobjectDto> Geoobjects { get; set; } = default!;
 
 		public class YandexGeocodeResponseGeoobjectDto

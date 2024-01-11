@@ -23,6 +23,7 @@
 		public bool Success { get; set; }
 		public T? Data { get; set; }
 		public IReadOnlyList<ErrorDetails>? Errors { get; set; }
+		public string? AdditionalInfo { get; set; }
 
 
 		public static implicit operator BaseResponse<T>(ValidationResult? validationResult)

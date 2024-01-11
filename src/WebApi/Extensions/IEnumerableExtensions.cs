@@ -25,8 +25,23 @@
 				result[iterator] = value;
 				iterator++;
 			}
-
 			return result;
+		}
+
+		public static bool TrySort<T>(this IReadOnlyCollection<T> collection, Comparison<T> comparison)
+		{
+			if (collection is T[] array)
+			{
+				Array.Sort(array, comparison);
+				return true;
+			}
+			if (collection is List<T> list)
+			{
+				list.Sort(comparison);
+				return true;
+			}
+
+			return false;
 		}
 	}
 }

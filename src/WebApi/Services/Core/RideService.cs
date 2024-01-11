@@ -31,6 +31,7 @@ namespace WebApi.Services.Core
 		private readonly ILegDtoMapper _legDtoMapper;
 		private readonly IValidator<IReadOnlyList<LegDto>> _legsCollectionValidatior;
 		private readonly IGeocodeService _geocodeService;
+		private readonly IValidator<YandexGeocodeResponseDto> _yaGeocodeResponseValidator;
 
 		public RideService(
 			IServiceScopeFactory serviceScopeFactory,
@@ -38,7 +39,8 @@ namespace WebApi.Services.Core
 			IRideDtoMapper rideDtoMapper,
 			ILegDtoMapper legDtoMapper,
 			IValidator<IReadOnlyList<LegDto>> legsCollectionValidatior,
-			IGeocodeService geocodeService)
+			IGeocodeService geocodeService,
+			IValidator<YandexGeocodeResponseDto> yaGeocodeResponseValidator)
 		{
 			_serviceScopeFactory = serviceScopeFactory;
 			_config = config;
@@ -46,6 +48,7 @@ namespace WebApi.Services.Core
 			_legDtoMapper = legDtoMapper;
 			_legsCollectionValidatior = legsCollectionValidatior;
 			_geocodeService = geocodeService;
+			_yaGeocodeResponseValidator = yaGeocodeResponseValidator;
 		}
 
 		public async ValueTask<RideDto> CreateRide(RideDto rideDto, CancellationToken ct)
@@ -111,16 +114,10 @@ namespace WebApi.Services.Core
 		private async ValueTask FillLegDesription(LegDto leg, CancellationToken ct)
 		{
 			var from = await _geocodeService.PointToGeoCode(leg.From.Point, ct);
-			if (from?.Success != true)
-				throw new UserFriendlyException(
-					message: $"Failed to get geo code for {leg.From.Point}",
-					code: ValidationCodes.YaGeocodeResponse_Fail);
+			_yaGeocodeResponseValidator.ValidateAndThrowFriendly(from);
 
 			var to = await _geocodeService.PointToGeoCode(leg.To.Point, ct);
-			if (to?.Success != true)
-				throw new UserFriendlyException(
-					message: $"Failed to get geo code for {leg.To.Point}",
-					code: ValidationCodes.YaGeocodeResponse_Fail);
+			_yaGeocodeResponseValidator.ValidateAndThrowFriendly(to);
 
 
 			var fromStr = from!.Geoobjects[0].FormattedAddress;
