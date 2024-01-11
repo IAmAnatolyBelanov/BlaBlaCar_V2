@@ -3,6 +3,8 @@ using CsvHelper.Configuration;
 
 using System.Globalization;
 
+using WebApi.Models;
+
 namespace Tests
 {
 	/// <summary>
@@ -15,6 +17,8 @@ namespace Tests
 		public string Uri { get; set; } = default!;
 		public double Latitude { get; set; }
 		public double Longitude { get; set; }
+
+		public FormattedPoint GetPoint() => new() { Latitude = Latitude, Longitude = Longitude };
 	}
 
 	public static class CityInfoManager
