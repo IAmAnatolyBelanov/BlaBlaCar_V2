@@ -15,8 +15,12 @@ namespace WebApi.Services.Validators
 
 	public class ReservationValidator : AbstractValidator<ReservationDto>
 	{
-		public ReservationValidator()
+		private readonly IClock _clock;
+
+		public ReservationValidator(IClock clock)
 		{
+			_clock = clock;
+
 			RuleFor(x => x.UserId)
 				.NotEmpty()
 				.WithErrorCode(ValidationCodes.Reserv_EmptyUserId);
@@ -35,7 +39,7 @@ namespace WebApi.Services.Validators
 				.WithErrorCode(ValidationCodes.Reserv_MissmatchLegId);
 
 			RuleFor(x => x.CreateDateTime)
-				.LessThanOrEqualTo(x => DateTimeOffset.UtcNow)
+				.LessThanOrEqualTo(x => _clock.Now)
 				.WithErrorCode(ValidationCodes.Reserv_WrongCreateDateTime);
 		}
 	}

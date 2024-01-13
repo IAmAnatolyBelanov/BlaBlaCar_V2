@@ -31,6 +31,7 @@ namespace WebApi.Services.Core
 		private readonly IValidator<IReadOnlyList<LegDto>> _legsCollectionValidatior;
 		private readonly IGeocodeService _geocodeService;
 		private readonly IValidator<(FormattedPoint Point, YandexGeocodeResponseDto GeocodeResponse)> _yaGeocodeResponseValidator;
+		private readonly IClock _clock;
 
 		public RideService(
 			IServiceScopeFactory serviceScopeFactory,
@@ -39,7 +40,8 @@ namespace WebApi.Services.Core
 			ILegDtoMapper legDtoMapper,
 			IValidator<IReadOnlyList<LegDto>> legsCollectionValidatior,
 			IGeocodeService geocodeService,
-			IValidator<(FormattedPoint Point, YandexGeocodeResponseDto GeocodeResponse)> yaGeocodeResponseValidator)
+			IValidator<(FormattedPoint Point, YandexGeocodeResponseDto GeocodeResponse)> yaGeocodeResponseValidator,
+			IClock clock)
 		{
 			_serviceScopeFactory = serviceScopeFactory;
 			_config = config;
@@ -48,6 +50,7 @@ namespace WebApi.Services.Core
 			_legsCollectionValidatior = legsCollectionValidatior;
 			_geocodeService = geocodeService;
 			_yaGeocodeResponseValidator = yaGeocodeResponseValidator;
+			_clock = clock;
 		}
 
 		public async ValueTask<RideDto> CreateRide(RideDto rideDto, CancellationToken ct)
@@ -139,7 +142,7 @@ namespace WebApi.Services.Core
 			var maxDistanceInMeters = _config.PriceStatisticsRadiusMeters;
 			var lowPercentale = 0 + (1 - _config.PriceStatisticsPercentale) / 2f;
 			var highPercentale = 1 - (1 - _config.PriceStatisticsPercentale) / 2f;
-			var now = DateTimeOffset.UtcNow;
+			var now = _clock.Now;
 			var minEndTime = now - _config.PriceStatisticsMaxPastPeriod;
 
 			const string query = $@"

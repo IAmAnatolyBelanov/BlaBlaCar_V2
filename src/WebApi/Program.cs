@@ -57,6 +57,8 @@ public class Program
 				x => x.UseNetTopologySuite())
 			.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
 
+		builder.Services.AddSingleton<IClock, Clock>();
+
 		builder.Services.AddSingleton<IRedisCacheService, RedisCacheService>();
 		builder.Services.AddSingleton<ISuggestService, SuggestService>();
 		builder.Services.AddSingleton<IGeocodeService, GeocodeService>();
