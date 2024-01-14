@@ -73,11 +73,14 @@ namespace WebApi.DataAccess
 
 				builder.Property(x => x.Description).HasDefaultValue("empty");
 
-				builder.HasOne<Leg>().WithOne().HasForeignKey<Leg>(x => x.NextLegId);
-				builder.HasOne<Leg>().WithOne().HasForeignKey<Leg>(x => x.PreviousLegId);
+				//builder.HasOne<Leg>().WithOne().HasForeignKey<Leg>(x => x.NextLegId);
+				//builder.HasOne<Leg>().WithOne().HasForeignKey<Leg>(x => x.PreviousLegId);
 
 				builder.Ignore(x => x.NextLeg);
 				builder.Ignore(x => x.PreviousLeg);
+
+				builder.HasIndex(x => x.NextLegId);
+				builder.HasIndex(x => x.PreviousLegId);
 			});
 
 			modelBuilder.Entity<CompositeLeg>(builder =>
