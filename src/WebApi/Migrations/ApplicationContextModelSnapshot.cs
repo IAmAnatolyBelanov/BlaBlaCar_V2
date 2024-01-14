@@ -210,11 +210,11 @@ namespace WebApi.Migrations
 
             modelBuilder.Entity("WebApi.Models.Leg", b =>
                 {
-                    b.HasOne("WebApi.Models.Leg", null)
+                    b.HasOne("WebApi.Models.Leg", "NextLeg")
                         .WithOne()
                         .HasForeignKey("WebApi.Models.Leg", "NextLegId");
 
-                    b.HasOne("WebApi.Models.Leg", null)
+                    b.HasOne("WebApi.Models.Leg", "PreviousLeg")
                         .WithOne()
                         .HasForeignKey("WebApi.Models.Leg", "PreviousLegId");
 
@@ -223,6 +223,10 @@ namespace WebApi.Migrations
                         .HasForeignKey("RideId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("NextLeg");
+
+                    b.Navigation("PreviousLeg");
 
                     b.Navigation("Ride");
                 });
