@@ -1,5 +1,7 @@
 ﻿using AutoFixture;
 
+using FluentAssertions;
+
 using Microsoft.Extensions.DependencyInjection;
 
 using WebApi.DataAccess;
@@ -34,9 +36,11 @@ namespace Tests
 			using var scope = _provider.CreateScope();
 			var context = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
 
-			await _rideService.CreateRide(context, ride, CancellationToken.None);
+			var result = await _rideService.CreateRide(context, ride, CancellationToken.None);
 
-
+			result.Should().BeEquivalentTo(ride, x => x.Excluding(r => r.Prices).Excluding(r => r.Legs));
+			result.Legs.Should().BeEquivalentTo(ride.Legs, x => x.Excluding(l => l.Ride).Excluding(l => l.NextLeg).Excluding(l => l.PreviousLeg));
+			result.Prices.Should().BeEquivalentTo(ride.Prices, x => x.Excluding(p => p.StartLeg).Excluding(p => p.EndLeg));
 		}
 
 		private void NormalizeFromTo(RideDto ride)

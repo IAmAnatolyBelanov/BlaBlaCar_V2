@@ -30,7 +30,6 @@ namespace WebApi.Models
             to.From = from.From;
             to.To = from.To;
             to.Description = from.Description;
-            to.FreePlaces = from.FreePlaces;
             to.NextLegId = from.NextLegId;
             to.NextLeg = from.NextLeg;
             to.PreviousLegId = from.PreviousLegId;

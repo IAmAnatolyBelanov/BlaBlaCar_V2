@@ -13,7 +13,6 @@ namespace WebApi.Models
 		public int WaypointsCount => Legs?.Count + 1 ?? 0;
 
 		public int AvailablePlacesCount { get; set; }
-		public int? FreePlacesCount { get; set; }
 
 		public IReadOnlyList<PriceDto>? Prices { get; set; }
 

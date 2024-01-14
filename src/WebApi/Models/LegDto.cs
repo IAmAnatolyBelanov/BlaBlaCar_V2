@@ -20,7 +20,6 @@ namespace WebApi.Models
 		[Newtonsoft.Json.JsonIgnore]
 		public TimeSpan Duration => To.DateTime - From.DateTime;
 		public string Description { get; set; } = default!;
-		public int? FreePlaces { get; set; }
 
 
 		[System.Text.Json.Serialization.JsonIgnore]

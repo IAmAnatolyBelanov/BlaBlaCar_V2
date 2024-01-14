@@ -69,8 +69,6 @@ namespace WebApi.Services.Core
 
 		public async ValueTask<RideDto> CreateRide(ApplicationContext context, RideDto rideDto, CancellationToken ct)
 		{
-			rideDto.Id = Guid.NewGuid();
-
 			var legDtos = rideDto.Legs ?? Array.Empty<LegDto>();
 
 			for (var i = 0; i < legDtos.Count; i++)

@@ -24,7 +24,6 @@ namespace WebApi.Models
             to.DriverId = from.DriverId;
             to.Legs = from.Legs;
             to.AvailablePlacesCount = from.AvailablePlacesCount;
-            to.FreePlacesCount = from.FreePlacesCount;
             to.Prices = from.Prices;
         }
 
