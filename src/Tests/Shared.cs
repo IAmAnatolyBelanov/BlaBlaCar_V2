@@ -28,12 +28,14 @@ namespace Tests
 
 			fixture.Customize<RideDto>(x => x
 				.Without(r => r.Legs)
-				.Without(r => r.FullyLeg)
 				.With(x => x.DriverId, () => (ulong)Random.Shared.Next(1, int.MaxValue)));
 
 			fixture.Customize<ReservationDto>(x => x
 				.With(x => x.Count, () => Random.Shared.Next(1, 100))
 				.With(x => x.UserId, () => (ulong)Random.Shared.Next(1, int.MaxValue)));
+
+			fixture.Customize<LegDto>(x => x
+				.Without(x => x.Ride));
 
 			return fixture;
 		}

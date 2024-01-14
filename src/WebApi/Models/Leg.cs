@@ -15,7 +15,11 @@ namespace WebApi.Models
 		public Point To { get; set; } = default!;
 		public DateTimeOffset StartTime { get => startTime; set => startTime = value.ToUniversalTime(); }
 		public DateTimeOffset EndTime { get => endTime; set => endTime = value.ToUniversalTime(); }
-		public int PriceInRub { get; set; }
 		public string Description { get; set; } = default!;
+
+		public Guid? NextLegId { get; set; }
+		public Leg? NextLeg { get; set; }
+		public Guid? PreviousLegId { get; set; }
+		public Leg? PreviousLeg { get; set; }
 	}
 }

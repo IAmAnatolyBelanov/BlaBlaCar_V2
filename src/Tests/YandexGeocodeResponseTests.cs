@@ -39,7 +39,7 @@ namespace Tests
 
 			errors.IsValid.Should().BeFalse();
 			errors.Errors.Should().HaveCount(1);
-			errors.Errors.Should().Contain(x => x.ErrorCode == ValidationCodes.YaGeocodeResponse_Fail);
+			errors.Errors.Should().Contain(x => x.ErrorCode == YandexGeocodeResponseDtoValidationCodes.Fail);
 			errors.Errors.Should().Contain(x => x.ErrorMessage.StartsWith(point.ToString() + " is invalid. "));
 		}
 	}

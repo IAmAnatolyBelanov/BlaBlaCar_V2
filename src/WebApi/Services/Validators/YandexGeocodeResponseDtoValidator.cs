@@ -2,14 +2,16 @@
 
 using WebApi.Models;
 
+using Codes = WebApi.Services.Validators.YandexGeocodeResponseDtoValidationCodes;
+
 namespace WebApi.Services.Validators
 {
-	public static partial class ValidationCodes
+	public class YandexGeocodeResponseDtoValidationCodes : ValidationCodes
 	{
-		public const string YaGeocodeResponse_Fail = "YandexGeocodeResponse_Fail";
-		public const string YaGeocodeResponse_EmptyGeoobjects = "YandexGeocodeResponse_EmptyGeoobjects";
-		public const string YaGeocodeResponse_EmptyGeoobject = "YandexGeocodeResponse_EmptyGeoobject";
-		public const string YaGeocodeResponse_GeoobjectAddressIsEmpty = "YandexGeocodeResponse_GeoobjectAddressIsEmpty";
+		public const string Fail = "YandexGeocodeResponse_Fail";
+		public const string EmptyGeoobjects = "YandexGeocodeResponse_EmptyGeoobjects";
+		public const string EmptyGeoobject = "YandexGeocodeResponse_EmptyGeoobject";
+		public const string GeoobjectAddressIsEmpty = "YandexGeocodeResponse_GeoobjectAddressIsEmpty";
 	}
 
 	public class YandexGeocodeResponseDtoWithPointValidator : AbstractValidator<(FormattedPoint Point, YandexGeocodeResponseDto GeocodeResponse)>
@@ -44,22 +46,22 @@ namespace WebApi.Services.Validators
 		{
 			RuleFor(x => x.Success)
 				.Equal(true)
-				.WithErrorCode(ValidationCodes.YaGeocodeResponse_Fail)
+				.WithErrorCode(Codes.Fail)
 				.WithMessage("Не удалось получить гео код")
 				.DependentRules(() =>
 				{
 					RuleFor(x => x.Geoobjects)
 						.NotEmpty()
-						.WithErrorCode(ValidationCodes.YaGeocodeResponse_EmptyGeoobjects)
+						.WithErrorCode(Codes.EmptyGeoobjects)
 						.DependentRules(() =>
 						{
 							RuleForEach(x => x.Geoobjects)
 								.NotEmpty()
-								.WithErrorCode(ValidationCodes.YaGeocodeResponse_EmptyGeoobject);
+								.WithErrorCode(Codes.EmptyGeoobject);
 
 							RuleForEach(x => x.Geoobjects)
 								.Must(x => !string.IsNullOrWhiteSpace(x?.FormattedAddress))
-								.WithErrorCode(ValidationCodes.YaGeocodeResponse_GeoobjectAddressIsEmpty)
+								.WithErrorCode(Codes.GeoobjectAddressIsEmpty)
 								.WithMessage("Адрес в гео коде пуст");
 						});
 				});

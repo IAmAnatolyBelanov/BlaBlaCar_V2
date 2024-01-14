@@ -19,9 +19,22 @@ namespace WebApi.Models
 		[System.Text.Json.Serialization.JsonIgnore]
 		[Newtonsoft.Json.JsonIgnore]
 		public TimeSpan Duration => To.DateTime - From.DateTime;
-		public int PriceInRub { get; set; }
 		public string Description { get; set; } = default!;
 		public int? FreePlaces { get; set; }
+
+
+		[System.Text.Json.Serialization.JsonIgnore]
+		[Newtonsoft.Json.JsonIgnore]
+		public Guid? NextLegId { get; set; }
+		[System.Text.Json.Serialization.JsonIgnore]
+		[Newtonsoft.Json.JsonIgnore]
+		public LegDto? NextLeg { get; set; }
+		[System.Text.Json.Serialization.JsonIgnore]
+		[Newtonsoft.Json.JsonIgnore]
+		public Guid? PreviousLegId { get; set; }
+		[System.Text.Json.Serialization.JsonIgnore]
+		[Newtonsoft.Json.JsonIgnore]
+		public LegDto? PreviousLeg { get; set; }
 	}
 
 	public struct PlaceAndTime
@@ -67,11 +80,15 @@ namespace WebApi.Models
 		[MapperIgnoreTarget(nameof(LegDto.Ride))]
 		[MapperIgnoreTarget(nameof(LegDto.From))]
 		[MapperIgnoreTarget(nameof(LegDto.To))]
+		[MapperIgnoreTarget(nameof(LegDto.PreviousLeg))]
+		[MapperIgnoreTarget(nameof(LegDto.NextLeg))]
 		private partial void ToDtoAuto(Leg leg, LegDto dto);
 
 		[MapperIgnoreTarget(nameof(Leg.Ride))]
 		[MapperIgnoreTarget(nameof(Leg.From))]
 		[MapperIgnoreTarget(nameof(Leg.To))]
+		[MapperIgnoreTarget(nameof(Leg.PreviousLeg))]
+		[MapperIgnoreTarget(nameof(Leg.NextLeg))]
 		private partial void FromDtoAuto(LegDto legDto, Leg leg);
 
 		private partial void BetweenDtosAuto(LegDto from, LegDto to);
@@ -92,8 +109,15 @@ namespace WebApi.Models
 			entity.StartTime = dto.From.DateTime;
 			entity.EndTime = dto.To.DateTime;
 
-			if (dto.Ride is not null)
-				entity.Ride = _rideDtoMpper.Value.FromDto(dto.Ride, mappedObjects);
+			entity.Ride = dto.Ride is null
+				? default!
+				: _rideDtoMpper.Value.FromDto(dto.Ride, mappedObjects);
+			entity.PreviousLeg = dto.PreviousLeg is null
+				? default
+				: FromDto(dto.PreviousLeg, mappedObjects);
+			entity.NextLeg = dto.NextLeg is null
+				? default
+				: FromDto(dto.NextLeg, mappedObjects);
 		}
 
 		protected override void ToDtoAbstract(Leg entity, LegDto dto, IDictionary<object, object> mappedObjects)
@@ -111,8 +135,30 @@ namespace WebApi.Models
 				DateTime = entity.EndTime,
 			};
 
-			if (entity.Ride is not null)
-				dto.Ride = _rideDtoMpper.Value.ToDto(entity.Ride, mappedObjects);
+			dto.Ride = entity.Ride is null
+				? default!
+				: _rideDtoMpper.Value.ToDto(entity.Ride, mappedObjects);
+			dto.PreviousLeg = entity.PreviousLeg is null
+				? default
+				: ToDto(entity.PreviousLeg, mappedObjects);
+			dto.NextLeg = entity.NextLeg is null
+				? default
+				: ToDto(entity.NextLeg, mappedObjects);
+		}
+	}
+
+	public class LegDtoTimeFromComparer : IComparer<LegDto>
+	{
+		public static LegDtoTimeFromComparer Instance = new LegDtoTimeFromComparer();
+
+		private LegDtoTimeFromComparer() { }
+
+		public int Compare(LegDto? x, LegDto? y)
+		{
+			ArgumentNullException.ThrowIfNull(x);
+			ArgumentNullException.ThrowIfNull(y);
+
+			return x.From.DateTime.CompareTo(y.To.DateTime);
 		}
 	}
 }

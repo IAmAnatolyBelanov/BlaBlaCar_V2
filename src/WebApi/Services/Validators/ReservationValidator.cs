@@ -4,13 +4,14 @@ using WebApi.Models;
 
 namespace WebApi.Services.Validators
 {
-	public static partial class ValidationCodes
+	public class ReservationValidationCodes : ValidationCodes
 	{
-		public const string Reserv_EmptyUserId = "Reserv_EmptyUserId";
-		public const string Reserv_TooLessCount = "Reserv_TooLessCount";
-		public const string Reserv_EmptyLegId = "Reserv_EmptyLegId";
-		public const string Reserv_MissmatchLegId = "Reserv_MissmatchLegId";
-		public const string Reserv_WrongCreateDateTime = "Reserv_WrongCreateDateTime";
+		public const string EmptyUserId = "Reserv_EmptyUserId";
+		public const string TooLessCount = "Reserv_TooLessCount";
+		public const string EmptyStartLegId = "Reserv_EmptyStartLegId";
+		public const string EmptyEndLegId = "Reserv_EmptyEndLegId";
+		public const string MissmatchLegId = "Reserv_MissmatchLegId";
+		public const string WrongCreateDateTime = "Reserv_WrongCreateDateTime";
 	}
 
 	public class ReservationValidator : AbstractValidator<ReservationDto>
@@ -23,24 +24,31 @@ namespace WebApi.Services.Validators
 
 			RuleFor(x => x.UserId)
 				.NotEmpty()
-				.WithErrorCode(ValidationCodes.Reserv_EmptyUserId);
+				.WithErrorCode(ReservationValidationCodes.EmptyUserId);
 
 			RuleFor(x => x.Count)
 				.GreaterThanOrEqualTo(1)
-				.WithErrorCode(ValidationCodes.Reserv_TooLessCount);
+				.WithErrorCode(ReservationValidationCodes.TooLessCount);
 
-			RuleFor(x => x.LegId)
+			RuleFor(x => x.StartLegId)
 				.NotEmpty()
-				.WithErrorCode(ValidationCodes.Reserv_EmptyLegId);
+				.WithErrorCode(ReservationValidationCodes.EmptyStartLegId);
+			RuleFor(x => x.EndLegId)
+				.NotEmpty()
+				.WithErrorCode(ReservationValidationCodes.EmptyEndLegId);
 
-			RuleFor(x => x.LegId)
-				.Equal(x => x.Leg!.Id)
-				.When(x => x.Leg is not null)
-				.WithErrorCode(ValidationCodes.Reserv_MissmatchLegId);
+			RuleFor(x => x.StartLegId)
+				.Equal(x => x.StartLeg!.Id)
+				.When(x => x.StartLeg is not null)
+				.WithErrorCode(ReservationValidationCodes.MissmatchLegId);
+			RuleFor(x => x.EndLegId)
+				.Equal(x => x.EndLeg!.Id)
+				.When(x => x.EndLeg is not null)
+				.WithErrorCode(ReservationValidationCodes.MissmatchLegId);
 
 			RuleFor(x => x.CreateDateTime)
 				.LessThanOrEqualTo(x => _clock.Now)
-				.WithErrorCode(ValidationCodes.Reserv_WrongCreateDateTime);
+				.WithErrorCode(ReservationValidationCodes.WrongCreateDateTime);
 		}
 	}
 }

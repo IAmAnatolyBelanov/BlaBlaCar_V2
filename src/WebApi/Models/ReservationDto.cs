@@ -5,10 +5,14 @@ namespace WebApi.Models
 	public class ReservationDto
 	{
 		public Guid Id { get; set; }
-		public Guid LegId { get; set; }
+		public Guid StartLegId { get; set; }
 		[System.Text.Json.Serialization.JsonIgnore]
 		[Newtonsoft.Json.JsonIgnore]
-		public LegDto Leg { get; set; } = default!;
+		public LegDto StartLeg { get; set; } = default!;
+		public Guid EndLegId { get; set; }
+		[System.Text.Json.Serialization.JsonIgnore]
+		[Newtonsoft.Json.JsonIgnore]
+		public LegDto EndLeg { get; set; } = default!;
 		public ulong UserId { get; set; }
 		public bool IsActive { get; set; }
 		public DateTimeOffset CreateDateTime { get; set; }
@@ -22,19 +26,22 @@ namespace WebApi.Models
 	[Mapper]
 	public partial class ReservationDtoMapper : BaseMapper<Reservation, ReservationDto>, IReservationDtoMapper
 	{
-		private readonly ILegDtoMapper _legMapper;
+		private readonly Lazy<ILegDtoMapper> _legMapper;
 
-		public ReservationDtoMapper(ILegDtoMapper legMapper)
+		public ReservationDtoMapper(Lazy<ILegDtoMapper> legMapper)
 			: base(() => new(), () => new())
 		{
 			_legMapper = legMapper;
 		}
 
 
-		[MapperIgnoreTarget(nameof(ReservationDto.Leg))]
+		[MapperIgnoreTarget(nameof(ReservationDto.StartLeg))]
+		[MapperIgnoreTarget(nameof(ReservationDto.EndLeg))]
 		private partial void ToDtoAuto(Reservation entity, ReservationDto dto);
 
-		[MapperIgnoreTarget(nameof(Reservation.Leg))]
+		[MapperIgnoreTarget(nameof(Reservation.StartLeg))]
+		[MapperIgnoreTarget(nameof(Reservation.EndLeg))]
+		[MapperIgnoreTarget(nameof(Reservation.AffectedLegIds))]
 		private partial void FromDtoAuto(ReservationDto dto, Reservation entity);
 
 		private partial void BetweenDtosAuto(ReservationDto from, ReservationDto to);
@@ -49,14 +56,24 @@ namespace WebApi.Models
 		{
 			FromDtoAuto(dto, entity);
 
-			entity.Leg = _legMapper.FromDto(dto.Leg, mappedObjects);
+			entity.StartLeg = dto.StartLeg is null
+				? default!
+				: _legMapper.Value.FromDto(dto.StartLeg, mappedObjects);
+			entity.EndLeg = dto.EndLeg is null
+				? default!
+				: _legMapper.Value.FromDto(dto.EndLeg, mappedObjects);
 		}
 
 		protected override void ToDtoAbstract(Reservation entity, ReservationDto dto, IDictionary<object, object> mappedObjects)
 		{
 			ToDtoAuto(entity, dto);
 
-			dto.Leg = _legMapper.ToDto(entity.Leg, mappedObjects);
+			dto.StartLeg = entity.StartLeg is null
+				? default!
+				: _legMapper.Value.ToDto(entity.StartLeg, mappedObjects);
+			dto.EndLeg = entity.EndLeg is null
+				? default!
+				: _legMapper.Value.ToDto(entity.EndLeg, mappedObjects);
 		}
 	}
 }

@@ -2,11 +2,9 @@
 {
 	public static class Constants
 	{
-		public static readonly IReadOnlyDictionary<string, string> AllConstants
-			= typeof(Constants).GetAllStringConstants().ToDictionary();
-
-		public static readonly IReadOnlySet<string> AllConstantValues
-			= AllConstants.Values.ToHashSet();
+		public static readonly IReadOnlyDictionary<string, (Type Type, string Name)> AllConstants
+			= typeof(Constants).GetAllStringConstantsRecursively()
+				.ToDictionary(x => x.Value, x => (x.Holder, x.Name));
 
 		public const string DefaultHttpClientName = "Default";
 	}

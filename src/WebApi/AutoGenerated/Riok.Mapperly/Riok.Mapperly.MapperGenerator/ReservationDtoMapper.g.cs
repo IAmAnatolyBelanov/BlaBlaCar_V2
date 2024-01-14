@@ -7,7 +7,8 @@ namespace WebApi.Models
         private partial void ToDtoAuto(global::WebApi.Models.Reservation entity, global::WebApi.Models.ReservationDto dto)
         {
             dto.Id = entity.Id;
-            dto.LegId = entity.LegId;
+            dto.StartLegId = entity.StartLegId;
+            dto.EndLegId = entity.EndLegId;
             dto.UserId = entity.UserId;
             dto.IsActive = entity.IsActive;
             dto.CreateDateTime = entity.CreateDateTime;
@@ -17,7 +18,8 @@ namespace WebApi.Models
         private partial void FromDtoAuto(global::WebApi.Models.ReservationDto dto, global::WebApi.Models.Reservation entity)
         {
             entity.Id = dto.Id;
-            entity.LegId = dto.LegId;
+            entity.StartLegId = dto.StartLegId;
+            entity.EndLegId = dto.EndLegId;
             entity.UserId = dto.UserId;
             entity.IsActive = dto.IsActive;
             entity.CreateDateTime = dto.CreateDateTime;
@@ -27,8 +29,10 @@ namespace WebApi.Models
         private partial void BetweenDtosAuto(global::WebApi.Models.ReservationDto from, global::WebApi.Models.ReservationDto to)
         {
             to.Id = from.Id;
-            to.LegId = from.LegId;
-            to.Leg = from.Leg;
+            to.StartLegId = from.StartLegId;
+            to.StartLeg = from.StartLeg;
+            to.EndLegId = from.EndLegId;
+            to.EndLeg = from.EndLeg;
             to.UserId = from.UserId;
             to.IsActive = from.IsActive;
             to.CreateDateTime = from.CreateDateTime;
@@ -38,8 +42,11 @@ namespace WebApi.Models
         private partial void BetweenEntitiesAuto(global::WebApi.Models.Reservation from, global::WebApi.Models.Reservation to)
         {
             to.Id = from.Id;
-            to.LegId = from.LegId;
-            to.Leg = from.Leg;
+            to.StartLegId = from.StartLegId;
+            to.StartLeg = from.StartLeg;
+            to.EndLegId = from.EndLegId;
+            to.EndLeg = from.EndLeg;
+            to.AffectedLegIds = from.AffectedLegIds;
             to.UserId = from.UserId;
             to.IsActive = from.IsActive;
             to.CreateDateTime = from.CreateDateTime;

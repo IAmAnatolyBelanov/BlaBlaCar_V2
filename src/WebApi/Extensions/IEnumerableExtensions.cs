@@ -28,5 +28,25 @@
 
 			return result;
 		}
+
+		public static bool ContainsNull<T>(this IReadOnlyList<T> values)
+			where T : class
+		{
+			for (int i = 0; i < values.Count; i++)
+				if (values[i] is null)
+					return true;
+
+			return false;
+		}
+
+		public static bool TrueForAll<T>(this IReadOnlyList<T> values, Func<T, bool> condition)
+		{
+			for (int i = 0; i < values.Count; i++)
+			{
+				if (!condition(values[i]))
+					return false;
+			}
+			return true;
+		}
 	}
 }

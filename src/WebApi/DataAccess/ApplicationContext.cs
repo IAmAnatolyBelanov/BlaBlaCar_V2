@@ -18,6 +18,7 @@ namespace WebApi.DataAccess
 		public DbSet<Leg> Legs { get; set; }
 		public DbSet<CompositeLeg> CompositeLegs { get; set; }
 		public DbSet<Reservation> Reservations { get; set; }
+		public DbSet<Price> Prices { get; set; }
 
 		/// <summary>
 		/// Не покажет создание триггеров и функций.
@@ -71,6 +72,11 @@ namespace WebApi.DataAccess
 				builder.HasIndex(x => x.EndTime);
 
 				builder.Property(x => x.Description).HasDefaultValue("empty");
+
+				builder.HasOne(x => x.NextLeg)
+					.WithOne();
+				builder.HasOne(x => x.PreviousLeg)
+					.WithOne();
 			});
 
 			modelBuilder.Entity<CompositeLeg>(builder =>
@@ -93,80 +99,68 @@ namespace WebApi.DataAccess
 
 			modelBuilder.Entity<Reservation>(builder =>
 			{
-				builder.HasIndex(x => new { x.LegId, x.UserId })
+				builder.HasIndex(x => new { x.StartLegId, x.EndLegId, x.UserId })
 					.IsUnique()
 					.HasFilter($"\"{nameof(Reservation.IsActive)}\" IS TRUE")
 					.HasDatabaseName(DbConstants.IndexNames.Reservation_UniqueIfActive);
 
-				builder.HasOne(x => x.Leg)
+				builder.HasOne(x => x.StartLeg)
 					.WithMany()
-					.HasForeignKey(x => x.LegId);
+					.HasForeignKey(x => x.StartLegId);
+				builder.HasOne(x => x.EndLeg)
+					.WithMany()
+					.HasForeignKey(x => x.EndLegId);
+
+				builder.HasIndex(x => x.UserId);
+				builder.HasIndex(x => x.CreateDateTime);
+			});
+
+			modelBuilder.Entity<Price>(builder =>
+			{
+				builder.HasIndex(x => x.StartLegId);
+				builder.HasIndex(x => x.EndLegId);
+
+				builder.HasIndex(x => new { x.StartLegId, x.EndLegId })
+					.IsUnique();
 			});
 		}
 	}
 
 	public static class DbConstants
 	{
-		public static readonly IReadOnlyDictionary<string, string> AllConstants
-			= typeof(DbConstants).GetAllStringConstants().ToDictionary();
-
-		public static readonly IReadOnlySet<string> AllConstantValues
-			= AllConstants.Values.ToHashSet();
+		public static readonly IReadOnlyDictionary<string, (Type Type, string Name)> AllConstants
+			= typeof(DbConstants).GetAllStringConstantsRecursively()
+				.ToDictionary(x => x.Value, x => (x.Holder, x.Name));
 
 		public static class IndexNames
 		{
-			public static readonly IReadOnlyDictionary<string, string> AllConstants
-				= typeof(IndexNames).GetAllStringConstants().ToDictionary();
-
-			public static readonly IReadOnlySet<string> AllConstantValues
-				= AllConstants.Values.ToHashSet();
+			public static readonly IReadOnlyDictionary<string, (Type Type, string Name)> AllConstants
+				= typeof(IndexNames).GetAllStringConstantsRecursively()
+					.ToDictionary(x => x.Value, x => (x.Holder, x.Name));
 
 			public const string Reservation_UniqueIfActive
-				= "Custom_DbIndexName_Reservations_UserId_LegId_UniqueIfActive";
+				= "Custom_DbIndexName_Reservations_UserId_StartLegId_EndLegId_UniqueIfActive";
 		}
 
 		public static class FunctionNames
 		{
-			public static readonly IReadOnlyDictionary<string, string> AllConstants
-				= typeof(FunctionNames).GetAllStringConstants().ToDictionary();
-
-			public static readonly IReadOnlySet<string> AllConstantValues
-				= AllConstants.Values.ToHashSet();
-
-			public const string TriggerReservation_EnoughFreePlaces
-				= "Custom_DbFunctionName_RideHasEnoughFreePlaces_OnReservation";
-
-			//public const string TriggerRide_EnoughFreePlaces
-			//	= "Custom_DbFunctionName_RideHasEnoughFreePlaces_OnRide";
+			public static readonly IReadOnlyDictionary<string, (Type Type, string Name)> AllConstants
+				= typeof(FunctionNames).GetAllStringConstantsRecursively()
+					.ToDictionary(x => x.Value, x => (x.Holder, x.Name));
 		}
 
 		public static class FunctionErrors
 		{
-			public static readonly IReadOnlyDictionary<string, string> AllConstants
-				= typeof(FunctionErrors).GetAllStringConstants().ToDictionary();
-
-			public static readonly IReadOnlySet<string> AllConstantValues
-				= AllConstants.Values.ToHashSet();
-
-			public const string TriggerReservation_EnoughFreePlaces__NotEnougFreePlaces
-				= "Custom_DbFunctionName_RideHasEnoughFreePlaces_OnReservation_Error_NotEnoughFreePlaces";
-			//public const string TriggerRide_EnoughFreePlaces__NotEnougFreePlaces
-			//	= "Custom_DbFunctionName_RideHasEnoughFreePlaces_OnRide_Error_NotEnoughFreePlaces";
+			public static readonly IReadOnlyDictionary<string, (Type Type, string Name)> AllConstants
+				= typeof(FunctionErrors).GetAllStringConstantsRecursively()
+					.ToDictionary(x => x.Value, x => (x.Holder, x.Name));
 		}
 
 		public static class TriggerNames
 		{
-			public static readonly IReadOnlyDictionary<string, string> AllConstants
-				= typeof(TriggerNames).GetAllStringConstants().ToDictionary();
-
-			public static readonly IReadOnlySet<string> AllConstantValues
-				= AllConstants.Values.ToHashSet();
-
-			public const string Reservation_EnoughFreePlaces
-				= "Custom_DbTriggerName_RideHasEnoughFreePlaces_OnReservation";
-
-			//public const string Ride_EnoughFreePlaces
-			//	= "Custom_DbTriggerName_RideHasEnoughFreePlaces_OnRide";
+			public static readonly IReadOnlyDictionary<string, (Type Type, string Name)> AllConstants
+				= typeof(TriggerNames).GetAllStringConstantsRecursively()
+				.ToDictionary(x => x.Value, x => (x.Holder, x.Name));
 		}
 	}
 }

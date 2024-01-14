@@ -22,5 +22,12 @@ namespace WebApi.Controllers
 			var result = await _rideService.CreateRide(ride, ct);
 			return result;
 		}
+
+		[HttpPost]
+		public async ValueTask<BaseResponse<ReservationDto>> Reserv(ReservationDto reserv, CancellationToken ct)
+		{
+			var result = await _rideService.Reserv(reserv, ct);
+			return result;
+		}
 	}
 }

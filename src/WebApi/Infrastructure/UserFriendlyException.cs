@@ -10,20 +10,12 @@ namespace WebApi.Infrastructure
 		public readonly IReadOnlyList<ErrorDetails> Errors;
 		private string? _message;
 
-		public UserFriendlyException(string message)
-			: base(message)
-		{
-			Errors = [new() { Message = message }];
-		}
-
-		public UserFriendlyException(string message, string code)
-			: base(message)
+		public UserFriendlyException(string code, string message)
 		{
 			Errors = [new() { Message = message, Code = code }];
 		}
 
-		public UserFriendlyException(string message, string code, string? additionalInfo)
-			: base(message)
+		public UserFriendlyException(string code, string message, string? additionalInfo)
 		{
 			Errors = [new() { Message = message, Code = code, AdditionalInfo = additionalInfo }];
 		}

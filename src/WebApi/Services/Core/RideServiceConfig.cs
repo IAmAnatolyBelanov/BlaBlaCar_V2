@@ -1,6 +1,4 @@
-﻿using WebApi.Extensions;
-
-namespace WebApi.Services.Core
+﻿namespace WebApi.Services.Core
 {
 	public interface IRideServiceConfig
 	{
@@ -24,6 +22,8 @@ namespace WebApi.Services.Core
 		/// Максимальное число точек в поездке, включая конечные.
 		/// </summary>
 		int MaxWaypoints { get; }
+		int MinPriceInRub { get; }
+		int MaxPriceInRub { get; }
 	}
 
 	public class RideServiceConfig : IBaseConfig, IRideServiceConfig
@@ -45,6 +45,9 @@ namespace WebApi.Services.Core
 		/// <inheritdoc/>
 		public int MaxWaypoints { get; set; } = 10;
 
+		public int MinPriceInRub { get; set; } = 1;
+		public int MaxPriceInRub { get; set; } = 100_000;
+
 		public IEnumerable<string> GetValidationErrors()
 		{
 			if (PriceStatisticsRadiusMeters <= 0)
@@ -61,6 +64,15 @@ namespace WebApi.Services.Core
 
 			if (MaxWaypoints < 2)
 				yield return $"{nameof(MaxWaypoints)} must be >= 2";
+
+			if (MinPriceInRub <= 0)
+				yield return $"{nameof(MinPriceInRub)} must be >= 1";
+
+			if (MaxPriceInRub <= 0)
+				yield return $"{nameof(MaxPriceInRub)} must be >= 1";
+
+			if (MaxPriceInRub <= MinPriceInRub)
+				yield return $"{nameof(MaxPriceInRub)} must be > {MinPriceInRub}";
 		}
 	}
 }

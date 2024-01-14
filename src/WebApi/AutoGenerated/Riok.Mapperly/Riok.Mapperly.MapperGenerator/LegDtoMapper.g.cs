@@ -8,16 +8,18 @@ namespace WebApi.Models
         {
             dto.Id = leg.Id;
             dto.RideId = leg.RideId;
-            dto.PriceInRub = leg.PriceInRub;
             dto.Description = leg.Description;
+            dto.NextLegId = leg.NextLegId;
+            dto.PreviousLegId = leg.PreviousLegId;
         }
 
         private partial void FromDtoAuto(global::WebApi.Models.LegDto legDto, global::WebApi.Models.Leg leg)
         {
             leg.Id = legDto.Id;
             leg.RideId = legDto.RideId;
-            leg.PriceInRub = legDto.PriceInRub;
             leg.Description = legDto.Description;
+            leg.NextLegId = legDto.NextLegId;
+            leg.PreviousLegId = legDto.PreviousLegId;
         }
 
         private partial void BetweenDtosAuto(global::WebApi.Models.LegDto from, global::WebApi.Models.LegDto to)
@@ -27,9 +29,12 @@ namespace WebApi.Models
             to.RideId = from.RideId;
             to.From = from.From;
             to.To = from.To;
-            to.PriceInRub = from.PriceInRub;
             to.Description = from.Description;
             to.FreePlaces = from.FreePlaces;
+            to.NextLegId = from.NextLegId;
+            to.NextLeg = from.NextLeg;
+            to.PreviousLegId = from.PreviousLegId;
+            to.PreviousLeg = from.PreviousLeg;
         }
 
         private partial void BetweenEntitiesAuto(global::WebApi.Models.Leg from, global::WebApi.Models.Leg to)
@@ -41,8 +46,11 @@ namespace WebApi.Models
             to.To = from.To;
             to.StartTime = from.StartTime;
             to.EndTime = from.EndTime;
-            to.PriceInRub = from.PriceInRub;
             to.Description = from.Description;
+            to.NextLegId = from.NextLegId;
+            to.NextLeg = from.NextLeg;
+            to.PreviousLegId = from.PreviousLegId;
+            to.PreviousLeg = from.PreviousLeg;
         }
     }
 }

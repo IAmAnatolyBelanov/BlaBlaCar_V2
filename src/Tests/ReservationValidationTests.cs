@@ -27,20 +27,21 @@ namespace Tests
 		public void TestCreateDateTime()
 		{
 			var reserv = _fixture.Build<ReservationDto>()
-				.Without(x => x.Leg)
+				.Without(x => x.StartLeg)
+				.Without(x => x.EndLeg)
 				.With(x => x.CreateDateTime, () => DateTimeOffset.UtcNow.AddHours(1))
 				.Create();
 
 			var result = _validator.Validate(reserv);
 
-			result.Errors.Should().Contain(x => x.ErrorCode == ValidationCodes.Reserv_WrongCreateDateTime);
+			result.Errors.Should().Contain(x => x.ErrorCode == ReservationValidationCodes.WrongCreateDateTime);
 		}
 
 		[Fact]
 		public void TestEmptyLeg()
 		{
 			var reserv = _fixture.Build<ReservationDto>()
-				.Without(x => x.Leg)
+				.Without(x => x.EndLeg)
 				.With(x => x.CreateDateTime, () => DateTimeOffset.UtcNow)
 				.Create();
 
@@ -58,7 +59,7 @@ namespace Tests
 
 			var result = _validator.Validate(reserv);
 
-			result.Errors.Should().Contain(x => x.ErrorCode == ValidationCodes.Reserv_MissmatchLegId);
+			result.Errors.Should().Contain(x => x.ErrorCode == ReservationValidationCodes.MissmatchLegId);
 		}
 	}
 }

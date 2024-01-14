@@ -93,7 +93,6 @@ namespace WebApi.Controllers
 				Id = Guid.NewGuid(),
 				Ride = ride,
 				RideId = ride.Id,
-				PriceInRub = Random.Shared.Next(100, 10_000),
 				EndTime = DateTime.UtcNow,
 				StartTime = DateTime.UtcNow.AddHours(-4),
 				From = from.ToPoint(),
@@ -139,8 +138,8 @@ namespace WebApi.Controllers
 			{
 				CreateDateTime = DateTimeOffset.UtcNow,
 				IsActive = true,
-				Leg = leg,
-				LegId = leg.Id,
+				StartLeg = leg,
+				StartLegId = leg.Id,
 				UserId = 15,
 				Count = 1,
 			};
