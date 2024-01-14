@@ -54,7 +54,7 @@ namespace WebApi.DataAccess
 				LogLevel.Debug,
 				DbContextLoggerOptions.SingleLine | DbContextLoggerOptions.UtcTime);
 
-			//optionsBuilder.EnableSensitiveDataLogging();
+			optionsBuilder.EnableSensitiveDataLogging();
 		}
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
