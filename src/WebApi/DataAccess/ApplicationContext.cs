@@ -54,7 +54,7 @@ namespace WebApi.DataAccess
 				LogLevel.Debug,
 				DbContextLoggerOptions.SingleLine | DbContextLoggerOptions.UtcTime);
 
-			optionsBuilder.EnableSensitiveDataLogging();
+			//optionsBuilder.EnableSensitiveDataLogging();
 		}
 
 		protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -73,10 +73,11 @@ namespace WebApi.DataAccess
 
 				builder.Property(x => x.Description).HasDefaultValue("empty");
 
-				builder.HasOne(x => x.NextLeg)
-					.WithOne();
-				builder.HasOne(x => x.PreviousLeg)
-					.WithOne();
+				builder.HasOne<Leg>().WithOne().HasForeignKey<Leg>(x => x.NextLegId);
+				builder.HasOne<Leg>().WithOne().HasForeignKey<Leg>(x => x.PreviousLegId);
+
+				builder.Ignore(x => x.NextLeg);
+				builder.Ignore(x => x.PreviousLeg);
 			});
 
 			modelBuilder.Entity<CompositeLeg>(builder =>

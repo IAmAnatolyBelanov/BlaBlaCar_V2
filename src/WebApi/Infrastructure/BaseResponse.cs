@@ -1,5 +1,13 @@
 ﻿namespace WebApi.Infrastructure
 {
+	public static class BaseResponse
+	{
+		public static BaseResponse<T> From<T>(T instance)
+		{
+			return new BaseResponse<T>(instance);
+		}
+	}
+
 	public class BaseResponse<T>
 	{
 		protected static readonly IErrorDetailsMapper _errorDetailsMapper
@@ -40,15 +48,11 @@
 
 		public static implicit operator BaseResponse<T>(T instance)
 		{
-			return new BaseResponse<T>()
-			{
-				Data = instance,
-				Success = true,
-			};
+			return new BaseResponse<T>(instance);
 		}
 	}
 
-	public class StringResponse : BaseResponse<object>
+	public class StringResponse : BaseResponse<string>
 	{
 		public static new StringResponse Empty { get; } = new()
 		{

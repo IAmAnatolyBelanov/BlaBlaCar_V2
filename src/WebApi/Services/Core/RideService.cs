@@ -77,7 +77,6 @@ namespace WebApi.Services.Core
 			{
 				var legDto = legDtos[i];
 
-				legDto.Id = Guid.NewGuid();
 				legDto.Ride = rideDto;
 				legDto.RideId = rideDto.Id;
 			}
@@ -92,7 +91,6 @@ namespace WebApi.Services.Core
 			{
 				var price = priceDtos[i];
 
-				price.Id = Guid.NewGuid();
 				price.StartLeg = legsDict.TryGetValue(price.StartLegId, out var leg) ? leg : null!;
 				price.EndLeg = legsDict.TryGetValue(price.EndLegId, out leg) ? leg : null!;
 			}
@@ -119,6 +117,7 @@ namespace WebApi.Services.Core
 			mappedObjects.Clear();
 			var result = _rideDtoMapper.ToDto(ride, mappedObjects);
 			result.Legs = _legDtoMapper.ToDtoList(legs, mappedObjects);
+			result.Prices = _priceDtoMapper.ToDtoList(prices, mappedObjects);
 
 			return result;
 		}

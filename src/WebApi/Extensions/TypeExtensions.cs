@@ -30,7 +30,7 @@ namespace WebApi.Extensions
 
 			var assembly = type.Assembly;
 			var children = assembly.GetTypes()
-				.Where(type.IsAssignableFrom)
+				.Where(x => type.IsAssignableFrom(x) && x != type)
 				.ToArray();
 
 			var result = children

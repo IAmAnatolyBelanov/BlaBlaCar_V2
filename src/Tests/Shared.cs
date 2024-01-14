@@ -28,6 +28,7 @@ namespace Tests
 
 			fixture.Customize<RideDto>(x => x
 				.Without(r => r.Legs)
+				.Without(r => r.Prices)
 				.With(x => x.DriverId, () => (ulong)Random.Shared.Next(1, int.MaxValue)));
 
 			fixture.Customize<ReservationDto>(x => x
@@ -35,7 +36,15 @@ namespace Tests
 				.With(x => x.UserId, () => (ulong)Random.Shared.Next(1, int.MaxValue)));
 
 			fixture.Customize<LegDto>(x => x
-				.Without(x => x.Ride));
+				.Without(x => x.Ride)
+				.Without(x => x.NextLeg)
+				.Without(x => x.NextLegId)
+				.Without(x => x.PreviousLeg)
+				.Without(x => x.PreviousLegId));
+
+			fixture.Customize<PriceDto>(x => x
+				.Without(x => x.StartLeg)
+				.Without(x => x.EndLeg));
 
 			return fixture;
 		}

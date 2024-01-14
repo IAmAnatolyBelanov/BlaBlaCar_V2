@@ -106,7 +106,7 @@ namespace WebApi.Services.Validators
 						.DependentRules(() =>
 						{
 							RuleFor(x => x.Prices)
-								.Must((ride, prices) => IsPricesCountValid(ride))
+								.Must((ride, _) => IsPricesCountValid(ride))
 								.WithMessage(x =>
 								{
 									if (_validWaypointPriceCounts.TryGetValue(x.WaypointsCount, out var validPricesCount))
