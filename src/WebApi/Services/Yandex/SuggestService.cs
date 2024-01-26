@@ -34,7 +34,7 @@ namespace WebApi.Services.Yandex
 		private readonly IRedisCacheService _redisCacheService;
 		private readonly IYandexSuggestResponseDtoMapper _yandexSuggestResponseDtoMapper;
 
-		private readonly IAsyncPolicy<YandexSuggestResponse?> _asyncPolicy;
+		private readonly IAsyncPolicy<string> _asyncPolicy;
 		private readonly IInMemoryCache<string, YandexSuggestResponseDto> _memoryCache;
 
 		public SuggestService(
@@ -46,14 +46,15 @@ namespace WebApi.Services.Yandex
 			_redisCacheService = redisCacheService;
 			_yandexSuggestResponseDtoMapper = yandexSuggestResponseDtoMapper;
 
-			_asyncPolicy = Policy<YandexSuggestResponse?>
+			_asyncPolicy = Policy<string>
 				.Handle<HttpRequestException>()
+				.OrResult(string.IsNullOrWhiteSpace)
 				.WaitAndRetryAsync(_config.RetryCount,
 				attempt => TimeSpan.FromMilliseconds(100 + 40 * attempt),
-				(exception, timespan, attempt, context) =>
+				(result, timespan, attempt, context) =>
 				{
-					_logger.Error("Failed to fetch yandex suggestion. Attempt {Attempt}, time delay {TimeDelay}, context {Context}, exception {Exception}",
-						attempt, timespan, context, exception);
+					_logger.Error("Failed to fetch yandex suggestion. Attempt {Attempt}, time delay {TimeDelay}, context {Context}, result {Result}, exception {Exception}",
+						attempt, timespan, context, result.Result, result.Exception);
 				});
 
 			if (_config.IsDebug)
@@ -69,7 +70,7 @@ namespace WebApi.Services.Yandex
 
 			_memoryCache = new InMemoryCache<string, YandexSuggestResponseDto>(new MemoryCacheOptions
 			{
-				SizeLimit = _config.InMemoryCacheMaxObjects
+				SizeLimit = _config.InMemoryCacheMaxObjects,
 			});
 		}
 
@@ -77,6 +78,8 @@ namespace WebApi.Services.Yandex
 		{
 			if (string.IsNullOrWhiteSpace(input) || input.Length < _config.MinInput)
 				return _failResponse;
+
+			input = input.ToLowerInvariant();
 
 			if (_memoryCache.TryGetValue(input, out var cachedResponseDto))
 				return cachedResponseDto;
@@ -99,10 +102,11 @@ namespace WebApi.Services.Yandex
 			if (_config.IsDebug && ExternalRequstsCount > 999)
 				throw new Exception($"Для дебага достпуно только 1000 запросов в день. Лимит исчерпан. Лимит будет сброшен через {TimeSpan.FromHours(24) - (DateTimeOffset.UtcNow - LastExternalRequestLimitSet)}. Всё ещё можно использовать запросы к кешу.");
 
-			PolicyResult<YandexSuggestResponse?> result = default!;
+			PolicyResult<string> suggestionBody = default!;
+			YandexSuggestResponse suggestion = default!;
 			try
 			{
-				result = await _asyncPolicy.ExecuteAndCaptureAsync(async internalCt =>
+				suggestionBody = await _asyncPolicy.ExecuteAndCaptureAsync(async internalCt =>
 				{
 					using var httpRequest = new HttpRequestMessage(HttpMethod.Get, request);
 
@@ -112,10 +116,10 @@ namespace WebApi.Services.Yandex
 
 					var body = await response.Content.ReadAsStringAsync(internalCt);
 
-					var suggestion = JsonConvert.DeserializeObject<YandexSuggestResponse>(body);
-
-					return suggestion;
+					return body;
 				}, ct);
+
+				suggestion = JsonConvert.DeserializeObject<YandexSuggestResponse>(suggestionBody.Result)!;
 			}
 			catch (Exception exception)
 			{
@@ -124,15 +128,15 @@ namespace WebApi.Services.Yandex
 				return _failResponse;
 			}
 
-			if (result.Outcome == OutcomeType.Failure)
+			if (suggestionBody.Outcome == OutcomeType.Failure)
 			{
-				_logger.Error(result.FinalException, "Fail to get suggestion for {Input}", input);
+				_logger.Error(suggestionBody.FinalException, "Fail to get suggestion for {Input}", input);
 				_memoryCache.Set(input, _failResponse, _config.FailExpiry);
 				return _failResponse;
 			}
 
-			_ = _redisCacheService.SetAsync(redis, request, result.Result, _config.DistributedCacheExpiry);
-			cachedResponseDto = _yandexSuggestResponseDtoMapper.ToDtoLight(result.Result!);
+			_ = _redisCacheService.SetStringAsync(redis, request, suggestionBody.Result, _config.DistributedCacheExpiry);
+			cachedResponseDto = _yandexSuggestResponseDtoMapper.ToDtoLight(suggestion);
 			_memoryCache.Set(input, cachedResponseDto, _config.DistributedCacheExpiry);
 			return cachedResponseDto;
 		}

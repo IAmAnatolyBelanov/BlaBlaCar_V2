@@ -41,7 +41,7 @@ namespace WebApi.Services.Yandex
 		private readonly IRedisCacheService _redisCacheService;
 		private readonly IYandexGeocodeResponseDtoMapper _yandexGeocodeResponseDtoMapper;
 
-		private readonly IAsyncPolicy<YandexGeocodeResponse?> _asyncPolicy;
+		private readonly IAsyncPolicy<string> _asyncPolicy;
 		private readonly IInMemoryCache<string, YandexGeocodeResponseDto> _memoryCache;
 
 		public GeocodeService(
@@ -53,14 +53,15 @@ namespace WebApi.Services.Yandex
 			_redisCacheService = redisCacheService;
 			_yandexGeocodeResponseDtoMapper = yandexGeocodeResponseDtoMapper;
 
-			_asyncPolicy = Policy<YandexGeocodeResponse?>
+			_asyncPolicy = Policy<string>
 				.Handle<HttpRequestException>()
+				.OrResult(string.IsNullOrWhiteSpace)
 				.WaitAndRetryAsync(_config.RetryCount,
 				attempt => TimeSpan.FromMilliseconds(100 + 40 * attempt),
-				(exception, timespan, attempt, context) =>
+				(result, timespan, attempt, context) =>
 				{
-					_logger.Error("Failed to fetch yandex geocode response. Attempt {Attempt}, time delay {TimeDelay}, context {Context}, exception {Exception}",
-						attempt, timespan, context, exception);
+					_logger.Error("Failed to fetch yandex geocode response. Attempt {Attempt}, time delay {TimeDelay}, context {Context}, result {Result}, exception {Exception}",
+						attempt, timespan, context, result.Result, result.Exception);
 				});
 
 			if (_config.IsDebug)
@@ -82,7 +83,7 @@ namespace WebApi.Services.Yandex
 
 		public async ValueTask<YandexGeocodeResponseDto> AddressToGeoCode(string address, CancellationToken ct)
 		{
-			var request = $"https://geocode-maps.yandex.ru/1.x?apikey={_config.ApiKey}&geocode={address}&format=json&results=1";
+			var request = $"https://geocode-maps.yandex.ru/1.x?apikey={_config.ApiKey}&geocode={address.ToLowerInvariant()}&format=json&results=1";
 
 			return await GetGeocode(request, ct);
 		}
@@ -103,8 +104,8 @@ namespace WebApi.Services.Yandex
 
 		private async ValueTask<YandexGeocodeResponseDto> GetGeocode(string request, CancellationToken ct)
 		{
-			if (_memoryCache.TryGetValue(request, out var cachedResponseDto))
-				return cachedResponseDto;
+			if (_memoryCache.TryGetValue(request, out var cachedGeocodeDto))
+				return cachedGeocodeDto;
 
 			using var redis = _redisCacheService.Connect();
 			var (cacheExists, cachedResponse)
@@ -115,20 +116,21 @@ namespace WebApi.Services.Yandex
 				if (cachedResponse is null)
 					return _failResponse;
 
-				cachedResponseDto = cachedResponse.Response.GeoObjectCollection.FeatureMember.Length > 0
+				cachedGeocodeDto = cachedResponse.Response.GeoObjectCollection.FeatureMember.Length > 0
 					? _yandexGeocodeResponseDtoMapper.ToDtoLight(cachedResponse)
 					: _emptyResponse;
-				_memoryCache.Set(request, cachedResponseDto, _config.InMemoryCacheObjectLifetime);
-				return cachedResponseDto;
+				_memoryCache.Set(request, cachedGeocodeDto, _config.InMemoryCacheObjectLifetime);
+				return cachedGeocodeDto;
 			}
 
 			if (_config.IsDebug && ExternalRequstsCount > 999)
 				throw new Exception($"Для дебага достпуно только 1000 запросов в день. Лимит исчерпан. Лимит будет сброшен через {TimeSpan.FromHours(24) - (DateTimeOffset.UtcNow - LastExternalRequestLimitSet)}. Всё ещё можно использовать запросы к кешу.");
 
-			PolicyResult<YandexGeocodeResponse?> result = default!;
+			PolicyResult<string> resultBody = default!;
+			YandexGeocodeResponse geocode = default!;
 			try
 			{
-				result = await _asyncPolicy.ExecuteAndCaptureAsync(async internalCt =>
+				resultBody = await _asyncPolicy.ExecuteAndCaptureAsync(async internalCt =>
 				{
 					using var httpRequest = new HttpRequestMessage(HttpMethod.Get, request);
 
@@ -138,9 +140,10 @@ namespace WebApi.Services.Yandex
 
 					var body = await response.Content.ReadAsStringAsync(internalCt);
 
-					var geocode = JsonConvert.DeserializeObject<YandexGeocodeResponse>(body);
-					return geocode;
+					return body;
 				}, ct);
+
+				geocode = JsonConvert.DeserializeObject<YandexGeocodeResponse>(resultBody.Result)!;
 			}
 			catch (Exception exception)
 			{
@@ -149,19 +152,19 @@ namespace WebApi.Services.Yandex
 				return _failResponse;
 			}
 
-			if (result.Outcome == OutcomeType.Failure)
+			if (resultBody.Outcome == OutcomeType.Failure)
 			{
-				_logger.Error(result.FinalException, "Fail to get suggestion for {Input}", request);
+				_logger.Error(resultBody.FinalException, "Fail to get suggestion for {Input}", request);
 				_memoryCache.Set(request, _failResponse, _config.FailExpiry);
 				return _failResponse;
 			}
 
-			_ = _redisCacheService.SetAsync(redis, request, result.Result, _config.DistributedCacheExpiry);
-			cachedResponseDto = result.Result!.Response.GeoObjectCollection.FeatureMember.Length > 0
-				? _yandexGeocodeResponseDtoMapper.ToDtoLight(result.Result!)
+			_ = _redisCacheService.SetStringAsync(redis, request, resultBody.Result, _config.DistributedCacheExpiry);
+			cachedGeocodeDto = geocode.Response.GeoObjectCollection.FeatureMember.Length > 0
+				? _yandexGeocodeResponseDtoMapper.ToDtoLight(geocode)
 				: _emptyResponse;
-			_memoryCache.Set(request, cachedResponseDto, _config.DistributedCacheExpiry);
-			return cachedResponseDto;
+			_memoryCache.Set(request, cachedGeocodeDto, _config.DistributedCacheExpiry);
+			return cachedGeocodeDto;
 		}
 	}
 }

@@ -29,7 +29,7 @@ namespace WebApi.Services.Yandex
 		private readonly IRouteServiceConfig _config;
 		private readonly IRedisCacheService _redisCacheService;
 
-		private readonly IAsyncPolicy<YandexRouteResponse?> _asyncPolicy;
+		private readonly IAsyncPolicy<string> _asyncPolicy;
 
 		public RouteService(
 			IRouteServiceConfig config,
@@ -38,14 +38,15 @@ namespace WebApi.Services.Yandex
 			_config = config;
 			_redisCacheService = redisCacheService;
 
-			_asyncPolicy = Policy<YandexRouteResponse?>
+			_asyncPolicy = Policy<string>
 				.Handle<HttpRequestException>()
+				.OrResult(string.IsNullOrWhiteSpace)
 				.WaitAndRetryAsync(_config.RetryCount,
 				attempt => TimeSpan.FromMilliseconds(100 + 40 * attempt),
-				(exception, timespan, attempt, context) =>
+				(result, timespan, attempt, context) =>
 				{
-					_logger.Error("Failed to fetch yandex route. Attempt {Attempt}, time delay {TimeDelay}, context {Context}, exception {Exception}",
-						attempt, timespan, context, exception);
+					_logger.Error("Failed to fetch yandex route. Attempt {Attempt}, time delay {TimeDelay}, context {Context}, result {Result}, exception {Exception}",
+						attempt, timespan, context, result.Result, result.Exception);
 				});
 
 			if (_config.IsDebug)
@@ -78,10 +79,11 @@ namespace WebApi.Services.Yandex
 			if (_config.IsDebug && ExternalRequstsCount > 999)
 				throw new Exception($"Для дебага достпуно только 1000 запросов в день. Лимит исчерпан. Лимит будет сброшен через {TimeSpan.FromHours(24) - (DateTimeOffset.UtcNow - LastExternalRequestLimitSet)}. Всё ещё можно использовать запросы к кешу.");
 
-			PolicyResult<YandexRouteResponse?> result = default!;
+			PolicyResult<string> routeBody = default!;
+			YandexRouteResponse route = default!;
 			try
 			{
-				result = await _asyncPolicy.ExecuteAndCaptureAsync(async internalCt =>
+				routeBody = await _asyncPolicy.ExecuteAndCaptureAsync(async internalCt =>
 				{
 					using var httpRequest = new HttpRequestMessage(HttpMethod.Get, request);
 
@@ -91,10 +93,10 @@ namespace WebApi.Services.Yandex
 
 					var body = await response.Content.ReadAsStringAsync(internalCt);
 
-					var route = JsonConvert.DeserializeObject<YandexRouteResponse>(body);
-
-					return route;
+					return body;
 				}, ct);
+
+				route = JsonConvert.DeserializeObject<YandexRouteResponse>(routeBody.Result)!;
 			}
 			catch (Exception exception)
 			{
@@ -103,15 +105,15 @@ namespace WebApi.Services.Yandex
 				return _failResponse;
 			}
 
-			if (result.Outcome == OutcomeType.Failure)
+			if (routeBody.Outcome == OutcomeType.Failure)
 			{
-				_logger.Error("Fail to get route for {Input}. Exception: {Exception}", pointsAsStr, result.FinalException);
+				_logger.Error("Fail to get route for {Input}. Exception: {Exception}", pointsAsStr, routeBody.FinalException);
 				_ = _redisCacheService.SetAsync(redis, request, _failResponse, _config.FailExpiry);
 				return _failResponse;
 			}
 
-			_ = _redisCacheService.SetAsync(redis, request, result.Result, _config.Expiry);
-			return result.Result;
+			_ = _redisCacheService.SetStringAsync(redis, request, routeBody.Result, _config.Expiry);
+			return route;
 		}
 	}
 }
