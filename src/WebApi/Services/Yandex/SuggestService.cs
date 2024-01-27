@@ -32,6 +32,7 @@ namespace WebApi.Services.Yandex
 
 		private readonly ISuggestServiceConfig _config;
 		private readonly IRedisCacheService _redisCacheService;
+		private readonly IRedisDataBaseFactory _redisDataBaseFactory;
 		private readonly IYandexSuggestResponseDtoMapper _yandexSuggestResponseDtoMapper;
 
 		private readonly IAsyncPolicy<string> _asyncPolicy;
@@ -40,11 +41,13 @@ namespace WebApi.Services.Yandex
 		public SuggestService(
 			ISuggestServiceConfig config,
 			IRedisCacheService redisCacheService,
-			IYandexSuggestResponseDtoMapper yandexSuggestResponseDtoMapper)
+			IYandexSuggestResponseDtoMapper yandexSuggestResponseDtoMapper,
+			IRedisDataBaseFactory redisDataBaseFactory)
 		{
 			_config = config;
 			_redisCacheService = redisCacheService;
 			_yandexSuggestResponseDtoMapper = yandexSuggestResponseDtoMapper;
+			_redisDataBaseFactory = redisDataBaseFactory;
 
 			_asyncPolicy = Policy<string>
 				.Handle<HttpRequestException>()
@@ -86,7 +89,7 @@ namespace WebApi.Services.Yandex
 
 			var request = $"https://suggest-maps.yandex.ru/v1/suggest?apikey={_config.ApiKey}&text={input}&highlight=0&print_address=1&attrs=uri";
 
-			using var redis = _redisCacheService.Connect();
+			using var redis = _redisDataBaseFactory.Connect();
 			var (cacheExists, cachedResponse) = _redisCacheService.TryGet<YandexSuggestResponse>(redis, request);
 
 			if (cacheExists)
