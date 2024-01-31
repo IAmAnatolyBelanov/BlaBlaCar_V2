@@ -2,28 +2,24 @@
 #nullable enable
 namespace WebApi.Models
 {
-    public partial class RideDtoMapper
+    public partial class RidePreparationMapper
     {
-        private partial void ToDtoAuto(global::WebApi.Models.Ride ride, global::WebApi.Models.RideDto dto)
+        private partial void ToDtoAuto(global::WebApi.Models.Ride ride, global::WebApi.Models.RidePreparationDto dto)
         {
-            dto.Status = ride.Status;
             dto.Id = ride.Id;
             dto.DriverId = ride.DriverId;
             dto.AvailablePlacesCount = ride.AvailablePlacesCount;
         }
 
-        private partial void FromDtoAuto(global::WebApi.Models.RideDto dto, global::WebApi.Models.Ride ride)
+        private partial void FromDtoAuto(global::WebApi.Models.RidePreparationDto dto, global::WebApi.Models.Ride ride)
         {
             ride.Id = dto.Id;
             ride.DriverId = dto.DriverId;
             ride.AvailablePlacesCount = dto.AvailablePlacesCount;
-            ride.Status = dto.Status;
         }
 
-        private partial void BetweenDtosAuto(global::WebApi.Models.RideDto from, global::WebApi.Models.RideDto to)
+        private partial void BetweenDtosAuto(global::WebApi.Models.RidePreparationDto from, global::WebApi.Models.RidePreparationDto to)
         {
-            to.Prices = from.Prices;
-            to.Status = from.Status;
             to.Id = from.Id;
             to.DriverId = from.DriverId;
             to.Legs = from.Legs;

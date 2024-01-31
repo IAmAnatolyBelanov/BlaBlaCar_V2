@@ -28,30 +28,18 @@ namespace WebApi.Services.Validators
 		public const string NotEveryLegPairHasPrice = "Ride_NotEveryLegPairHasPrice";
 	}
 
-	public class RideValidator : AbstractValidator<RideDto>
+	public class RidePreparaionValidator : AbstractValidator<RidePreparationDto>
 	{
-		private readonly IValidator<LegDto> _legValidator;
-		private readonly IValidator<PriceDto> _priceValidator;
-
 		private readonly IRideServiceConfig _rideServiceConfig;
 
-		private readonly IReadOnlyDictionary<int, int> _validPriceWaypointCounts;
-		private readonly IReadOnlyDictionary<int, int> _validWaypointPriceCounts;
+		private readonly IValidator<LegDto> _legValidator;
 
-		public RideValidator(
-			IValidator<LegDto> legValidator,
+		public RidePreparaionValidator(
 			IRideServiceConfig rideServiceConfig,
-			IValidator<PriceDto> priceValidator)
+			IValidator<LegDto> legValidator)
 		{
-			_legValidator = legValidator;
-			_priceValidator = priceValidator;
-
 			_rideServiceConfig = rideServiceConfig;
-
-			_validPriceWaypointCounts = Helpers.ValidPriceWaypointCounts(_rideServiceConfig.MaxWaypoints)
-				.ToDictionary(x => x.PricesCount, x => x.WaypointsCount);
-			_validWaypointPriceCounts = Helpers.ValidPriceWaypointCounts(_rideServiceConfig.MaxWaypoints)
-				.ToDictionary(x => x.WaypointsCount, x => x.PricesCount);
+			_legValidator = legValidator;
 
 			RuleFor(x => x.Id)
 				.NotEmpty()
@@ -60,6 +48,10 @@ namespace WebApi.Services.Validators
 			RuleFor(x => x.DriverId)
 				.NotEmpty()
 				.WithErrorCode(RideValidationCodes.EmptyDriverId);
+
+			RuleFor(x => x.AvailablePlacesCount)
+				.GreaterThanOrEqualTo(1)
+				.WithErrorCode(RideValidationCodes.WrongAvailablePlacesCount);
 
 			RuleFor(x => x.Legs)
 				.NotEmpty()
@@ -89,50 +81,10 @@ namespace WebApi.Services.Validators
 								.WithMessage($"Коллекция {nameof(RideDto.Legs)} не создаёт неразрвыной последовательности");
 						});
 				});
-
-			RuleFor(x => x.AvailablePlacesCount)
-				.GreaterThanOrEqualTo(1)
-				.WithErrorCode(RideValidationCodes.WrongAvailablePlacesCount);
-
-			RuleFor(x => x.Prices)
-				.NotEmpty()
-				.WithErrorCode(RideValidationCodes.EmptyPricesCollection)
-				.DependentRules(() =>
-				{
-					RuleFor(x => x.Prices)
-						.Must((ride, _) => !ride.Prices!.ContainsNull())
-						.WithErrorCode(RideValidationCodes.PricesCollectionContansNull)
-						.WithMessage($"{nameof(RideDto.Prices)} содержит NULL элемент")
-						.DependentRules(() =>
-						{
-							RuleFor(x => x.Prices)
-								.Must((ride, _) => IsPricesCountValid(ride))
-								.WithMessage(x =>
-								{
-									if (_validWaypointPriceCounts.TryGetValue(x.WaypointsCount, out var validPricesCount))
-										return $"Для {x.WaypointsCount} точек должно быть {validPricesCount} цен";
-									else
-										return $"Для {x.WaypointsCount} точек невозможно посчитать необходимое количество цен";
-								})
-								.WithErrorCode(RideValidationCodes.WrongPricesCount);
-
-							RuleFor(x => x.Prices).Custom(PriceValidatorWrapper!);
-
-							RuleForEach(x => x.Prices)
-								.Must((ride, price) => price.StartLeg?.RideId == ride.Id && price.EndLeg?.RideId == ride.Id)
-								.WithErrorCode(RideValidationCodes.MissmatchRideIdInPrice)
-								.WithMessage((ride, price) => $"Price {price.Id} не связан с {ride.Id}");
-						});
-				});
-
-
-			RuleFor(x => x.Prices)
-				.Must(DoesEveryLegPairHavePrice!)
-				.WithErrorCode(RideValidationCodes.NotEveryLegPairHasPrice)
-				.WithMessage("Не для каждой пары Legs удалось найти Price");
 		}
 
-		private void LegLavidatorWrapper(IReadOnlyList<LegDto> legs, ValidationContext<RideDto> context)
+
+		private void LegLavidatorWrapper(IReadOnlyList<LegDto> legs, ValidationContext<RidePreparationDto> context)
 		{
 			bool anyError = false;
 
@@ -164,40 +116,6 @@ namespace WebApi.Services.Validators
 					ErrorMessage = $"В коллекции {nameof(RideDto.Legs)} содержатся невалидные элементы",
 					PropertyName = nameof(RideDto.Legs),
 					AttemptedValue = legs
-				});
-			}
-		}
-
-		private void PriceValidatorWrapper(IReadOnlyList<PriceDto> prices, ValidationContext<RideDto> context)
-		{
-			bool anyError = false;
-
-			for (int priceIndex = 0; priceIndex < prices.Count; priceIndex++)
-			{
-				var price = prices[priceIndex];
-
-				var internalErrors = _priceValidator.Validate(price);
-
-				if (!internalErrors.IsValid)
-				{
-					for (int errorIndex = 0; errorIndex < internalErrors.Errors.Count; errorIndex++)
-					{
-						var error = internalErrors.Errors[errorIndex];
-						error.ErrorMessage = $"Prices[{priceIndex}] - Price {price.Id} - is invalid. {error.ErrorMessage}";
-						context.AddFailure(error);
-					}
-				}
-			}
-
-			if (anyError)
-			{
-				context.AddFailure(new ValidationFailure()
-				{
-					Severity = Severity.Error,
-					ErrorCode = RideValidationCodes.ContainsInvalidPrice,
-					ErrorMessage = $"В коллекции {nameof(RideDto.Prices)} содержатся невалидные элементы",
-					PropertyName = nameof(RideDto.Prices),
-					AttemptedValue = prices
 				});
 			}
 		}
@@ -240,6 +158,110 @@ namespace WebApi.Services.Validators
 			}
 
 			return true;
+		}
+	}
+
+	public class RideValidator : AbstractValidator<RideDto>
+	{
+		private readonly IValidator<RidePreparationDto> _ridePreparationValidator;
+		private readonly IValidator<LegDto> _legValidator;
+		private readonly IValidator<PriceDto> _priceValidator;
+
+		private readonly IRideServiceConfig _rideServiceConfig;
+
+		private readonly IReadOnlyDictionary<int, int> _validPriceWaypointCounts;
+		private readonly IReadOnlyDictionary<int, int> _validWaypointPriceCounts;
+
+		public RideValidator(
+			IValidator<RidePreparationDto> ridePreparationValidator,
+			IValidator<LegDto> legValidator,
+			IRideServiceConfig rideServiceConfig,
+			IValidator<PriceDto> priceValidator)
+		{
+			_ridePreparationValidator = ridePreparationValidator;
+			_legValidator = legValidator;
+			_priceValidator = priceValidator;
+
+			_rideServiceConfig = rideServiceConfig;
+
+			_validPriceWaypointCounts = Helpers.ValidPriceWaypointCounts(_rideServiceConfig.MaxWaypoints)
+				.ToDictionary(x => x.PricesCount, x => x.WaypointsCount);
+			_validWaypointPriceCounts = Helpers.ValidPriceWaypointCounts(_rideServiceConfig.MaxWaypoints)
+				.ToDictionary(x => x.WaypointsCount, x => x.PricesCount);
+
+			RuleFor(x => x)
+				.Custom((_, context) => _ridePreparationValidator.Validate(context));
+
+			RuleFor(x => x.Prices)
+				.NotEmpty()
+				.WithErrorCode(RideValidationCodes.EmptyPricesCollection)
+				.DependentRules(() =>
+				{
+					RuleFor(x => x.Prices)
+						.Must((ride, _) => !ride.Prices!.ContainsNull())
+						.WithErrorCode(RideValidationCodes.PricesCollectionContansNull)
+						.WithMessage($"{nameof(RideDto.Prices)} содержит NULL элемент")
+						.DependentRules(() =>
+						{
+							RuleFor(x => x.Prices)
+								.Must((ride, _) => IsPricesCountValid(ride))
+								.WithMessage(x =>
+								{
+									if (_validWaypointPriceCounts.TryGetValue(x.WaypointsCount, out var validPricesCount))
+										return $"Для {x.WaypointsCount} точек должно быть {validPricesCount} цен";
+									else
+										return $"Для {x.WaypointsCount} точек невозможно посчитать необходимое количество цен";
+								})
+								.WithErrorCode(RideValidationCodes.WrongPricesCount);
+
+							RuleFor(x => x.Prices).Custom(PriceValidatorWrapper!);
+
+							RuleForEach(x => x.Prices)
+								.Must((ride, price) => price.StartLeg?.RideId == ride.Id && price.EndLeg?.RideId == ride.Id)
+								.WithErrorCode(RideValidationCodes.MissmatchRideIdInPrice)
+								.WithMessage((ride, price) => $"Price {price.Id} не связан с {ride.Id}");
+						});
+				});
+
+
+			RuleFor(x => x.Prices)
+				.Must(DoesEveryLegPairHavePrice!)
+				.WithErrorCode(RideValidationCodes.NotEveryLegPairHasPrice)
+				.WithMessage("Не для каждой пары Legs удалось найти Price");
+		}
+
+		private void PriceValidatorWrapper(IReadOnlyList<PriceDto> prices, ValidationContext<RideDto> context)
+		{
+			bool anyError = false;
+
+			for (int priceIndex = 0; priceIndex < prices.Count; priceIndex++)
+			{
+				var price = prices[priceIndex];
+
+				var internalErrors = _priceValidator.Validate(price);
+
+				if (!internalErrors.IsValid)
+				{
+					for (int errorIndex = 0; errorIndex < internalErrors.Errors.Count; errorIndex++)
+					{
+						var error = internalErrors.Errors[errorIndex];
+						error.ErrorMessage = $"Prices[{priceIndex}] - Price {price.Id} - is invalid. {error.ErrorMessage}";
+						context.AddFailure(error);
+					}
+				}
+			}
+
+			if (anyError)
+			{
+				context.AddFailure(new ValidationFailure()
+				{
+					Severity = Severity.Error,
+					ErrorCode = RideValidationCodes.ContainsInvalidPrice,
+					ErrorMessage = $"В коллекции {nameof(RideDto.Prices)} содержатся невалидные элементы",
+					PropertyName = nameof(RideDto.Prices),
+					AttemptedValue = prices
+				});
+			}
 		}
 
 		private bool IsPricesCountValid(RideDto ride)

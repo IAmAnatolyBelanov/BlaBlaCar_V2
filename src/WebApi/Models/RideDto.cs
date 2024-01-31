@@ -4,17 +4,13 @@ using Riok.Mapperly.Abstractions;
 
 namespace WebApi.Models
 {
-	public class RideDto
+	public class RideDto : RidePreparationDto
 	{
-		public Guid Id { get; set; }
-		public ulong DriverId { get; set; }
-
-		public IReadOnlyList<LegDto>? Legs { get; set; }
 		public int WaypointsCount => Legs?.Count + 1 ?? 0;
 
-		public int AvailablePlacesCount { get; set; }
-
 		public IReadOnlyList<PriceDto>? Prices { get; set; }
+
+		public RideStatus Status { get; set; }
 
 		public void NormalizeLegs()
 		{
@@ -56,7 +52,20 @@ namespace WebApi.Models
 		}
 	}
 
+	public class RidePreparationDto
+	{
+		public Guid Id { get; set; }
+		public ulong DriverId { get; set; }
+
+		public IReadOnlyList<LegDto>? Legs { get; set; }
+		public int AvailablePlacesCount { get; set; }
+	}
+
 	public interface IRideDtoMapper : IBaseMapper<Ride, RideDto>
+	{
+	}
+
+	public interface IRidePreparationDtoMapper : IBaseMapper<Ride, RidePreparationDto>
 	{
 	}
 
@@ -85,6 +94,32 @@ namespace WebApi.Models
 		protected override void FromDtoAbstract(RideDto dto, Ride entity, IDictionary<object, object> mappedObjects)
 			=> FromDtoAuto(dto, entity);
 		protected override void ToDtoAbstract(Ride entity, RideDto dto, IDictionary<object, object> mappedObjects)
+			=> ToDtoAuto(entity, dto);
+	}
+
+	[Mapper]
+	public partial class RidePreparationMapper : BaseMapper<Ride, RidePreparationDto>, IRidePreparationDtoMapper
+	{
+		public RidePreparationMapper() : base(() => new(), () => new())
+		{
+		}
+
+		[MapperIgnoreTarget(nameof(RidePreparationDto.Legs))]
+		private partial void ToDtoAuto(Ride ride, RidePreparationDto dto);
+
+		private partial void FromDtoAuto(RidePreparationDto dto, Ride ride);
+
+		private partial void BetweenDtosAuto(RidePreparationDto from, RidePreparationDto to);
+		private partial void BetweenEntitiesAuto(Ride from, Ride to);
+
+
+		protected override void BetweenDtos(RidePreparationDto from, RidePreparationDto to)
+			=> BetweenDtosAuto(from, to);
+		protected override void BetweenEntities(Ride from, Ride to)
+			=> BetweenEntitiesAuto(from, to);
+		protected override void FromDtoAbstract(RidePreparationDto dto, Ride entity, IDictionary<object, object> mappedObjects)
+			=> FromDtoAuto(dto, entity);
+		protected override void ToDtoAbstract(Ride entity, RidePreparationDto dto, IDictionary<object, object> mappedObjects)
 			=> ToDtoAuto(entity, dto);
 	}
 }
