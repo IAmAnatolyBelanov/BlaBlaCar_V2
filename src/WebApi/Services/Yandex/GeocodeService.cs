@@ -83,21 +83,21 @@ namespace WebApi.Services.Yandex
 
 		public async ValueTask<YandexGeocodeResponseDto> AddressToGeoCode(string address, CancellationToken ct)
 		{
-			var request = $"https://geocode-maps.yandex.ru/1.x?apikey={_config.ApiKey}&geocode={address.ToLowerInvariant()}&format=json&results=1";
+			var request = $"https://geocode-maps.yandex.ru/1.x?geocode={address.ToLowerInvariant()}&format=json&results=1";
 
 			return await GetGeocode(request, ct);
 		}
 
 		public async ValueTask<YandexGeocodeResponseDto> UriToGeoCode(string uri, CancellationToken ct)
 		{
-			var request = $"https://geocode-maps.yandex.ru/1.x?apikey={_config.ApiKey}&uri={uri}&format=json&results=1";
+			var request = $"https://geocode-maps.yandex.ru/1.x?uri={uri}&format=json&results=1";
 
 			return await GetGeocode(request, ct);
 		}
 
 		public async ValueTask<YandexGeocodeResponseDto> PointToGeoCode(FormattedPoint point, CancellationToken ct)
 		{
-			var request = $"https://geocode-maps.yandex.ru/1.x?apikey={_config.ApiKey}&geocode={point.Longitude:F6} {point.Latitude:F6}&sco=longlat&format=json&results=1";
+			var request = $"https://geocode-maps.yandex.ru/1.x?geocode={point.Longitude:F6} {point.Latitude:F6}&sco=longlat&format=json&results=1";
 
 			return await GetGeocode(request, ct);
 		}

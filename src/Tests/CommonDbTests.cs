@@ -6,37 +6,34 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 using WebApi.DataAccess;
-using WebApi.Migrations;
-using WebApi.Models;
 
-namespace Tests
+namespace Tests;
+
+public class CommonDbTests : IClassFixture<TestAppFactoryWithDb>
 {
-	public class CommonDbTests : IClassFixture<TestAppFactoryWithDb>
+	private readonly IServiceProvider _provider;
+	public CommonDbTests(TestAppFactoryWithDb fixture)
 	{
-		private readonly IServiceProvider _provider;
-		public CommonDbTests(TestAppFactoryWithDb fixture)
-		{
-			_provider = fixture.Services;
+		_provider = fixture.Services;
 
-			fixture.MigrateDb();
-		}
+		fixture.MigrateDb();
+	}
 
-		[Fact]
-		public void DbContainsFunctions()
-		{
-			var requredFunctions = DbConstants.FunctionNames.AllConstants.Keys.AsList();
+	[Fact]
+	public void DbContainsFunctions()
+	{
+		var requredFunctions = DbConstants.FunctionNames.AllConstants.Keys.AsList();
 
-			using var scope = _provider.CreateScope();
-			using var context = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
+		using var scope = _provider.CreateScope();
+		using var context = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
 
-			var allFunctions = context.Database.SqlQuery<string>($@"
+		var allFunctions = context.Database.SqlQuery<string>($@"
 SELECT routine_name
 FROM  information_schema.routines
 WHERE routine_type = 'FUNCTION'
 AND routine_schema = 'public'")
-				.ToHashSet();
+			.ToHashSet();
 
-			allFunctions.Should().Contain(requredFunctions);
-		}
+		allFunctions.Should().Contain(requredFunctions);
 	}
 }

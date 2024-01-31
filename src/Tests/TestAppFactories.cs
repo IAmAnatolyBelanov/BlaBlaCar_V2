@@ -5,10 +5,11 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-
 using Testcontainers.PostgreSql;
+using Testcontainers.Redis;
 
 using WebApi.DataAccess;
+using WebApi.Services.Redis;
 
 namespace Tests
 {
@@ -64,6 +65,72 @@ namespace Tests
 					Thread.Sleep(sleepPerionMs);
 				}
 			}
+		}
+	}
+
+	public class TestAppFactoryWithRedis : WebApplicationFactory<Program>, IDisposable
+	{
+		private readonly string _mountPath = Path.Combine(Path.GetTempPath(), nameof(TestAppFactoryWithRedis), Guid.NewGuid().ToString());
+		private readonly RedisBuilder _redisBuilder;
+		private RedisContainer _redisContainer;
+
+		public TestAppFactoryWithRedis()
+		{
+			Directory.CreateDirectory(_mountPath);
+
+			_redisBuilder = new RedisBuilder()
+				.WithBindMount(_mountPath, "/data")
+				.WithImage("redis:7.2.3");
+
+			_redisContainer = _redisBuilder.Build();
+			Task.Run(async () => await _redisContainer.StartAsync()).Wait();
+		}
+
+		protected override void ConfigureWebHost(IWebHostBuilder builder)
+		{
+			base.ConfigureWebHost(builder);
+
+			builder.ConfigureTestServices(services =>
+			{
+				services.RemoveAll<IRedisCacheServiceConfig>();
+				var redisConfig = new RedisCacheServiceConfig()
+				{
+					ConnectionString = _redisContainer.GetConnectionString()
+				};
+				services.AddSingleton<IRedisCacheServiceConfig>(redisConfig);
+			});
+		}
+
+		public void RestartContainer(TimeSpan extraDelay)
+		{
+			lock (this)
+			{
+				// Чтобы всё нужное сдампилось.
+				Thread.Sleep(1500);
+
+				var port = _redisContainer.GetMappedPublicPort(6379);
+
+				Task.Run(() => _redisContainer.StopAsync()).Wait();
+
+				if (extraDelay > TimeSpan.Zero)
+					Thread.Sleep(extraDelay);
+
+				_redisContainer = _redisBuilder
+					.WithPortBinding(port, 6379)
+					.Build();
+
+				Task.Run(async () => await _redisContainer.StartAsync()).Wait();
+			}
+		}
+
+		protected override void Dispose(bool disposing)
+		{
+			lock (this)
+			{
+				if (Directory.Exists(_mountPath))
+					Directory.Delete(_mountPath, recursive: true);
+			}
+			base.Dispose(disposing);
 		}
 	}
 }
