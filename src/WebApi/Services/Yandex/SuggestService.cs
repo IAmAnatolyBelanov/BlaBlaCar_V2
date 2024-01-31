@@ -84,10 +84,10 @@ namespace WebApi.Services.Yandex
 			if (_memoryCache.TryGetValue(input, out var cachedResponseDto))
 				return cachedResponseDto;
 
-			var request = $"https://suggest-maps.yandex.ru/v1/suggest?apikey={_config.ApiKey}&text={input}&highlight=0&print_address=1&attrs=uri";
+			var redisKey = $"https://suggest-maps.yandex.ru/v1/suggest?text={input}&highlight=0&print_address=1&attrs=uri";
 
 			var (cacheExists, cachedResponse)
-				= _redisCacheService.TryGet<YandexSuggestResponse>(request);
+				= _redisCacheService.TryGet<YandexSuggestResponse>(redisKey);
 
 			if (cacheExists)
 			{
@@ -96,12 +96,14 @@ namespace WebApi.Services.Yandex
 
 				cachedResponseDto = _yandexSuggestResponseDtoMapper.ToDtoLight(cachedResponse);
 				_memoryCache.Set(input, cachedResponseDto, _config.InMemoryCacheObjectLifetime);
-					return cachedResponseDto;
+
+				return cachedResponseDto;
 			}
 
 			if (_config.IsDebug && ExternalRequstsCount > 999)
 				throw new Exception($"Для дебага достпуно только 1000 запросов в день. Лимит исчерпан. Лимит будет сброшен через {TimeSpan.FromHours(24) - (DateTimeOffset.UtcNow - LastExternalRequestLimitSet)}. Всё ещё можно использовать запросы к кешу.");
 
+			var request = $"{redisKey}&apikey={_config.ApiKey}";
 			PolicyResult<string> suggestionBody = default!;
 			YandexSuggestResponse suggestion = default!;
 			try
@@ -135,7 +137,7 @@ namespace WebApi.Services.Yandex
 				return _failResponse;
 			}
 
-			_ = _redisCacheService.SetStringAsync(request, suggestionBody.Result, _config.DistributedCacheExpiry, CancellationToken.None);
+			_ = _redisCacheService.SetStringAsync(redisKey, suggestionBody.Result, _config.DistributedCacheExpiry, CancellationToken.None);
 			cachedResponseDto = _yandexSuggestResponseDtoMapper.ToDtoLight(suggestion);
 			_memoryCache.Set(input, cachedResponseDto, _config.DistributedCacheExpiry);
 			return cachedResponseDto;
