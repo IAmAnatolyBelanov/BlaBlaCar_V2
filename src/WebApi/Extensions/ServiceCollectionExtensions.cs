@@ -4,8 +4,6 @@ using Riok.Mapperly.Abstractions;
 
 using System.Reflection;
 
-using WebApi.Models;
-
 namespace WebApi.Extensions
 {
 	public static class ServiceCollectionExtensions
@@ -14,34 +12,71 @@ namespace WebApi.Extensions
 
 		// Я так и не понял, почему не удаётся протащить нормальный Configuration.Bind без извращений.
 		public static void RegisterConfigs(this IServiceCollection services, Action<string, object> bind)
+			=> RegisterConfigs(services, bind, Assembly.GetExecutingAssembly());
+		public static void RegisterConfigs(this IServiceCollection services, Action<string, object> bind, Assembly assembly)
 		{
-			var configTypes = Assembly.GetExecutingAssembly().GetTypes()
-				.Where(t => typeof(IBaseConfig).IsAssignableFrom(t) && !t.IsInterface)
-				.ToArray();
+			var configTypes = GetAllConfigTypes(assembly);
 
 			foreach (var configType in configTypes)
 			{
-				var interfaces = configType.GetInterfaces();
-				var configInterface = interfaces
-					.Except(interfaces.SelectMany(i => i.GetInterfaces()))
+				var tempServiceKey = Guid.NewGuid().ToString();
+
+				var configInterfaces = configType.GetInterfaces()
 					.Where(i => i != typeof(IBaseConfig))
-					.Single();
+					.ToArray();
 
-				var config = Activator.CreateInstance(configType);
-				bind(((IBaseConfig)config!).Position, config);
+				services.AddKeyedSingleton(typeof(IBaseConfig), tempServiceKey, configType);
+				services.AddSingleton(typeof(IBaseConfig), provider =>
+				{
+					var config = provider.GetRequiredKeyedService(typeof(IBaseConfig), tempServiceKey);
+					var baseConf = config as IBaseConfig;
+					bind(baseConf!.Position, config);
+					var errors = baseConf.GetValidationErrors().ToArray();
 
-				var errors = ((IBaseConfig)config).GetValidationErrors().ToArray();
-				if (errors.Length != 0)
-					throw new Exception($"Fail on validation {configType.FullName}.{Environment.NewLine}{RenderErrors(errors)}");
+					if (errors.Length != 0)
+						throw new Exception($"Fail on validation {configType.FullName}.{Environment.NewLine}{RenderErrors(errors)}");
 
-				services.AddSingleton(configInterface, config);
+					_logger.Debug(
+						"For interface {Interface} registered implementation {Implementation}: {Json}",
+						typeof(IBaseConfig).FullName,
+						configType.FullName,
+						JsonConvert.SerializeObject(config));
+					return config;
+				});
 
-				_logger.Debug(
-					"For interface {Interface} registered implementation {Implementation}: {Json}",
-					configInterface.FullName,
-					configType.FullName,
-					JsonConvert.SerializeObject(config));
+				foreach (var configInterface in configInterfaces)
+				{
+					services.AddSingleton(configInterface, provider =>
+					{
+						var config = provider.GetRequiredKeyedService(typeof(IBaseConfig), tempServiceKey); _logger.Debug(
+							"For interface {Interface} registered implementation {Implementation}: {Json}",
+							configInterface.FullName,
+							configType.FullName,
+							JsonConvert.SerializeObject(config));
+						return config;
+					});
+				}
 			}
+		}
+
+		public static void ValidateConfigs(this IServiceProvider serviceProvider)
+		{
+			var configs = serviceProvider.GetRequiredService<IEnumerable<IBaseConfig>>().ToArray();
+
+			foreach (var config in configs)
+			{
+				var errors = config.GetValidationErrors().ToArray();
+
+				if (errors.Length != 0)
+					throw new Exception($"Fail on validation {config.GetType().FullName}.{Environment.NewLine}{RenderErrors(errors)}");
+			}
+		}
+
+		private static Type[] GetAllConfigTypes(Assembly assembly)
+		{
+			return assembly.GetTypes()
+				.Where(t => typeof(IBaseConfig).IsAssignableFrom(t) && t != typeof(IBaseConfig))
+				.ToArray();
 		}
 
 		private static string RenderErrors(string[] errors)

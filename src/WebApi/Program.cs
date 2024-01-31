@@ -70,6 +70,8 @@ public class Program
 
 		var app = builder.Build();
 
+		app.Services.ValidateConfigs();
+
 		app.UseMiddleware<ExceptionMiddleware>();
 
 		// Configure the HTTP request pipeline.
