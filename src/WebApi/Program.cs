@@ -60,7 +60,6 @@ public class Program
 		builder.Services.AddSingleton<IClock, Clock>();
 
 		builder.Services.AddSingleton<IRedisCacheService, RedisCacheService>();
-		builder.Services.AddSingleton<IRedisDataBaseFactory, RedisDataBaseFactory>();
 		builder.Services.AddSingleton<ISuggestService, SuggestService>();
 		builder.Services.AddSingleton<IGeocodeService, GeocodeService>();
 		builder.Services.AddSingleton<IRouteService, RouteService>();

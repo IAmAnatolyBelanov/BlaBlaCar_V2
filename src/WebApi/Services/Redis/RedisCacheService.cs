@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
-
+using Polly;
+using Polly.CircuitBreaker;
 using StackExchange.Redis;
 
 namespace WebApi.Services.Redis
@@ -7,14 +8,14 @@ namespace WebApi.Services.Redis
 	public interface IRedisCacheService
 	{
 		void Clear();
-		void Set<T>(IRedisDataBase database, string key, T value, TimeSpan expiry);
-		Task SetAsync<T>(IRedisDataBase database, string key, T value, TimeSpan expiry);
-		void SetString(IRedisDataBase database, string key, string value, TimeSpan expiry);
-		Task SetStringAsync(IRedisDataBase database, string key, string value, TimeSpan expiry);
-		(bool, T?) TryGet<T>(IRedisDataBase database, string key);
-		ValueTask<(bool, T?)> TryGetAsync<T>(IRedisDataBase database, string key);
-		(bool, string?) TryGetString(IRedisDataBase database, string key);
-		ValueTask<(bool, string?)> TryGetStringAsync(IRedisDataBase database, string key);
+		void Set<T>(string key, T value, TimeSpan expiry);
+		Task SetAsync<T>(string key, T value, TimeSpan expiry, CancellationToken ct);
+		void SetString(string key, string value, TimeSpan expiry);
+		Task SetStringAsync(string key, string value, TimeSpan expiry, CancellationToken ct);
+		(bool, T?) TryGet<T>(string key);
+		ValueTask<(bool, T?)> TryGetAsync<T>(string key, CancellationToken ct);
+		(bool, string?) TryGetString(string key);
+		ValueTask<(bool, string?)> TryGetStringAsync(string key, CancellationToken ct);
 	}
 
 	public class RedisCacheService : IRedisCacheService
@@ -23,35 +24,135 @@ namespace WebApi.Services.Redis
 
 		private readonly IRedisCacheServiceConfig _config;
 
+		private readonly SemaphoreSlim _semaphore;
+		private readonly object _locker = new();
+
+		private IDatabase? _current;
+
+		private readonly IAsyncPolicy _asyncPolicy;
+		private readonly ISyncPolicy _syncPolicy;
+
 		public RedisCacheService(IRedisCacheServiceConfig config)
 		{
 			_config = config;
+
+			_semaphore = new SemaphoreSlim(_config.ConcurrentConnections, _config.ConcurrentConnections);
+
+			var handleRedisExceptionsPolicy = Policy
+				.Handle<RedisException>()
+				.Or<RedisCommandException>()
+				.Or<RedisTimeoutException>()
+				.Or<RedisConnectionException>();
+
+			var retryRedisAsyncPolicy = handleRedisExceptionsPolicy
+				.WaitAndRetryAsync(_config.RetriesCount,
+				attempt => _config.RetriesDelay + TimeSpan.FromMilliseconds(40 * attempt),
+				(exception, timespan, attempt, context) =>
+				{
+					_logger.Error(exception, "Failed to execute redis command. Attempt {Attempt}, time delay {TimeDelay}, context {Context}",
+						attempt, timespan, context);
+				});
+			var circuitBreakerAsyncPolicy = handleRedisExceptionsPolicy
+				.CircuitBreakerAsync(_config.CircuitBreakerAllowedExceptionsCount, _config.CircuitBreakerOpenPeriod,
+				onBreak: (exception, delay, context) =>
+				{
+					_logger.Error(exception, "Async redis circuit breaker is opened. Context: {Context}. Waiting {Delay} before next attempt", context, delay);
+				},
+				onReset: context => _logger.Information("Async redis circuit breaker is closed. Context {Context}", context));
+			var retryCircuitBreakerAsyncPolixy = handleRedisExceptionsPolicy
+				.Or<BrokenCircuitException>()
+				.Or<IsolatedCircuitException>()
+				.WaitAndRetryAsync(_config.CircuitBreakerRetriesCount,
+				attempt => _config.CircuitBreakerOpenPeriod,
+				(exception, timespan, attempt, context) =>
+				{
+					_logger.Error(exception, "Wait for async circuit breaker. Attempt {Attempt}, time delay {TimeDelay}, context {Context}",
+						attempt, timespan, context);
+				});
+			_asyncPolicy = Policy.WrapAsync(retryRedisAsyncPolicy, circuitBreakerAsyncPolicy, retryCircuitBreakerAsyncPolixy);
+
+			var retryRedisSyncPolicy = handleRedisExceptionsPolicy
+				.WaitAndRetry(_config.RetriesCount,
+				attempt => _config.RetriesDelay + TimeSpan.FromMilliseconds(40 * attempt),
+				(exception, timespan, attempt, context) =>
+				{
+					_logger.Error(exception, "Failed to execute redis command. Attempt {Attempt}, time delay {TimeDelay}, context {Context}",
+						attempt, timespan, context);
+				});
+			var circuitBreakerSyncPolicy = handleRedisExceptionsPolicy
+				.CircuitBreaker(_config.CircuitBreakerAllowedExceptionsCount, _config.CircuitBreakerOpenPeriod,
+				onBreak: (exception, delay, context) =>
+				{
+					_logger.Error(exception, "Sync redis circuit breaker is opened. Context: {Context}. Waiting {Delay} before next attempt", context, delay);
+				},
+				onReset: context => _logger.Information("Sync redis circuit breaker is closed. Context {Context}", context));
+			var retryCircuitBreakerSyncPolixy = handleRedisExceptionsPolicy
+				.Or<BrokenCircuitException>()
+				.Or<IsolatedCircuitException>()
+				.WaitAndRetry(_config.CircuitBreakerRetriesCount,
+				attempt => _config.CircuitBreakerOpenPeriod,
+				(exception, timespan, attempt, context) =>
+				{
+					_logger.Error(exception, "Wait for sync circuit breaker. Attempt {Attempt}, time delay {TimeDelay}, context {Context}",
+						attempt, timespan, context);
+				});
+			_syncPolicy = Policy.Wrap(retryRedisSyncPolicy, circuitBreakerSyncPolicy, retryCircuitBreakerSyncPolixy);
+
+			_ = PingForever();
 		}
 
-		public (bool, string?) TryGetString(IRedisDataBase database, string key)
+		public (bool, string?) TryGetString(string key)
 		{
-			if (!database.Database.KeyExists(key))
-				return (false, default);
+			return _syncPolicy.Execute(() =>
+			{
+				_semaphore.Wait();
+				try
+				{
+					var connection = GetConnecntion();
+					var keyExists = connection.KeyExists(key);
 
-			var result = database.Database.StringGet(key);
-			return (true, result);
+					if (!keyExists)
+						return (false, default);
+
+					string? result = connection.StringGet(key);
+					return (true, result);
+				}
+				finally
+				{
+					_semaphore.Release();
+				}
+			});
 		}
 
-		public async ValueTask<(bool, string?)> TryGetStringAsync(IRedisDataBase database, string key)
+		public async ValueTask<(bool, string?)> TryGetStringAsync(string key, CancellationToken ct)
 		{
-			if (!await database.Database.KeyExistsAsync(key))
-				return (false, default);
+			return await _asyncPolicy.ExecuteAsync(async (ctInternal) =>
+			{
+				await _semaphore.WaitAsync(ctInternal);
+				try
+				{
+					var connection = GetConnecntion();
+					var keyExists = await connection.KeyExistsAsync(key);
 
-			var result = await database.Database.StringGetAsync(key);
-			return (true, result);
+					if (!keyExists)
+						return (false, default);
+
+					var result = await connection.StringGetAsync(key);
+					return (true, result);
+				}
+				finally
+				{
+					_semaphore.Release();
+				}
+			}, ct);
 		}
 
-		public (bool, T?) TryGet<T>(IRedisDataBase database, string key)
+		public (bool, T?) TryGet<T>(string key)
 		{
-			if (!database.Database.KeyExists(key))
-				return (false, default);
+			(var keyExists, var result) = TryGetString(key);
 
-			string? result = database.Database.StringGet(key);
+			if (!keyExists)
+				return (false, default);
 
 			if (string.IsNullOrWhiteSpace(result))
 				return (true, default);
@@ -59,12 +160,12 @@ namespace WebApi.Services.Redis
 			return (true, JsonConvert.DeserializeObject<T>(result));
 		}
 
-		public async ValueTask<(bool, T?)> TryGetAsync<T>(IRedisDataBase database, string key)
+		public async ValueTask<(bool, T?)> TryGetAsync<T>(string key, CancellationToken ct)
 		{
-			if (!await database.Database.KeyExistsAsync(key))
-				return (false, default);
+			(var keyExists, var result) = await TryGetStringAsync(key, ct);
 
-			string? result = await database.Database.StringGetAsync(key);
+			if (!keyExists)
+				return (false, default);
 
 			if (string.IsNullOrWhiteSpace(result))
 				return (true, default);
@@ -72,180 +173,140 @@ namespace WebApi.Services.Redis
 			return (true, JsonConvert.DeserializeObject<T>(result));
 		}
 
-		public void SetString(IRedisDataBase database, string key, string value, TimeSpan expiry)
+		public void SetString(string key, string value, TimeSpan expiry)
 		{
-			database.Database.StringSet(key, value, expiry);
-			_logger.Debug("Raw {Key} is saved for {Expiry}", key, expiry);
+			_syncPolicy.Execute(() =>
+			{
+				_semaphore.Wait();
+				try
+				{
+					var connection = GetConnecntion();
+					connection.StringSet(key, value, expiry);
+				}
+				finally
+				{
+					_semaphore.Release();
+				}
+				_logger.Debug("Raw {Key} is saved for {Expiry}", key, expiry);
+			});
 		}
 
-		public async Task SetStringAsync(IRedisDataBase database, string key, string value, TimeSpan expiry)
+		public async Task SetStringAsync(string key, string value, TimeSpan expiry, CancellationToken ct)
 		{
-			await database.Database.StringSetAsync(key, value, expiry);
-			_logger.Debug("Raw {Key} is saved for {Expiry}", key, expiry);
+			await _asyncPolicy.ExecuteAsync(async ctInternal =>
+			{
+				await _semaphore.WaitAsync(ctInternal);
+				try
+				{
+					var connection = GetConnecntion();
+					await connection.StringSetAsync(key, value, expiry);
+				}
+				finally
+				{
+					_semaphore.Release();
+				}
+				_logger.Debug("Raw {Key} is saved for {Expiry}", key, expiry);
+			}, ct);
 		}
 
-		public void Set<T>(IRedisDataBase database, string key, T value, TimeSpan expiry)
+		public void Set<T>(string key, T value, TimeSpan expiry)
 		{
 			var valueString = JsonConvert.SerializeObject(value);
-			SetString(database, key, valueString, expiry);
+			SetString(key, valueString, expiry);
 		}
 
-		public async Task SetAsync<T>(IRedisDataBase database, string key, T value, TimeSpan expiry)
+		public async Task SetAsync<T>(string key, T value, TimeSpan expiry, CancellationToken ct)
 		{
 			var valueString = JsonConvert.SerializeObject(value);
-			await SetStringAsync(database, key, valueString, expiry);
+			await SetStringAsync(key, valueString, expiry, ct);
 		}
 
 		public void Clear()
 		{
 			throw new NotImplementedException();
 		}
-	}
 
-	public interface IRedisDataBase : IDisposable
-	{
-		IDatabase Database { get; }
-	}
-
-	public class RedisDataBase : IRedisDataBase
-	{
-		public ConnectionMultiplexer ConnectionMultiplexer { get; }
-		public IDatabase Database { get; }
-
-		private readonly RedisDataBaseFactory _source;
-
-		public RedisDataBase(
-			ConnectionMultiplexer connectionMultiplexer,
-			IDatabase database,
-			RedisDataBaseFactory source)
+		private IDatabase GetConnecntion()
 		{
-			ConnectionMultiplexer = connectionMultiplexer;
-			Database = database;
-
-			_source = source;
-		}
-
-		public void Dispose()
-		{
-			_source.DisposeDataBase(this);
-		}
-
-		~RedisDataBase()
-		{
-			Dispose();
-		}
-	}
-
-	public interface IRedisDataBaseFactory
-	{
-		IRedisDataBase Connect();
-	}
-
-	public class RedisDataBaseFactory : IRedisDataBaseFactory
-	{
-		private readonly Dictionary<ConnectionMultiplexer, (HashSet<RedisDataBase> HashSet, DateTimeOffset CreateDateTime)> _usages = [];
-		private LastConnect _last;
-
-		private readonly IRedisCacheServiceConfig _config;
-		private readonly IClock _clock;
-		private readonly ILogger _logger = Log.ForContext<RedisDataBaseFactory>();
-
-		private readonly object _locker = new();
-
-		public RedisDataBaseFactory(IRedisCacheServiceConfig config, IClock clock)
-		{
-			_config = config;
-			_clock = clock;
-
-			_ = StartDisposer();
-		}
-
-		public IRedisDataBase Connect()
-		{
-			var now = _clock.Now;
-			var last = _last;
-
-			if (CanConnect(last, now))
-			{
-				return ConnectAndRemember(last);
-			}
+			var current = _current;
+			if (current is not null && current.Multiplexer.IsConnected)
+				return current;
 
 			lock (_locker)
 			{
-				last = _last;
-				if (CanConnect(last, now))
+				current = _current;
+				if (current is not null && current.Multiplexer.IsConnected)
+					return current;
+
+				if (current is not null)
+					current.Multiplexer.Dispose();
+
+				UpdateCurrentConnection();
+
+				return _current!;
+			}
+		}
+
+		private void UpdateCurrentConnection()
+		{
+			try
+			{
+				lock (_locker)
 				{
-					return ConnectAndRemember(last);
+					var current = _current;
+					if (current is not null)
+						current.Multiplexer.Dispose();
+
+					var multiplexer = ConnectionMultiplexer.Connect(_config.ConnectionString);
+					var db = multiplexer.GetDatabase();
+
+					_current = db;
 				}
 
-				var connectionMultiplexer = ConnectionMultiplexer.Connect(_config.ConnectionString);
-				var database = connectionMultiplexer.GetDatabase();
-				var deadline = now + _config.ConnectionLifetime;
-
-				_usages[connectionMultiplexer] = (new(), now);
-
-				last = new(connectionMultiplexer, database, deadline);
-				_last = last;
+				_logger.Information("Opened new connection to {RedisConnectionString}", _config.ConnectionString);
 			}
-
-			_logger.Information("Opened new connection to redis {ConnectionString}", _config.ConnectionString);
-			return ConnectAndRemember(last);
+			catch (Exception ex)
+			{
+				_logger.Error(ex, "Failed to open connection to {RedisConnectionString}", _config.ConnectionString);
+				throw;
+			}
 		}
 
-		public void DisposeDataBase(RedisDataBase redisDataBase)
+		private async Task PingForever()
 		{
-			_usages[redisDataBase.ConnectionMultiplexer].HashSet.Remove(redisDataBase);
-		}
-
-		private IRedisDataBase ConnectAndRemember(LastConnect last)
-		{
-			var result = new RedisDataBase(last.Multiplexer!, last.Database!, this);
-			_usages[last.Multiplexer!].HashSet.Add(result);
-			return result;
-		}
-
-		private bool CanConnect(LastConnect last, DateTimeOffset now)
-		{
-			return last.Database is not null && last.Deadline > now;
-		}
-
-		private async Task StartDisposer()
-		{
-			var shift = TimeSpan.FromSeconds(30);
-
 			while (true)
 			{
-				await Task.Delay(30_000);
-
-				if (_usages.Count < 2)
-					continue;
-
-				var last = _last;
-				var now = _clock.Now;
-
-				var usages = _usages.ToArray();
-
-				for (int i = 0; i < usages.Length; i++)
+				try
 				{
-					var usage = usages[i];
+					var connection = GetConnecntion();
+					connection.Ping();
+					_logger.Debug("Redis {Redis} was pinged successfully", _config.ConnectionString);
+				}
+				catch (Exception ex)
+				{
+					_logger.Error(ex, "Redis {Redis} ping failed. Try to reconnect", _config.ConnectionString);
 
-					if (usage.Key == last.Multiplexer || usage.Value.CreateDateTime >= now - shift)
-						continue;
-
-					if (usage.Value.HashSet.Count == 0)
+					lock (_locker)
 					{
-						lock (_locker)
+						try
 						{
-							_usages.Remove(usage.Key);
+							UpdateCurrentConnection();
+							continue;
+						}
+						catch (Exception ex2)
+						{
+							_logger.Error(ex2, "Failed to open connection to {RedisConnectionString}", _config.ConnectionString);
 						}
 					}
+
+					if (_config.ReconnectDelay != TimeSpan.Zero)
+						await Task.Delay(_config.ReconnectDelay);
+
+					continue;
 				}
+
+				await Task.Delay(_config.PingPeriod);
 			}
 		}
-
-		private readonly record struct LastConnect(
-			ConnectionMultiplexer? Multiplexer,
-			IDatabase? Database,
-			DateTimeOffset Deadline);
 	}
 }

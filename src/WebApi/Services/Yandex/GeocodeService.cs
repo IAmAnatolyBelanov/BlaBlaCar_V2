@@ -39,7 +39,6 @@ namespace WebApi.Services.Yandex
 
 		private readonly IGeocodeServiceConfig _config;
 		private readonly IRedisCacheService _redisCacheService;
-		private readonly IRedisDataBaseFactory _redisDataBaseFactory;
 		private readonly IYandexGeocodeResponseDtoMapper _yandexGeocodeResponseDtoMapper;
 
 		private readonly IAsyncPolicy<string> _asyncPolicy;
@@ -48,13 +47,11 @@ namespace WebApi.Services.Yandex
 		public GeocodeService(
 			IGeocodeServiceConfig config,
 			IRedisCacheService redisCacheService,
-			IYandexGeocodeResponseDtoMapper yandexGeocodeResponseDtoMapper,
-			IRedisDataBaseFactory redisDataBaseFactory)
+			IYandexGeocodeResponseDtoMapper yandexGeocodeResponseDtoMapper)
 		{
 			_config = config;
 			_redisCacheService = redisCacheService;
 			_yandexGeocodeResponseDtoMapper = yandexGeocodeResponseDtoMapper;
-			_redisDataBaseFactory = redisDataBaseFactory;
 
 			_asyncPolicy = Policy<string>
 				.Handle<HttpRequestException>()
@@ -110,9 +107,8 @@ namespace WebApi.Services.Yandex
 			if (_memoryCache.TryGetValue(request, out var cachedGeocodeDto))
 				return cachedGeocodeDto;
 
-			using var redis = _redisDataBaseFactory.Connect();
 			var (cacheExists, cachedResponse)
-				= _redisCacheService.TryGet<YandexGeocodeResponse>(redis, request);
+				= _redisCacheService.TryGet<YandexGeocodeResponse>(request);
 
 			if (cacheExists)
 			{
@@ -162,7 +158,7 @@ namespace WebApi.Services.Yandex
 				return _failResponse;
 			}
 
-			_ = _redisCacheService.SetStringAsync(redis, request, resultBody.Result, _config.DistributedCacheExpiry);
+			_ = _redisCacheService.SetStringAsync(request, resultBody.Result, _config.DistributedCacheExpiry, CancellationToken.None);
 			cachedGeocodeDto = geocode.Response.GeoObjectCollection.FeatureMember.Length > 0
 				? _yandexGeocodeResponseDtoMapper.ToDtoLight(geocode)
 				: _emptyResponse;

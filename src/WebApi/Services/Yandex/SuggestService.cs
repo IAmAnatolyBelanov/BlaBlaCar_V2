@@ -32,7 +32,6 @@ namespace WebApi.Services.Yandex
 
 		private readonly ISuggestServiceConfig _config;
 		private readonly IRedisCacheService _redisCacheService;
-		private readonly IRedisDataBaseFactory _redisDataBaseFactory;
 		private readonly IYandexSuggestResponseDtoMapper _yandexSuggestResponseDtoMapper;
 
 		private readonly IAsyncPolicy<string> _asyncPolicy;
@@ -41,13 +40,11 @@ namespace WebApi.Services.Yandex
 		public SuggestService(
 			ISuggestServiceConfig config,
 			IRedisCacheService redisCacheService,
-			IYandexSuggestResponseDtoMapper yandexSuggestResponseDtoMapper,
-			IRedisDataBaseFactory redisDataBaseFactory)
+			IYandexSuggestResponseDtoMapper yandexSuggestResponseDtoMapper)
 		{
 			_config = config;
 			_redisCacheService = redisCacheService;
 			_yandexSuggestResponseDtoMapper = yandexSuggestResponseDtoMapper;
-			_redisDataBaseFactory = redisDataBaseFactory;
 
 			_asyncPolicy = Policy<string>
 				.Handle<HttpRequestException>()
@@ -89,8 +86,8 @@ namespace WebApi.Services.Yandex
 
 			var request = $"https://suggest-maps.yandex.ru/v1/suggest?apikey={_config.ApiKey}&text={input}&highlight=0&print_address=1&attrs=uri";
 
-			using var redis = _redisDataBaseFactory.Connect();
-			var (cacheExists, cachedResponse) = _redisCacheService.TryGet<YandexSuggestResponse>(redis, request);
+			var (cacheExists, cachedResponse)
+				= _redisCacheService.TryGet<YandexSuggestResponse>(request);
 
 			if (cacheExists)
 			{
@@ -138,7 +135,7 @@ namespace WebApi.Services.Yandex
 				return _failResponse;
 			}
 
-			_ = _redisCacheService.SetStringAsync(redis, request, suggestionBody.Result, _config.DistributedCacheExpiry);
+			_ = _redisCacheService.SetStringAsync(request, suggestionBody.Result, _config.DistributedCacheExpiry, CancellationToken.None);
 			cachedResponseDto = _yandexSuggestResponseDtoMapper.ToDtoLight(suggestion);
 			_memoryCache.Set(input, cachedResponseDto, _config.DistributedCacheExpiry);
 			return cachedResponseDto;

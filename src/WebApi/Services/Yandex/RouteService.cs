@@ -28,18 +28,15 @@ namespace WebApi.Services.Yandex
 
 		private readonly IRouteServiceConfig _config;
 		private readonly IRedisCacheService _redisCacheService;
-		private readonly IRedisDataBaseFactory _redisDataBaseFactory;
 
 		private readonly IAsyncPolicy<string> _asyncPolicy;
 
 		public RouteService(
 			IRouteServiceConfig config,
-			IRedisCacheService redisCacheService,
-			IRedisDataBaseFactory redisDataBaseFactory)
+			IRedisCacheService redisCacheService)
 		{
 			_config = config;
 			_redisCacheService = redisCacheService;
-			_redisDataBaseFactory = redisDataBaseFactory;
 
 			_asyncPolicy = Policy<string>
 				.Handle<HttpRequestException>()
@@ -73,8 +70,8 @@ namespace WebApi.Services.Yandex
 
 			var request = $"https://suggest-maps.yandex.ru/v1/suggest?apikey={_config.ApiKey}&waypoints={pointsAsStr}&avoid_tolls={avoidTolls}&mode=driving";
 
-			using var redis = _redisDataBaseFactory.Connect();
-			var (cacheExists, cacheValue) = _redisCacheService.TryGet<YandexRouteResponse>(redis, request);
+			var (cacheExists, cacheValue)
+				= _redisCacheService.TryGet<YandexRouteResponse>(request);
 
 			if (cacheExists)
 				return cacheValue;
@@ -104,18 +101,18 @@ namespace WebApi.Services.Yandex
 			catch (Exception exception)
 			{
 				_logger.Error("Fail to get route for {Input}. Exception: {Exception}", pointsAsStr, exception);
-				_ = _redisCacheService.SetAsync(redis, request, _failResponse, _config.FailExpiry);
+				_ = _redisCacheService.SetAsync(request, _failResponse, _config.FailExpiry, CancellationToken.None);
 				return _failResponse;
 			}
 
 			if (routeBody.Outcome == OutcomeType.Failure)
 			{
 				_logger.Error("Fail to get route for {Input}. Exception: {Exception}", pointsAsStr, routeBody.FinalException);
-				_ = _redisCacheService.SetAsync(redis, request, _failResponse, _config.FailExpiry);
+				_ = _redisCacheService.SetAsync(request, _failResponse, _config.FailExpiry, CancellationToken.None);
 				return _failResponse;
 			}
 
-			_ = _redisCacheService.SetStringAsync(redis, request, routeBody.Result, _config.Expiry);
+			_ = _redisCacheService.SetStringAsync(request, routeBody.Result, _config.Expiry, CancellationToken.None);
 			return route;
 		}
 	}
