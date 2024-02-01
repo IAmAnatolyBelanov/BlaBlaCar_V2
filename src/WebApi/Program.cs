@@ -45,7 +45,7 @@ public class Program
 
 		SqlMapper.AddTypeHandler(new PointTypeMapper());
 
-		Log.Debug(builder.Configuration.GetDebugView());
+		Log.Debug("{Config}", builder.Configuration.GetDebugView());
 
 		builder.Services.RegisterConfigs(builder.Configuration.Bind);
 		builder.Services.RegisterMappers();
