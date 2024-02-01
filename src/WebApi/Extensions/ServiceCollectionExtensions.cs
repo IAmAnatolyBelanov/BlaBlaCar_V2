@@ -19,16 +19,14 @@ namespace WebApi.Extensions
 
 			foreach (var configType in configTypes)
 			{
-				var tempServiceKey = Guid.NewGuid().ToString();
-
 				var configInterfaces = configType.GetInterfaces()
 					.Where(i => i != typeof(IBaseConfig))
 					.ToArray();
 
-				services.AddKeyedSingleton(typeof(IBaseConfig), tempServiceKey, configType);
+				services.AddSingleton(configType);
 				services.AddSingleton(typeof(IBaseConfig), provider =>
 				{
-					var config = provider.GetRequiredKeyedService(typeof(IBaseConfig), tempServiceKey);
+					var config = provider.GetRequiredService(configType);
 					var baseConf = config as IBaseConfig;
 					bind(baseConf!.Position, config);
 					var errors = baseConf.GetValidationErrors().ToArray();
@@ -48,7 +46,8 @@ namespace WebApi.Extensions
 				{
 					services.AddSingleton(configInterface, provider =>
 					{
-						var config = provider.GetRequiredKeyedService(typeof(IBaseConfig), tempServiceKey); _logger.Debug(
+						var config = provider.GetRequiredService(configType);
+						_logger.Debug(
 							"For interface {Interface} registered implementation {Implementation}: {Json}",
 							configInterface.FullName,
 							configType.FullName,
@@ -75,7 +74,7 @@ namespace WebApi.Extensions
 		private static Type[] GetAllConfigTypes(Assembly assembly)
 		{
 			return assembly.GetTypes()
-				.Where(t => typeof(IBaseConfig).IsAssignableFrom(t) && t != typeof(IBaseConfig))
+				.Where(t => typeof(IBaseConfig).IsAssignableFrom(t) && t != typeof(IBaseConfig) && t.IsClass)
 				.ToArray();
 		}
 
