@@ -26,13 +26,13 @@ namespace Tests
 		[Fact]
 		public void TestCreateDateTime()
 		{
-			var reserv = _fixture.Build<ReservationDto>()
+			var reserve = _fixture.Build<ReservationDto>()
 				.Without(x => x.StartLeg)
 				.Without(x => x.EndLeg)
 				.With(x => x.CreateDateTime, () => DateTimeOffset.UtcNow.AddHours(1))
 				.Create();
 
-			var result = _validator.Validate(reserv);
+			var result = _validator.Validate(reserve);
 
 			result.Errors.Should().Contain(x => x.ErrorCode == ReservationValidationCodes.WrongCreateDateTime);
 		}
@@ -40,26 +40,26 @@ namespace Tests
 		[Fact]
 		public void TestEmptyLeg()
 		{
-			var reserv = _fixture.Build<ReservationDto>()
+			var reserve = _fixture.Build<ReservationDto>()
 				.Without(x => x.EndLeg)
 				.With(x => x.CreateDateTime, () => DateTimeOffset.UtcNow)
 				.Create();
 
-			var result = _validator.Validate(reserv);
+			var result = _validator.Validate(reserve);
 
 			result.IsValid.Should().BeTrue();
 		}
 
 		[Fact]
-		public void TestMissmatchLeg()
+		public void TestMismatchLeg()
 		{
-			var reserv = _fixture.Build<ReservationDto>()
+			var reserve = _fixture.Build<ReservationDto>()
 				.With(x => x.CreateDateTime, () => DateTimeOffset.UtcNow)
 				.Create();
 
-			var result = _validator.Validate(reserv);
+			var result = _validator.Validate(reserve);
 
-			result.Errors.Should().Contain(x => x.ErrorCode == ReservationValidationCodes.MissmatchLegId);
+			result.Errors.Should().Contain(x => x.ErrorCode == ReservationValidationCodes.MismatchLegId);
 		}
 	}
 }

@@ -7,6 +7,8 @@ namespace Tests
 {
 	public static class Shared
 	{
+		private static readonly object _locker = new();
+
 		public static Fixture BuildDefaultFixture()
 		{
 			var fixture = new Fixture();
@@ -47,6 +49,41 @@ namespace Tests
 				.Without(x => x.EndLeg));
 
 			return fixture;
+		}
+
+		public static FormattedPoint GetNewPoint()
+		{
+			lock (_locker)
+			{
+				if (_allPointsEnumerator.MoveNext())
+				{
+					return _allPointsEnumerator.Current;
+				}
+				else
+				{
+					_allPointsEnumerator = BuildAllPoints().GetEnumerator();
+					_allPointsEnumerator.MoveNext();
+					return _allPointsEnumerator.Current;
+				}
+			}
+		}
+
+		private static IEnumerator<FormattedPoint> _allPointsEnumerator = BuildAllPoints().GetEnumerator();
+		public static IEnumerable<FormattedPoint> BuildAllPoints()
+		{
+			var step = 100;
+
+			for (int lat = -30 * 1000; lat < 30 * 1000; lat += step)
+			{
+				for (int lon = -179 * 1000; lon < 179 * 1000; lon += step)
+				{
+					yield return new FormattedPoint
+					{
+						Latitude = lat / 1000.0,
+						Longitude = lon / 1000.0
+					};
+				}
+			}
 		}
 	}
 }

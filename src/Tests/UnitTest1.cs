@@ -74,8 +74,8 @@ namespace Tests
 
 			var result = await rideService.GetRecommendedPriceAsync(point, point, CancellationToken.None);
 
-			result.low.Should().Be(-1);
-			result.high.Should().Be(-1);
+			result.Low.Should().Be(-1);
+			result.High.Should().Be(-1);
 		}
 	}
 }

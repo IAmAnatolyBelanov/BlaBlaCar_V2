@@ -7,9 +7,9 @@
 		/// </summary>
 		int PriceStatisticsRadiusMeters { get; }
 		/// <summary>
-		/// Перценталь. Если на графике нормального распределения взять самую верхнюю точку, то минус Percentale/2 - нижняя граница, а плюс Percentale/2 - верхняя.
+		/// Перценталь. Если на графике нормального распределения взять самую верхнюю точку, то минус Percentile/2 - нижняя граница, а плюс Percentile/2 - верхняя.
 		/// </summary>
-		float PriceStatisticsPercentale { get; }
+		float PriceStatisticsPercentile { get; }
 		/// <summary>
 		/// Насколько старые записи просматриваются для оценки рекомендуемой цены.
 		/// </summary>
@@ -34,7 +34,7 @@
 		public int PriceStatisticsRadiusMeters { get; set; } = 20_000;
 
 		/// <inheritdoc/>
-		public float PriceStatisticsPercentale { get; set; } = 0.2f;
+		public float PriceStatisticsPercentile { get; set; } = 0.1f;
 
 		/// <inheritdoc/>
 		public TimeSpan PriceStatisticsMaxPastPeriod { get; set; } = TimeSpan.FromDays(3 * 30);
@@ -48,13 +48,14 @@
 		public int MinPriceInRub { get; set; } = 1;
 		public int MaxPriceInRub { get; set; } = 100_000;
 
+
 		public IEnumerable<string> GetValidationErrors()
 		{
 			if (PriceStatisticsRadiusMeters <= 0)
 				yield return $"{nameof(PriceStatisticsRadiusMeters)} must be > 0";
 
-			if (PriceStatisticsPercentale <= 0 || PriceStatisticsPercentale >= 1)
-				yield return $"{nameof(PriceStatisticsPercentale)} must be in diapazone (0, 1). Other words, > 0 and < 1";
+			if (PriceStatisticsPercentile <= 0 || PriceStatisticsPercentile >= 1)
+				yield return $"{nameof(PriceStatisticsPercentile)} must be in diapason (0, 1). Other words, > 0 and < 1";
 
 			if (PriceStatisticsMaxPastPeriod <= TimeSpan.Zero)
 				yield return $"{nameof(PriceStatisticsMaxPastPeriod)} must be > 0";

@@ -13,12 +13,13 @@ namespace WebApi.Services.Validators
 		public const string NullElementInCollection = "Leg_NullElementInCollection";
 		public const string DefaultId = "Leg_DefaultId";
 		public const string InvalidCount = "Leg_InvalidCount";
-		public const string MissmatchRideId = "Leg_MissmatchRideId";
+		public const string MismatchRideId = "Leg_MismatchRideId";
 		public const string DifferentRideId = "Leg_DifferentRideId";
 		public const string InvalidElementInCollection = "Leg_InvalidElementInCollection";
 		public const string InvalidPointsChain = "Leg_InvalidPointsChain";
 		public const string InvalidTimeChain = "Leg_InvalidTimeChain";
 		public const string EmptyId = "Leg_EmptyId";
+		public const string InvalidCoordinates = "Point_InvalidCoordinates";
 	}
 
 	public class LegDtoValidator : AbstractValidator<LegDto>
@@ -36,8 +37,32 @@ namespace WebApi.Services.Validators
 
 			RuleFor(x => x.RideId)
 				.Must((leg, _) => leg.RideId == leg.Ride.Id)
-				.WithErrorCode(LegValidationCodes.MissmatchRideId)
+				.WithErrorCode(LegValidationCodes.MismatchRideId)
 				.WithMessage($"{nameof(LegDto.RideId)} не совпадает с {nameof(LegDto.Ride)}.{nameof(LegDto.Ride.Id)}");
+
+			RuleFor(x => x.From.Point.Longitude)
+				.GreaterThanOrEqualTo(-180)
+				.WithErrorCode(LegValidationCodes.InvalidCoordinates)
+				.LessThanOrEqualTo(180)
+				.WithErrorCode(LegValidationCodes.InvalidCoordinates);
+
+			RuleFor(x => x.To.Point.Longitude)
+				.GreaterThanOrEqualTo(-180)
+				.WithErrorCode(LegValidationCodes.InvalidCoordinates)
+				.LessThanOrEqualTo(180)
+				.WithErrorCode(LegValidationCodes.InvalidCoordinates);
+
+			RuleFor(x => x.From.Point.Latitude)
+				.GreaterThanOrEqualTo(-90)
+				.WithErrorCode(LegValidationCodes.InvalidCoordinates)
+				.LessThanOrEqualTo(90)
+				.WithErrorCode(LegValidationCodes.InvalidCoordinates);
+
+			RuleFor(x => x.To.Point.Latitude)
+				.GreaterThanOrEqualTo(-90)
+				.WithErrorCode(LegValidationCodes.InvalidCoordinates)
+				.LessThanOrEqualTo(90)
+				.WithErrorCode(LegValidationCodes.InvalidCoordinates);
 		}
 	}
 }

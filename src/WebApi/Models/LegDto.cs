@@ -11,7 +11,7 @@ namespace WebApi.Models
 		public Guid Id { get; set; }
 		[System.Text.Json.Serialization.JsonIgnore]
 		[Newtonsoft.Json.JsonIgnore]
-		public RideDto Ride { get; set; } = default!;
+		public RidePreparationDto Ride { get; set; } = default!;
 		public Guid RideId { get; set; }
 
 		public PlaceAndTime From { get; set; }
@@ -69,11 +69,15 @@ namespace WebApi.Models
 	public partial class LegDtoMapper : BaseMapper<Leg, LegDto>, ILegDtoMapper
 	{
 		private readonly Lazy<IRideDtoMapper> _rideDtoMpper;
+		private readonly Lazy<IRidePreparationDtoMapper> _ridePreparationDtoMpper;
 
-		public LegDtoMapper(Lazy<IRideDtoMapper> rideDtoMpper)
+		public LegDtoMapper(
+			Lazy<IRideDtoMapper> rideDtoMpper,
+			Lazy<IRidePreparationDtoMapper> ridePreparationDtoMpper)
 			: base(() => new(), () => new())
 		{
 			_rideDtoMpper = rideDtoMpper;
+			_ridePreparationDtoMpper = ridePreparationDtoMpper;
 		}
 
 		[MapperIgnoreTarget(nameof(LegDto.Ride))]
@@ -110,7 +114,7 @@ namespace WebApi.Models
 
 			entity.Ride = dto.Ride is null
 				? default!
-				: _rideDtoMpper.Value.FromDto(dto.Ride, mappedObjects);
+				: _ridePreparationDtoMpper.Value.FromDto(dto.Ride, mappedObjects);
 			entity.PreviousLeg = dto.PreviousLeg is null
 				? default
 				: FromDto(dto.PreviousLeg, mappedObjects);

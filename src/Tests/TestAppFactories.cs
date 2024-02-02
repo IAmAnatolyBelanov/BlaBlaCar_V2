@@ -44,10 +44,10 @@ namespace Tests
 			Task.Run(async () => await _postgreSqlContainer.DisposeAsync()).Wait();
 		}
 
-		public void MigrateDb(int attemptionsCount = 10, int sleepPerionMs = 500)
+		public void MigrateDb(int attemptsCount = 10, int sleepPeriodMs = 500)
 		{
 			// Хз, в чём причина, но на старте бд порой не успевает прийти в состояние готовности. В пределах тестов готов закрыть на это глаза.
-			for (int i = 0; i < attemptionsCount + 1; i++)
+			for (int i = 0; i < attemptsCount + 1; i++)
 			{
 				try
 				{
@@ -59,10 +59,10 @@ namespace Tests
 				}
 				catch
 				{
-					if (i == attemptionsCount)
+					if (i == attemptsCount)
 						throw;
 
-					Thread.Sleep(sleepPerionMs);
+					Thread.Sleep(sleepPeriodMs);
 				}
 			}
 		}
@@ -80,7 +80,8 @@ namespace Tests
 
 			_redisBuilder = new RedisBuilder()
 				.WithBindMount(_mountPath, "/data")
-				.WithImage("redis:7.2.3");
+				.WithImage("redis:7.2.3")
+				.WithAutoRemove(true);
 
 			_redisContainer = _redisBuilder.Build();
 			Task.Run(async () => await _redisContainer.StartAsync()).Wait();
@@ -110,7 +111,11 @@ namespace Tests
 
 				var port = _redisContainer.GetMappedPublicPort(6379);
 
-				Task.Run(() => _redisContainer.StopAsync()).Wait();
+				Task.Run(async () =>
+				{
+					await _redisContainer.StopAsync();
+					await _redisContainer.DisposeAsync();
+				}).Wait();
 
 				if (extraDelay > TimeSpan.Zero)
 					Thread.Sleep(extraDelay);

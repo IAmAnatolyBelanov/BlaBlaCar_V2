@@ -22,7 +22,7 @@ public class CommonDbTests : IClassFixture<TestAppFactoryWithDb>
 	[Fact]
 	public void DbContainsFunctions()
 	{
-		var requredFunctions = DbConstants.FunctionNames.AllConstants.Keys.AsList();
+		var requiredFunctions = DbConstants.FunctionNames.AllConstants.Keys.AsList();
 
 		using var scope = _provider.CreateScope();
 		using var context = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
@@ -34,6 +34,6 @@ WHERE routine_type = 'FUNCTION'
 AND routine_schema = 'public'")
 			.ToHashSet();
 
-		allFunctions.Should().Contain(requredFunctions);
+		allFunctions.Should().Contain(requiredFunctions);
 	}
 }

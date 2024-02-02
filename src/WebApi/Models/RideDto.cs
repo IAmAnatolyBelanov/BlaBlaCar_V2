@@ -6,11 +6,22 @@ namespace WebApi.Models
 {
 	public class RideDto : RidePreparationDto
 	{
+		[System.Text.Json.Serialization.JsonIgnore]
+		[Newtonsoft.Json.JsonIgnore]
 		public int WaypointsCount => Legs?.Count + 1 ?? 0;
 
 		public IReadOnlyList<PriceDto>? Prices { get; set; }
 
 		public RideStatus Status { get; set; }
+	}
+
+	public class RidePreparationDto
+	{
+		public Guid Id { get; set; }
+		public ulong DriverId { get; set; }
+
+		public IReadOnlyList<LegDto>? Legs { get; set; }
+		public int AvailablePlacesCount { get; set; }
 
 		public void NormalizeLegs()
 		{
@@ -50,15 +61,6 @@ namespace WebApi.Models
 				leg.NextLegId = Legs[i + 1].Id;
 			}
 		}
-	}
-
-	public class RidePreparationDto
-	{
-		public Guid Id { get; set; }
-		public ulong DriverId { get; set; }
-
-		public IReadOnlyList<LegDto>? Legs { get; set; }
-		public int AvailablePlacesCount { get; set; }
 	}
 
 	public interface IRideDtoMapper : IBaseMapper<Ride, RideDto>

@@ -6,12 +6,12 @@ namespace WebApi.Services.Validators
 {
 	public class ReservationValidationCodes : ValidationCodes
 	{
-		public const string EmptyUserId = "Reserv_EmptyUserId";
-		public const string TooLessCount = "Reserv_TooLessCount";
-		public const string EmptyStartLegId = "Reserv_EmptyStartLegId";
-		public const string EmptyEndLegId = "Reserv_EmptyEndLegId";
-		public const string MissmatchLegId = "Reserv_MissmatchLegId";
-		public const string WrongCreateDateTime = "Reserv_WrongCreateDateTime";
+		public const string EmptyUserId = "Reserve_EmptyUserId";
+		public const string TooLessCount = "Reserve_TooLessCount";
+		public const string EmptyStartLegId = "Reserve_EmptyStartLegId";
+		public const string EmptyEndLegId = "Reserve_EmptyEndLegId";
+		public const string MismatchLegId = "Reserve_MismatchLegId";
+		public const string WrongCreateDateTime = "Reserve_WrongCreateDateTime";
 	}
 
 	public class ReservationValidator : AbstractValidator<ReservationDto>
@@ -40,11 +40,11 @@ namespace WebApi.Services.Validators
 			RuleFor(x => x.StartLegId)
 				.Equal(x => x.StartLeg!.Id)
 				.When(x => x.StartLeg is not null)
-				.WithErrorCode(ReservationValidationCodes.MissmatchLegId);
+				.WithErrorCode(ReservationValidationCodes.MismatchLegId);
 			RuleFor(x => x.EndLegId)
 				.Equal(x => x.EndLeg!.Id)
 				.When(x => x.EndLeg is not null)
-				.WithErrorCode(ReservationValidationCodes.MissmatchLegId);
+				.WithErrorCode(ReservationValidationCodes.MismatchLegId);
 
 			RuleFor(x => x.CreateDateTime)
 				.LessThanOrEqualTo(x => _clock.Now)

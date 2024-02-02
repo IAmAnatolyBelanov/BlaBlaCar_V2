@@ -5,12 +5,12 @@ namespace WebApi.Models
 	public readonly struct FormattedPoint
 	{
 		/// <summary>
-		/// Широта.
+		/// Широта. [-90; +90].
 		/// </summary>
 		public double Latitude { get; init; }
 
 		/// <summary>
-		/// Долгота.
+		/// Долгота. [-180; +180].
 		/// </summary>
 		public double Longitude { get; init; }
 

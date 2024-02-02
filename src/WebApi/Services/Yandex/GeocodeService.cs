@@ -32,7 +32,7 @@ namespace WebApi.Services.Yandex
 		{
 			PooledConnectionLifetime = TimeSpan.FromMinutes(15),
 		});
-		private static ulong ExternalRequstsCount = 0;
+		private static ulong ExternalRequestsCount = 0;
 		private static DateTimeOffset LastExternalRequestLimitSet = DateTimeOffset.UtcNow;
 
 		private readonly ILogger _logger = Log.ForContext<GeocodeService>();
@@ -58,10 +58,10 @@ namespace WebApi.Services.Yandex
 				.OrResult(string.IsNullOrWhiteSpace)
 				.WaitAndRetryAsync(_config.RetryCount,
 				attempt => TimeSpan.FromMilliseconds(100 + 40 * attempt),
-				(result, timespan, attempt, context) =>
+				(result, timeSpan, attempt, context) =>
 				{
 					_logger.Error("Failed to fetch yandex geocode response. Attempt {Attempt}, time delay {TimeDelay}, context {Context}, result {Result}, exception {Exception}",
-						attempt, timespan, context, result.Result, result.Exception);
+						attempt, timeSpan, context, result.Result, result.Exception);
 				});
 
 			if (_config.IsDebug)
@@ -70,7 +70,7 @@ namespace WebApi.Services.Yandex
 					while (true)
 					{
 						await Task.Delay(TimeSpan.FromHours(24));
-						Interlocked.Exchange(ref ExternalRequstsCount, 0);
+						Interlocked.Exchange(ref ExternalRequestsCount, 0);
 						LastExternalRequestLimitSet = DateTimeOffset.UtcNow;
 					}
 				});
@@ -122,8 +122,8 @@ namespace WebApi.Services.Yandex
 				return cachedGeocodeDto;
 			}
 
-			if (_config.IsDebug && ExternalRequstsCount > 999)
-				throw new Exception($"Для дебага достпуно только 1000 запросов в день. Лимит исчерпан. Лимит будет сброшен через {TimeSpan.FromHours(24) - (DateTimeOffset.UtcNow - LastExternalRequestLimitSet)}. Всё ещё можно использовать запросы к кешу.");
+			if (_config.IsDebug && ExternalRequestsCount > 999)
+				throw new Exception($"Для дебага доступно только 1000 запросов в день. Лимит исчерпан. Лимит будет сброшен через {TimeSpan.FromHours(24) - (DateTimeOffset.UtcNow - LastExternalRequestLimitSet)}. Всё ещё можно использовать запросы к кешу.");
 
 			var request = $"{cacheKey}&apikey={_config.ApiKey}";
 			PolicyResult<string> resultBody = default!;
@@ -135,7 +135,7 @@ namespace WebApi.Services.Yandex
 					using var httpRequest = new HttpRequestMessage(HttpMethod.Get, request);
 
 					var response = await _httpClient.SendAsync(httpRequest, internalCt);
-					Interlocked.Increment(ref ExternalRequstsCount);
+					Interlocked.Increment(ref ExternalRequestsCount);
 					response.EnsureSuccessStatusCode();
 
 					var body = await response.Content.ReadAsStringAsync(internalCt);

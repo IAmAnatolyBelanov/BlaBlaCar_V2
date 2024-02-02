@@ -1,3 +1,18 @@
 {
-    "sqltools.connections": []
+    "cSpell.words": [
+        "apikey",
+        "Dtos",
+        "Geocode",
+        "Geoobject",
+        "Geoobjects",
+        "longlat",
+        "Newtonsoft",
+        "Npgsql",
+        "postgis",
+        "Serilog",
+        "Testcontainers",
+        "Xunit",
+        "дебага",
+        "сдампилось"
+    ]
 }

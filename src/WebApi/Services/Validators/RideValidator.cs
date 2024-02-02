@@ -14,27 +14,27 @@ namespace WebApi.Services.Validators
 		public const string LegsCollectionContainsNull = "Ride_LegsCollectionContainsNull";
 		public const string TooManyLegs = "Ride_TooManyLegs";
 		public const string ContainsInvalidLeg = "Ride_ContainsInvalidLeg";
-		public const string MissmatchRideIdInLeg = "Ride_MissmatchRideIdInLeg";
+		public const string MismatchRideIdInLeg = "Ride_MismatchRideIdInLeg";
 		public const string LegsChainIsInvalid = "Ride_LegsChainIsInvalid";
 
 		public const string WrongAvailablePlacesCount = "Ride_WrongAvailablePlacesCount";
 
 		public const string EmptyPricesCollection = "Ride_EmptyPricesCollection";
-		public const string PricesCollectionContansNull = "Ride_PricesCollectionContansNull";
+		public const string PricesCollectionContainsNull = "Ride_PricesCollectionContainsNull";
 		public const string WrongPricesCount = "Ride_WrongPricesCount";
 		public const string ContainsInvalidPrice = "Ride_ContainsInvalidPrice";
-		public const string MissmatchRideIdInPrice = "Ride_MissmatchRideIdInPrice";
+		public const string MismatchRideIdInPrice = "Ride_MismatchRideIdInPrice";
 
 		public const string NotEveryLegPairHasPrice = "Ride_NotEveryLegPairHasPrice";
 	}
 
-	public class RidePreparaionValidator : AbstractValidator<RidePreparationDto>
+	public class RidePreparationValidator : AbstractValidator<RidePreparationDto>
 	{
 		private readonly IRideServiceConfig _rideServiceConfig;
 
 		private readonly IValidator<LegDto> _legValidator;
 
-		public RidePreparaionValidator(
+		public RidePreparationValidator(
 			IRideServiceConfig rideServiceConfig,
 			IValidator<LegDto> legValidator)
 		{
@@ -68,23 +68,23 @@ namespace WebApi.Services.Validators
 								.LessThanOrEqualTo(_rideServiceConfig.MaxWaypoints - 1)
 								.WithErrorCode(RideValidationCodes.TooManyLegs);
 
-							RuleFor(x => x.Legs).Custom(LegLavidatorWrapper!);
+							RuleFor(x => x.Legs).Custom(LegValidatorWrapper!);
 
 							RuleForEach(x => x.Legs)
 								.Must((ride, leg) => leg.RideId == ride.Id)
-								.WithErrorCode(RideValidationCodes.MissmatchRideIdInLeg)
+								.WithErrorCode(RideValidationCodes.MismatchRideIdInLeg)
 								.WithMessage((ride, leg) => $"Leg {leg.Id} не связан с Ride {ride.Id}");
 
 							RuleFor(x => x.Legs)
 								.Must(IsLegsChainValid!)
 								.WithErrorCode(RideValidationCodes.LegsChainIsInvalid)
-								.WithMessage($"Коллекция {nameof(RideDto.Legs)} не создаёт неразрвыной последовательности");
+								.WithMessage($"Коллекция {nameof(RideDto.Legs)} не создаёт неразрывной последовательности");
 						});
 				});
 		}
 
 
-		private void LegLavidatorWrapper(IReadOnlyList<LegDto> legs, ValidationContext<RidePreparationDto> context)
+		private void LegValidatorWrapper(IReadOnlyList<LegDto> legs, ValidationContext<RidePreparationDto> context)
 		{
 			bool anyError = false;
 
@@ -113,8 +113,8 @@ namespace WebApi.Services.Validators
 				{
 					Severity = Severity.Error,
 					ErrorCode = RideValidationCodes.ContainsInvalidLeg,
-					ErrorMessage = $"В коллекции {nameof(RideDto.Legs)} содержатся невалидные элементы",
-					PropertyName = nameof(RideDto.Legs),
+					ErrorMessage = $"В коллекции {nameof(RidePreparationDto.Legs)} содержатся невалидные элементы",
+					PropertyName = nameof(RidePreparationDto.Legs),
 					AttemptedValue = legs
 				});
 			}
@@ -199,7 +199,7 @@ namespace WebApi.Services.Validators
 				{
 					RuleFor(x => x.Prices)
 						.Must((ride, _) => !ride.Prices!.ContainsNull())
-						.WithErrorCode(RideValidationCodes.PricesCollectionContansNull)
+						.WithErrorCode(RideValidationCodes.PricesCollectionContainsNull)
 						.WithMessage($"{nameof(RideDto.Prices)} содержит NULL элемент")
 						.DependentRules(() =>
 						{
@@ -218,7 +218,7 @@ namespace WebApi.Services.Validators
 
 							RuleForEach(x => x.Prices)
 								.Must((ride, price) => price.StartLeg?.RideId == ride.Id && price.EndLeg?.RideId == ride.Id)
-								.WithErrorCode(RideValidationCodes.MissmatchRideIdInPrice)
+								.WithErrorCode(RideValidationCodes.MismatchRideIdInPrice)
 								.WithMessage((ride, price) => $"Price {price.Id} не связан с {ride.Id}");
 						});
 				});

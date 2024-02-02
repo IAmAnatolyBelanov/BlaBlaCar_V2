@@ -26,8 +26,17 @@ namespace WebApi.Controllers
 		[HttpPost]
 		public async ValueTask<BaseResponse<ReservationDto>> Reserv(ReservationDto reserv, CancellationToken ct)
 		{
-			var result = await _rideService.Reserv(reserv, ct);
+			var result = await _rideService.Reserve(reserv, ct);
 			return result;
+		}
+
+		[HttpPost]
+		public async ValueTask<BaseResponse<Tuple<decimal, decimal>>> GetRecommendedPrice(Tuple<FormattedPoint, FormattedPoint> coordinates, CancellationToken ct)
+		{
+			(var from, var to) = coordinates;
+			var result = await _rideService.GetRecommendedPriceAsync(from.ToPoint(), to.ToPoint(), ct);
+
+			return new Tuple<decimal, decimal>(result.Low, result.High);
 		}
 	}
 }
