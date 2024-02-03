@@ -19,7 +19,9 @@ namespace Tests
 
 		public RideServiceTests(TestAppFactoryFull factory)
 		{
-			factory.AddAll();
+			// Используем только postgres (без redis), так как обращаемся к реальному api за реальной географией.
+			// Кеш позволит иногда не делать запросы к внешнему сервису.
+			factory.AddPostgres();
 			_provider = factory.Services;
 			_fixture = Shared.BuildDefaultFixture();
 			_scope = _provider.CreateScope();
@@ -39,10 +41,7 @@ namespace Tests
 			NormalizeFromTo(ride);
 			ride.Prices = BuildPrices(ride).ToArray();
 
-			using var scope = _provider.CreateScope();
-			var context = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
-
-			var result = await _rideService.CreateRide(context, ride, CancellationToken.None);
+			var result = await _rideService.CreateRide(_applicationContext, ride, CancellationToken.None);
 
 			result.Should().BeEquivalentTo(ride, x => x.Excluding(r => r.Prices).Excluding(r => r.Legs));
 			result.Legs.Should().BeEquivalentTo(ride.Legs, x => x.Excluding(l => l.Ride).Excluding(l => l.NextLeg).Excluding(l => l.PreviousLeg));
