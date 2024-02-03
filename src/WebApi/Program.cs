@@ -9,7 +9,6 @@ using NetTopologySuite.Geometries;
 using Npgsql;
 
 using NpgsqlTypes;
-
 using System.Data;
 using WebApi.DataAccess;
 using WebApi.Services.Core;
@@ -41,6 +40,9 @@ public class Program
 			.CreateLogger();
 
 		builder.Host.UseSerilog();
+
+		builder.Logging.AddRinLogger();
+		builder.Services.AddRin();
 
 		SqlMapper.AddTypeHandler(new PointTypeMapper());
 
@@ -76,8 +78,10 @@ public class Program
 		// Configure the HTTP request pipeline.
 		if (app.Environment.IsDevelopment())
 		{
+			app.UseRin();
 			app.UseSwagger();
 			app.UseSwaggerUI();
+			app.UseRinDiagnosticsHandler();
 		}
 
 		app.UseAuthorization();
