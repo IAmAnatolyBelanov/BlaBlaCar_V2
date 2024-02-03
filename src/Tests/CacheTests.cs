@@ -1,7 +1,4 @@
-﻿using AutoFixture;
-using FluentAssertions;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Caching.Memory;
 using WebApi.Models;
 using WebApi.Services.InMemoryCaches;
 using WebApi.Services.Redis;

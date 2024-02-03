@@ -1,7 +1,4 @@
-﻿using AutoFixture;
-using AutoFixture.AutoNSubstitute;
-
-using WebApi.Models;
+﻿using WebApi.Models;
 
 namespace Tests
 {

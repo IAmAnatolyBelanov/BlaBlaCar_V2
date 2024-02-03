@@ -99,6 +99,17 @@ namespace WebApi.Extensions
 			}
 		}
 
+		public static IConfigurationBuilder AddDefaultConfigs(this IConfigurationBuilder configuration)
+		{
+			var result = configuration
+				.SetBasePath(Directory.GetCurrentDirectory())
+				.AddJsonFile("appsettings.json")
+				.AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable(variable: "ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true)
+				.AddEnvironmentVariables("BBC_");
+
+			return result;
+		}
+
 		private class Lazier<T> : Lazy<T> where T : class
 		{
 			public Lazier(IServiceProvider provider)

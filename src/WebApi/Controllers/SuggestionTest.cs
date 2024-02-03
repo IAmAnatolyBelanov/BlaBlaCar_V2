@@ -2,7 +2,6 @@
 using Microsoft.EntityFrameworkCore;
 
 using WebApi.DataAccess;
-using WebApi.Infrastructure;
 using WebApi.Models;
 using WebApi.Services.Core;
 using WebApi.Services.Yandex;

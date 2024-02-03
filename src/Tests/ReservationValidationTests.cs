@@ -1,23 +1,14 @@
-﻿using AutoFixture;
-
-using FluentAssertions;
-
-using FluentValidation;
-
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
-
-using WebApi.Models;
+﻿using WebApi.Models;
 using WebApi.Services.Validators;
 
 namespace Tests
 {
-	public class ReservationValidationTests : IClassFixture<WebApplicationFactory<Program>>
+	public class ReservationValidationTests : IClassFixture<EmptyTestAppFactory>
 	{
 		private readonly Fixture _fixture;
 		private readonly IValidator<ReservationDto> _validator;
 
-		public ReservationValidationTests(WebApplicationFactory<Program> factory)
+		public ReservationValidationTests(EmptyTestAppFactory factory)
 		{
 			_fixture = Shared.BuildDefaultFixture();
 			_validator = factory.Services.GetRequiredService<IValidator<ReservationDto>>();

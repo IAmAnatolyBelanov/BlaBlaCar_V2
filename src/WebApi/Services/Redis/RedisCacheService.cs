@@ -47,10 +47,10 @@ namespace WebApi.Services.Redis
 			var retryRedisAsyncPolicy = handleRedisExceptionsPolicy
 				.WaitAndRetryAsync(_config.RetriesCount,
 				attempt => _config.RetriesDelay + TimeSpan.FromMilliseconds(40 * attempt),
-				(exception, timespan, attempt, context) =>
+				(exception, timeSpan, attempt, context) =>
 				{
 					_logger.Error(exception, "Failed to execute redis command. Attempt {Attempt}, time delay {TimeDelay}, context {Context}",
-						attempt, timespan, context);
+						attempt, timeSpan, context);
 				});
 			var circuitBreakerAsyncPolicy = handleRedisExceptionsPolicy
 				.CircuitBreakerAsync(_config.CircuitBreakerAllowedExceptionsCount, _config.CircuitBreakerOpenPeriod,
@@ -59,25 +59,25 @@ namespace WebApi.Services.Redis
 					_logger.Error(exception, "Async redis circuit breaker is opened. Context: {Context}. Waiting {Delay} before next attempt", context, delay);
 				},
 				onReset: context => _logger.Information("Async redis circuit breaker is closed. Context {Context}", context));
-			var retryCircuitBreakerAsyncPolixy = handleRedisExceptionsPolicy
+			var retryCircuitBreakerAsyncPolicy = handleRedisExceptionsPolicy
 				.Or<BrokenCircuitException>()
 				.Or<IsolatedCircuitException>()
 				.WaitAndRetryAsync(_config.CircuitBreakerRetriesCount,
 				attempt => _config.CircuitBreakerOpenPeriod,
-				(exception, timespan, attempt, context) =>
+				(exception, timeSpan, attempt, context) =>
 				{
 					_logger.Error(exception, "Wait for async circuit breaker. Attempt {Attempt}, time delay {TimeDelay}, context {Context}",
-						attempt, timespan, context);
+						attempt, timeSpan, context);
 				});
-			_asyncPolicy = Policy.WrapAsync(retryRedisAsyncPolicy, circuitBreakerAsyncPolicy, retryCircuitBreakerAsyncPolixy);
+			_asyncPolicy = Policy.WrapAsync(retryRedisAsyncPolicy, circuitBreakerAsyncPolicy, retryCircuitBreakerAsyncPolicy);
 
 			var retryRedisSyncPolicy = handleRedisExceptionsPolicy
 				.WaitAndRetry(_config.RetriesCount,
 				attempt => _config.RetriesDelay + TimeSpan.FromMilliseconds(40 * attempt),
-				(exception, timespan, attempt, context) =>
+				(exception, timeSpan, attempt, context) =>
 				{
 					_logger.Error(exception, "Failed to execute redis command. Attempt {Attempt}, time delay {TimeDelay}, context {Context}",
-						attempt, timespan, context);
+						attempt, timeSpan, context);
 				});
 			var circuitBreakerSyncPolicy = handleRedisExceptionsPolicy
 				.CircuitBreaker(_config.CircuitBreakerAllowedExceptionsCount, _config.CircuitBreakerOpenPeriod,
@@ -86,17 +86,17 @@ namespace WebApi.Services.Redis
 					_logger.Error(exception, "Sync redis circuit breaker is opened. Context: {Context}. Waiting {Delay} before next attempt", context, delay);
 				},
 				onReset: context => _logger.Information("Sync redis circuit breaker is closed. Context {Context}", context));
-			var retryCircuitBreakerSyncPolixy = handleRedisExceptionsPolicy
+			var retryCircuitBreakerSyncPolicy = handleRedisExceptionsPolicy
 				.Or<BrokenCircuitException>()
 				.Or<IsolatedCircuitException>()
 				.WaitAndRetry(_config.CircuitBreakerRetriesCount,
 				attempt => _config.CircuitBreakerOpenPeriod,
-				(exception, timespan, attempt, context) =>
+				(exception, timeSpan, attempt, context) =>
 				{
 					_logger.Error(exception, "Wait for sync circuit breaker. Attempt {Attempt}, time delay {TimeDelay}, context {Context}",
-						attempt, timespan, context);
+						attempt, timeSpan, context);
 				});
-			_syncPolicy = Policy.Wrap(retryRedisSyncPolicy, circuitBreakerSyncPolicy, retryCircuitBreakerSyncPolixy);
+			_syncPolicy = Policy.Wrap(retryRedisSyncPolicy, circuitBreakerSyncPolicy, retryCircuitBreakerSyncPolicy);
 
 			_ = PingForever();
 		}
@@ -108,7 +108,7 @@ namespace WebApi.Services.Redis
 				_semaphore.Wait();
 				try
 				{
-					var connection = GetConnecntion();
+					var connection = GetConnection();
 					var keyExists = connection.KeyExists(key);
 
 					if (!keyExists)
@@ -131,7 +131,7 @@ namespace WebApi.Services.Redis
 				await _semaphore.WaitAsync(ctInternal);
 				try
 				{
-					var connection = GetConnecntion();
+					var connection = GetConnection();
 					var keyExists = await connection.KeyExistsAsync(key);
 
 					if (!keyExists)
@@ -180,7 +180,7 @@ namespace WebApi.Services.Redis
 				_semaphore.Wait();
 				try
 				{
-					var connection = GetConnecntion();
+					var connection = GetConnection();
 					connection.StringSet(key, value, expiry);
 				}
 				finally
@@ -198,7 +198,7 @@ namespace WebApi.Services.Redis
 				await _semaphore.WaitAsync(ctInternal);
 				try
 				{
-					var connection = GetConnecntion();
+					var connection = GetConnection();
 					await connection.StringSetAsync(key, value, expiry);
 				}
 				finally
@@ -226,7 +226,7 @@ namespace WebApi.Services.Redis
 			throw new NotImplementedException();
 		}
 
-		private IDatabase GetConnecntion()
+		private IDatabase GetConnection()
 		{
 			var current = _current;
 			if (current is not null && current.Multiplexer.IsConnected)
@@ -278,7 +278,7 @@ namespace WebApi.Services.Redis
 			{
 				try
 				{
-					var connection = GetConnecntion();
+					var connection = GetConnection();
 					connection.Ping();
 					_logger.Debug("Redis {Redis} was pinged successfully", _config.ConnectionString);
 				}
@@ -286,17 +286,25 @@ namespace WebApi.Services.Redis
 				{
 					_logger.Error(ex, "Redis {Redis} ping failed. Try to reconnect", _config.ConnectionString);
 
+					bool failed = false;
 					lock (_locker)
 					{
 						try
 						{
 							UpdateCurrentConnection();
-							continue;
 						}
 						catch (Exception ex2)
 						{
+							failed = true;
 							_logger.Error(ex2, "Failed to open connection to {RedisConnectionString}", _config.ConnectionString);
 						}
+					}
+
+					if (failed)
+					{
+						// Нам необходимо выйти из синхронного кода, чтобы не залочиться на старте.
+						await Task.CompletedTask;
+						continue;
 					}
 
 					if (_config.ReconnectDelay != TimeSpan.Zero)

@@ -1,23 +1,14 @@
-﻿using AutoFixture;
-
-using FluentAssertions;
-
-using FluentValidation;
-
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
-
-using WebApi.Models;
+﻿using WebApi.Models;
 using WebApi.Services.Validators;
 
 namespace Tests
 {
-	public class YandexGeocodeResponseTests : IClassFixture<WebApplicationFactory<Program>>
+	public class YandexGeocodeResponseTests : IClassFixture<EmptyTestAppFactory>
 	{
 		private readonly Fixture _fixture;
 		private readonly IValidator<(FormattedPoint Point, YandexGeocodeResponseDto GeocodeResponse)> _yaGeocodeResponseWithPointValidator;
 
-		public YandexGeocodeResponseTests(WebApplicationFactory<Program> factory)
+		public YandexGeocodeResponseTests(EmptyTestAppFactory factory)
 		{
 			_fixture = Shared.BuildDefaultFixture();
 
@@ -28,14 +19,14 @@ namespace Tests
 		[Fact]
 		public void TestInternalValidator()
 		{
-			var geoocode = new YandexGeocodeResponseDto
+			var geocode = new YandexGeocodeResponseDto
 			{
 				Success = false
 			};
 
 			var point = CityInfoManager.GetUnique().GetPoint();
 
-			var errors = _yaGeocodeResponseWithPointValidator.Validate((point, geoocode));
+			var errors = _yaGeocodeResponseWithPointValidator.Validate((point, geocode));
 
 			errors.IsValid.Should().BeFalse();
 			errors.Errors.Should().HaveCount(1);

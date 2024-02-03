@@ -1,14 +1,4 @@
-﻿using AutoFixture;
-
-using FluentAssertions;
-
-using FluentValidation;
-
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
-
-using WebApi.Models;
-using WebApi.Services.Validators;
+﻿using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace Tests
 {

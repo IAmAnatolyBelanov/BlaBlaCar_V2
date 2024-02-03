@@ -1,8 +1,4 @@
-﻿using AutoFixture;
-using FluentAssertions;
-using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json;
-using System.Reflection;
+﻿using System.Reflection;
 using WebApi.DataAccess;
 using WebApi.Extensions;
 using WebApi.Models;
@@ -11,7 +7,7 @@ using WebApi.Shared;
 
 namespace Tests
 {
-	public class RideServiceTests : IClassFixture<TestAppFactoryWithDb>
+	public class RideServiceTests : IClassFixture<TestAppFactoryFull>
 	{
 		private readonly IServiceProvider _provider;
 		private readonly Fixture _fixture;
@@ -21,10 +17,10 @@ namespace Tests
 
 		private readonly string _originalConfigJson;
 
-		public RideServiceTests(TestAppFactoryWithDb factory)
+		public RideServiceTests(TestAppFactoryFull factory)
 		{
+			factory.AddAll();
 			_provider = factory.Services;
-			factory.MigrateDb();
 			_fixture = Shared.BuildDefaultFixture();
 			_scope = _provider.CreateScope();
 			_rideService = _scope.ServiceProvider.GetRequiredService<IRideService>();
@@ -34,7 +30,7 @@ namespace Tests
 			_originalConfigJson = JsonConvert.SerializeObject(config);
 		}
 
-		[Fact]
+		[Fact(Timeout = 30_000)]
 		public async Task CreateRideTest()
 		{
 			var ride = _fixture.Create<RideDto>();
@@ -53,7 +49,7 @@ namespace Tests
 			result.Prices.Should().BeEquivalentTo(ride.Prices, x => x.Excluding(p => p.StartLeg).Excluding(p => p.EndLeg));
 		}
 
-		[Fact]
+		[Fact(Timeout = 30_000)]
 		public async Task GettingPercentile()
 		{
 			RestoreConfig();

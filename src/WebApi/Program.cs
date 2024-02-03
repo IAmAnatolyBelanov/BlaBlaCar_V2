@@ -11,7 +11,6 @@ using Npgsql;
 using NpgsqlTypes;
 
 using System.Data;
-
 using WebApi.DataAccess;
 using WebApi.Services.Core;
 using WebApi.Services.Redis;
@@ -27,6 +26,10 @@ public class Program
 		builder.Services.AddControllers(options
 			=> options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true);
 
+		builder.Configuration
+			.AddDefaultConfigs()
+			.Build();
+
 		// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 		builder.Services.AddEndpointsApiExplorer();
 		builder.Services.AddSwaggerGen();
@@ -34,11 +37,7 @@ public class Program
 		Serilog.Debugging.SelfLog.Enable(Console.Error);
 
 		Log.Logger = new LoggerConfiguration()
-			.MinimumLevel.Debug()
-			.Enrich.FromLogContext()
-			.Enrich.WithThreadId()
-			.WriteTo.Console()
-			.WriteTo.Seq("http://host.docker.internal:5341", restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Debug)
+			.ReadFrom.Configuration(builder.Configuration)
 			.CreateLogger();
 
 		builder.Host.UseSerilog();

@@ -1,18 +1,24 @@
 {
     "cSpell.words": [
         "apikey",
+        "appsettings",
+        "ASPNETCORE",
         "Dtos",
         "Geocode",
         "Geoobject",
         "Geoobjects",
         "longlat",
+        "Mapperly",
         "Newtonsoft",
         "Npgsql",
         "postgis",
+        "Riok",
         "Serilog",
         "Testcontainers",
         "Xunit",
         "дебага",
+        "залочиться",
+        "конфигов",
         "сдампилось"
     ]
 }

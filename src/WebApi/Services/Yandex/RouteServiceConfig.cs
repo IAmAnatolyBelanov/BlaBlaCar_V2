@@ -1,6 +1,4 @@
-﻿using WebApi.Extensions;
-
-namespace WebApi.Services.Yandex
+﻿namespace WebApi.Services.Yandex
 {
 	public interface IRouteServiceConfig
 	{

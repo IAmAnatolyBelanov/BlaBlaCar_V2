@@ -1,6 +1,4 @@
-﻿using WebApi.Extensions;
-
-namespace WebApi.DataAccess
+﻿namespace WebApi.DataAccess
 {
 	public interface IApplicationContextConfig
 	{

@@ -2,46 +2,125 @@
 
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Configuration;
+using Serilog;
 using Testcontainers.PostgreSql;
 using Testcontainers.Redis;
 
 using WebApi.DataAccess;
-using WebApi.Services.Redis;
+using WebApi.Extensions;
 
 namespace Tests
 {
-	public class TestAppFactoryWithDb : WebApplicationFactory<Program>, IDisposable
+	public class TestAppFactoryFull : EmptyTestAppFactory, IDisposable
 	{
-		private readonly PostgreSqlContainer _postgreSqlContainer = new PostgreSqlBuilder()
-			.WithImage("postgis/postgis:16-3.4")
-			.WithWaitStrategy(Wait.ForUnixContainer())
-			.Build();
+		private readonly Dictionary<Type, EmptyTestAppFactory> _factories = [];
 
-		public TestAppFactoryWithDb()
+		/// <summary>
+		/// Этот и прочие *Add* методы должны вызываться перед обращением к factory.Services.
+		/// </summary>
+		public TestAppFactoryFull AddAll()
 		{
-			Task.Run(async () => await _postgreSqlContainer.StartAsync()).Wait();
+			var functions = new Func<TestAppFactoryFull>[]{
+				AddPostgres,
+				AddRedis,
+			};
+
+			foreach (var func in functions)
+				func.Invoke();
+
+			return this;
+		}
+
+		public TestAppFactoryFull AddPostgres()
+		{
+			Add<TestAppFactoryWithDb>();
+			var factory = _factories[typeof(TestAppFactoryWithDb)] as TestAppFactoryWithDb;
+			factory!.MigrateDb();
+			return this;
+		}
+
+		public TestAppFactoryFull AddRedis()
+		{
+			Add<TestAppFactoryWithRedis>();
+			return this;
+		}
+
+		private void Add<T>() where T : EmptyTestAppFactory
+		{
+			Add(typeof(T));
+		}
+
+		private void Add(params Type[] types)
+		{
+			foreach (var type in types)
+			{
+				if (_factories.ContainsKey(type))
+					continue;
+
+				var factory = Activator.CreateInstance(type) as EmptyTestAppFactory;
+				_factories[type] = factory!;
+				continue;
+			}
+		}
+
+		public void RestartRedisContainer(TimeSpan? extraDelay = null)
+		{
+			var factory = _factories[typeof(TestAppFactoryWithRedis)] as TestAppFactoryWithRedis;
+			factory!.RestartContainer(extraDelay);
 		}
 
 		protected override void ConfigureWebHost(IWebHostBuilder builder)
 		{
 			base.ConfigureWebHost(builder);
-			builder.ConfigureTestServices(services =>
+
+			builder.ConfigureAppConfiguration((webBuilder, confBuilder) =>
 			{
-				services.RemoveAll<IApplicationContextConfig>();
-				var conf = new ApplicationContextConfig
+				foreach (var factory in _factories.Values)
 				{
-					ConnectionString = _postgreSqlContainer.GetConnectionString()
-				};
-				services.AddSingleton<IApplicationContextConfig>(conf);
+					confBuilder = factory.PrepareTestConfigs(confBuilder);
+				}
+				confBuilder.Build();
+
+				Log.Logger = new LoggerConfiguration()
+					.WriteTo.Console()
+					.MinimumLevel.Debug()
+					.CreateLogger();
 			});
 		}
 
-		public void Dispose()
+		protected override void Dispose(bool disposing)
+		{
+			foreach (var factory in _factories.Values)
+				factory.Dispose();
+
+			base.Dispose(disposing);
+		}
+	}
+
+
+	public class TestAppFactoryWithDb : EmptyTestAppFactory, IDisposable
+	{
+		public PostgreSqlBuilder PostgreSqlBuilder { get; init; }
+
+		private readonly PostgreSqlContainer _postgreSqlContainer;
+
+		public TestAppFactoryWithDb()
+		{
+			PostgreSqlBuilder = new PostgreSqlBuilder()
+				.WithImage("postgis/postgis:16-3.4")
+				.WithWaitStrategy(Wait.ForUnixContainer())
+				.WithAutoRemove(true);
+
+			_postgreSqlContainer = PostgreSqlBuilder.Build();
+
+			Task.Run(async () => await _postgreSqlContainer.StartAsync()).Wait();
+		}
+
+		protected override void Dispose(bool disposing)
 		{
 			Task.Run(async () => await _postgreSqlContainer.DisposeAsync()).Wait();
+			base.Dispose(disposing);
 		}
 
 		public void MigrateDb(int attemptsCount = 10, int sleepPeriodMs = 500)
@@ -66,43 +145,42 @@ namespace Tests
 				}
 			}
 		}
+
+		public override IConfigurationBuilder PrepareTestConfigs(IConfigurationBuilder configuration)
+		{
+			var result = base.PrepareTestConfigs(configuration);
+
+			var replace = new Dictionary<string, string?>
+			{
+				["PostgreSQL:ConnectionString"] = _postgreSqlContainer.GetConnectionString()
+			};
+
+			result = result.AddInMemoryCollection(replace);
+
+			return result;
+		}
 	}
 
-	public class TestAppFactoryWithRedis : WebApplicationFactory<Program>, IDisposable
+	public class TestAppFactoryWithRedis : EmptyTestAppFactory, IDisposable
 	{
-		private readonly string _mountPath = Path.Combine(Path.GetTempPath(), nameof(TestAppFactoryWithRedis), Guid.NewGuid().ToString());
-		private readonly RedisBuilder _redisBuilder;
+		public string MountPath { get; } = Path.Combine(Path.GetTempPath(), nameof(TestAppFactoryWithRedis), Guid.NewGuid().ToString());
+		public RedisBuilder RedisBuilder { get; private init; }
 		private RedisContainer _redisContainer;
 
 		public TestAppFactoryWithRedis()
 		{
-			Directory.CreateDirectory(_mountPath);
+			Directory.CreateDirectory(MountPath);
 
-			_redisBuilder = new RedisBuilder()
-				.WithBindMount(_mountPath, "/data")
+			RedisBuilder = new RedisBuilder()
+				.WithBindMount(MountPath, "/data")
 				.WithImage("redis:7.2.3")
 				.WithAutoRemove(true);
 
-			_redisContainer = _redisBuilder.Build();
+			_redisContainer = RedisBuilder.Build();
 			Task.Run(async () => await _redisContainer.StartAsync()).Wait();
 		}
 
-		protected override void ConfigureWebHost(IWebHostBuilder builder)
-		{
-			base.ConfigureWebHost(builder);
-
-			builder.ConfigureTestServices(services =>
-			{
-				services.RemoveAll<IRedisCacheServiceConfig>();
-				var redisConfig = new RedisCacheServiceConfig()
-				{
-					ConnectionString = _redisContainer.GetConnectionString()
-				};
-				services.AddSingleton<IRedisCacheServiceConfig>(redisConfig);
-			});
-		}
-
-		public void RestartContainer(TimeSpan extraDelay)
+		public void RestartContainer(TimeSpan? extraDelay = null)
 		{
 			lock (this)
 			{
@@ -117,10 +195,10 @@ namespace Tests
 					await _redisContainer.DisposeAsync();
 				}).Wait();
 
-				if (extraDelay > TimeSpan.Zero)
-					Thread.Sleep(extraDelay);
+				if (extraDelay.HasValue && extraDelay.Value > TimeSpan.Zero)
+					Thread.Sleep(extraDelay.Value);
 
-				_redisContainer = _redisBuilder
+				_redisContainer = RedisBuilder
 					.WithPortBinding(port, 6379)
 					.Build();
 
@@ -128,14 +206,54 @@ namespace Tests
 			}
 		}
 
+		public override IConfigurationBuilder PrepareTestConfigs(IConfigurationBuilder configuration)
+		{
+			var result = base.PrepareTestConfigs(configuration);
+
+			var replace = new Dictionary<string, string?>
+			{
+				["Redis:ConnectionString"] = _redisContainer.GetConnectionString()
+			};
+
+			result = result.AddInMemoryCollection(replace);
+
+			return result;
+		}
+
 		protected override void Dispose(bool disposing)
 		{
 			lock (this)
 			{
-				if (Directory.Exists(_mountPath))
-					Directory.Delete(_mountPath, recursive: true);
+				if (Directory.Exists(MountPath))
+					Directory.Delete(MountPath, recursive: true);
 			}
 			base.Dispose(disposing);
+		}
+	}
+
+	public class EmptyTestAppFactory : WebApplicationFactory<Program>
+	{
+		protected override void ConfigureWebHost(IWebHostBuilder builder)
+		{
+			base.ConfigureWebHost(builder);
+
+			builder.ConfigureAppConfiguration((webBuilder, confBuilder) =>
+			{
+				var conf = PrepareTestConfigs(confBuilder).Build();
+
+				Log.Logger = new LoggerConfiguration()
+					.WriteTo.Console()
+					.MinimumLevel.Debug()
+					.CreateLogger();
+			});
+		}
+
+		public virtual IConfigurationBuilder PrepareTestConfigs(IConfigurationBuilder configuration)
+		{
+			configuration.AddDefaultConfigs()
+				.AddJsonFile("appsettings.Test.json");
+
+			return configuration;
 		}
 	}
 }
