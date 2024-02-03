@@ -42,12 +42,13 @@ namespace WebApi.Services.Yandex
 		private readonly IYandexGeocodeResponseDtoMapper _yandexGeocodeResponseDtoMapper;
 
 		private readonly IAsyncPolicy<string> _asyncPolicy;
-		private readonly IInMemoryCache<string, YandexGeocodeResponseDto> _memoryCache;
+		private readonly IInMemoryCache<YandexGeocodeResponseDto> _memoryCache;
 
 		public GeocodeService(
 			IGeocodeServiceConfig config,
 			IRedisCacheService redisCacheService,
-			IYandexGeocodeResponseDtoMapper yandexGeocodeResponseDtoMapper)
+			IYandexGeocodeResponseDtoMapper yandexGeocodeResponseDtoMapper,
+			IInMemoryCacheConfigMapper inMemoryCacheConfigMapper)
 		{
 			_config = config;
 			_redisCacheService = redisCacheService;
@@ -75,10 +76,7 @@ namespace WebApi.Services.Yandex
 					}
 				});
 
-			_memoryCache = new InMemoryCache<string, YandexGeocodeResponseDto>(new MemoryCacheOptions
-			{
-				SizeLimit = _config.InMemoryCacheMaxObjects
-			});
+			_memoryCache = new InMemoryCache<YandexGeocodeResponseDto>(inMemoryCacheConfigMapper, _config.InMemoryCacheConfig);
 		}
 
 		public async ValueTask<YandexGeocodeResponseDto> AddressToGeoCode(string address, CancellationToken ct)

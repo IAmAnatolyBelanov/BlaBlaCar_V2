@@ -68,16 +68,16 @@ namespace WebApi.Models
 	[Mapper]
 	public partial class LegDtoMapper : BaseMapper<Leg, LegDto>, ILegDtoMapper
 	{
-		private readonly Lazy<IRideDtoMapper> _rideDtoMpper;
-		private readonly Lazy<IRidePreparationDtoMapper> _ridePreparationDtoMpper;
+		private readonly Lazy<IRideDtoMapper> _rideDtoMapper;
+		private readonly Lazy<IRidePreparationDtoMapper> _ridePreparationDtoMapper;
 
 		public LegDtoMapper(
-			Lazy<IRideDtoMapper> rideDtoMpper,
-			Lazy<IRidePreparationDtoMapper> ridePreparationDtoMpper)
+			Lazy<IRideDtoMapper> rideDtoMapper,
+			Lazy<IRidePreparationDtoMapper> ridePreparationDtoMapper)
 			: base(() => new(), () => new())
 		{
-			_rideDtoMpper = rideDtoMpper;
-			_ridePreparationDtoMpper = ridePreparationDtoMpper;
+			_rideDtoMapper = rideDtoMapper;
+			_ridePreparationDtoMapper = ridePreparationDtoMapper;
 		}
 
 		[MapperIgnoreTarget(nameof(LegDto.Ride))]
@@ -114,7 +114,7 @@ namespace WebApi.Models
 
 			entity.Ride = dto.Ride is null
 				? default!
-				: _ridePreparationDtoMpper.Value.FromDto(dto.Ride, mappedObjects);
+				: _ridePreparationDtoMapper.Value.FromDto(dto.Ride, mappedObjects);
 			entity.PreviousLeg = dto.PreviousLeg is null
 				? default
 				: FromDto(dto.PreviousLeg, mappedObjects);
@@ -140,7 +140,7 @@ namespace WebApi.Models
 
 			dto.Ride = entity.Ride is null
 				? default!
-				: _rideDtoMpper.Value.ToDto(entity.Ride, mappedObjects);
+				: _rideDtoMapper.Value.ToDto(entity.Ride, mappedObjects);
 			dto.PreviousLeg = entity.PreviousLeg is null
 				? default
 				: ToDto(entity.PreviousLeg, mappedObjects);

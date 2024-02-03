@@ -13,7 +13,7 @@ public class CacheTests : IClassFixture<TestAppFactoryWithRedis>, IDisposable
 	private readonly IServiceProvider _provider;
 	private readonly IServiceScope _scope;
 	private readonly IRedisCacheService _redis;
-	private readonly IInMemoryCache<string, string> _inMemoryCache;
+	private readonly IInMemoryCache<string> _inMemoryCache;
 	private const int _inMemoryCacheLimit = 100;
 
 	public CacheTests(TestAppFactoryWithRedis fixture)
@@ -24,10 +24,7 @@ public class CacheTests : IClassFixture<TestAppFactoryWithRedis>, IDisposable
 		_scope = _provider.CreateScope();
 		_redis = _scope.ServiceProvider.GetRequiredService<IRedisCacheService>();
 
-		_inMemoryCache = new InMemoryCache<string, string>(new MemoryCacheOptions
-		{
-			SizeLimit = _inMemoryCacheLimit,
-		});
+		_inMemoryCache = new InMemoryCache<string>(new InMemoryCacheConfigMapper(), new InMemoryCacheConfig());
 	}
 
 	[Fact(Timeout = 30_000)]

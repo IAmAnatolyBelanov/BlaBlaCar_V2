@@ -20,7 +20,7 @@ namespace WebApi.Extensions
 			foreach (var configType in configTypes)
 			{
 				var configInterfaces = configType.GetInterfaces()
-					.Where(i => i != typeof(IBaseConfig))
+					.Where(i => i != typeof(IBaseConfig) && i != typeof(IValidatableConfig))
 					.ToArray();
 
 				services.AddSingleton(configType);
@@ -37,6 +37,17 @@ namespace WebApi.Extensions
 					_logger.Debug(
 						"For interface {Interface} registered implementation {Implementation}: {Json}",
 						typeof(IBaseConfig).FullName,
+						configType.FullName,
+						JsonConvert.SerializeObject(config));
+					return config;
+				});
+				services.AddSingleton(typeof(IValidatableConfig), provider =>
+				{
+					var config = provider.GetRequiredService<IEnumerable<IBaseConfig>>()
+						.First(x => x.GetType() == configType);
+					_logger.Debug(
+						"For interface {Interface} registered implementation {Implementation}: {Json}",
+						typeof(IValidatableConfig).FullName,
 						configType.FullName,
 						JsonConvert.SerializeObject(config));
 					return config;
@@ -60,7 +71,7 @@ namespace WebApi.Extensions
 
 		public static void ValidateConfigs(this IServiceProvider serviceProvider)
 		{
-			var configs = serviceProvider.GetRequiredService<IEnumerable<IBaseConfig>>().ToArray();
+			var configs = serviceProvider.GetRequiredService<IEnumerable<IValidatableConfig>>().ToArray();
 
 			foreach (var config in configs)
 			{
@@ -74,7 +85,7 @@ namespace WebApi.Extensions
 		private static Type[] GetAllConfigTypes(Assembly assembly)
 		{
 			return assembly.GetTypes()
-				.Where(t => typeof(IBaseConfig).IsAssignableFrom(t) && t != typeof(IBaseConfig) && t.IsClass)
+				.Where(t => typeof(IBaseConfig).IsAssignableFrom(t) && t != typeof(IBaseConfig) && t != typeof(IValidatableConfig) && t.IsClass)
 				.ToArray();
 		}
 
@@ -120,10 +131,13 @@ namespace WebApi.Extensions
 	}
 
 	// Необходим для автоматического поиска и регистрации конфигов в системе
-	public interface IBaseConfig
+	public interface IBaseConfig : IValidatableConfig
 	{
 		string Position { get; }
+	}
 
+	public interface IValidatableConfig
+	{
 		IEnumerable<string> GetValidationErrors();
 	}
 }

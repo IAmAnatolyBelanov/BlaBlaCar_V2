@@ -35,12 +35,13 @@ namespace WebApi.Services.Yandex
 		private readonly IYandexSuggestResponseDtoMapper _yandexSuggestResponseDtoMapper;
 
 		private readonly IAsyncPolicy<string> _asyncPolicy;
-		private readonly IInMemoryCache<string, YandexSuggestResponseDto> _memoryCache;
+		private readonly IInMemoryCache<YandexSuggestResponseDto> _memoryCache;
 
 		public SuggestService(
 			ISuggestServiceConfig config,
 			IRedisCacheService redisCacheService,
-			IYandexSuggestResponseDtoMapper yandexSuggestResponseDtoMapper)
+			IYandexSuggestResponseDtoMapper yandexSuggestResponseDtoMapper,
+			IInMemoryCacheConfigMapper inMemoryCacheConfigMapper)
 		{
 			_config = config;
 			_redisCacheService = redisCacheService;
@@ -68,10 +69,7 @@ namespace WebApi.Services.Yandex
 					}
 				});
 
-			_memoryCache = new InMemoryCache<string, YandexSuggestResponseDto>(new MemoryCacheOptions
-			{
-				SizeLimit = _config.InMemoryCacheMaxObjects,
-			});
+			_memoryCache = new InMemoryCache<YandexSuggestResponseDto>(inMemoryCacheConfigMapper, _config.InMemoryCacheConfig);
 		}
 
 		public async ValueTask<YandexSuggestResponseDto?> GetSuggestion(string input, CancellationToken ct)
