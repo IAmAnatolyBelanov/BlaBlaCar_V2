@@ -4,7 +4,7 @@ services:
   redis:
     image: redis:7.2.3
     volumes:
-      - C:/bbc/redis:/data
+      - ${BBC_REDIS_DATA_PATH:-C:/bbc/redis}:/data
     networks:
       - bbc
     ports:
@@ -34,12 +34,11 @@ services:
       - 81:80
       - 5341:5341
     volumes:
-      - /c/bbc/seq:/data
+      - ${BBC_SEQ_DATA_PATH:-/c/bbc/seq}:/data
     environment:
       - ACCEPT_EULA=Y
     networks:
       - bbc
-
   # api:
   #   build: ./  # путь к Dockerfile
   #   ports:
