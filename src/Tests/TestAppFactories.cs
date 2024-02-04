@@ -21,7 +21,8 @@ namespace Tests
 		/// </summary>
 		public TestAppFactoryFull AddAll()
 		{
-			var functions = new Func<TestAppFactoryFull>[]{
+			var functions = new Func<TestAppFactoryFull>[]
+			{
 				AddPostgres,
 				AddRedis,
 			};

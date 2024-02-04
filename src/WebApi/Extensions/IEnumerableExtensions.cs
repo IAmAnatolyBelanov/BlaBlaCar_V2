@@ -12,12 +12,12 @@
 			}
 		}
 
-		public static T[] ToArray<T>(this IEnumerable<T> values, int capasity)
+		public static T[] ToArray<T>(this IEnumerable<T> values, int capacity)
 		{
-			if (capasity == 0)
+			if (capacity == 0)
 				return Array.Empty<T>();
 
-			var result = new T[capasity];
+			var result = new T[capacity];
 
 			int iterator = 0;
 			foreach (var value in values)
