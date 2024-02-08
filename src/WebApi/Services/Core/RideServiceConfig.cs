@@ -24,6 +24,16 @@
 		int MaxWaypoints { get; }
 		int MinPriceInRub { get; }
 		int MaxPriceInRub { get; }
+
+		/// <summary>
+		/// Сколько вариантов должно быть между минимальной и максимальной рекомендованной ценами. Всегда нечётное число.
+		/// </summary>
+		int RecommendedPriceVariantsMaxCount { get; }
+
+		/// <summary>
+		/// Минимально допустимый шаг между рекомендованными ценами.
+		/// </summary>
+		int RecommendedPriceStepMinValueInRub { get; }
 	}
 
 	public class RideServiceConfig : IBaseConfig, IRideServiceConfig
@@ -48,6 +58,11 @@
 		public int MinPriceInRub { get; set; } = 1;
 		public int MaxPriceInRub { get; set; } = 100_000;
 
+		/// <inheritdoc/>
+		public int RecommendedPriceVariantsMaxCount { get; set; } = 7;
+
+		/// <inheritdoc/>
+		public int RecommendedPriceStepMinValueInRub { get; set; } = 50;
 
 		public IEnumerable<string> GetValidationErrors()
 		{
@@ -74,6 +89,14 @@
 
 			if (MaxPriceInRub <= MinPriceInRub)
 				yield return $"{nameof(MaxPriceInRub)} must be > {MinPriceInRub}";
+
+			if (RecommendedPriceVariantsMaxCount <= 0)
+				yield return $"{nameof(RecommendedPriceVariantsMaxCount)} must be >= 1";
+			if (RecommendedPriceVariantsMaxCount % 2 == 0)
+				yield return $"{nameof(RecommendedPriceVariantsMaxCount)} must be odd";
+
+			if (RecommendedPriceStepMinValueInRub <= 0)
+				yield return $"{nameof(RecommendedPriceStepMinValueInRub)} must be >= 1";
 		}
 	}
 }

@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using WebApi;
 using WebApi.DataAccess;
 using WebApi.Extensions;
 using WebApi.Models;
@@ -122,6 +123,32 @@ namespace Tests
 			}
 		}
 
+		[LimitedTheory]
+		[InlineData(@$"{{""Low"":1,""High"":2,""VariantsCount"":3,""Step"":50,""Expected"":{{""Low"":50,""Average"":100,""High"":150,""Step"":50}}}}")]
+		[InlineData(@$"{{""Low"":2,""High"":2,""VariantsCount"":3,""Step"":50,""Expected"":{{""Low"":50,""Average"":100,""High"":150,""Step"":50}}}}")]
+		[InlineData(@$"{{""Low"":1,""High"":1000,""VariantsCount"":3,""Step"":50,""Expected"":{{""Low"":150,""Average"":500,""High"":850,""Step"":350}}}}")]
+		[InlineData(@$"{{""Low"":1,""High"":1000,""VariantsCount"":9,""Step"":50,""Expected"":{{""Low"":100,""Average"":550,""High"":1000,""Step"":150}}}}")]
+		public void TestBuildingRecommendedPrice(string argsJson)
+		{
+			RestoreConfig();
+			var config = _scope.ServiceProvider.GetRequiredService<RideServiceConfig>();
+
+			var args = JsonConvert.DeserializeObject<TestBuildingRecommendedPriceArgs>(argsJson)!;
+
+			config.RecommendedPriceVariantsMaxCount = args.VariantsCount;
+			config.RecommendedPriceStepMinValueInRub = args.Step;
+
+			try
+			{
+				var result = _rideService.BuildNormalizedRecommendedPrice(new(args.Low, args.High));
+				result.Should().BeEquivalentTo(args.Expected);
+			}
+			finally
+			{
+				RestoreConfig();
+			}
+		}
+
 		private void NormalizeFromTo(RideDto ride)
 		{
 			var now = DateTimeOffset.UtcNow;
@@ -230,6 +257,28 @@ namespace Tests
 				var value = prop.GetValue(originalConfig);
 				prop.SetValue(currentConfig, value);
 			}
+		}
+
+		public class TestBuildingRecommendedPriceArgs
+		{
+			public TestBuildingRecommendedPriceArgs()
+			{
+			}
+
+			public TestBuildingRecommendedPriceArgs(double low, double high, int step, int variantsCount, RecommendedPrice expected)
+			{
+				Low = low;
+				High = high;
+				Step = step;
+				VariantsCount = variantsCount;
+				Expected = expected;
+			}
+
+			public double Low { get; set; }
+			public double High { get; set; }
+			public int Step { get; set; } = 50;
+			public int VariantsCount { get; set; } = 3;
+			public RecommendedPrice Expected { get; set; }
 		}
 	}
 }

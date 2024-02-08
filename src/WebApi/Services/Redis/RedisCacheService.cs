@@ -303,7 +303,7 @@ namespace WebApi.Services.Redis
 					if (failed)
 					{
 						// Нам необходимо выйти из синхронного кода, чтобы не залочиться на старте.
-						await Task.CompletedTask;
+						await Task.Delay(10);
 						continue;
 					}
 

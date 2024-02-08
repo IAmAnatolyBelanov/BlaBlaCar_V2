@@ -2,7 +2,7 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using NetTopologySuite.Geometries;
-
+using System.Collections.Immutable;
 using WebApi.DataAccess;
 using WebApi.Models;
 using WebApi.Services.Yandex;
@@ -11,6 +11,7 @@ namespace WebApi.Services.Core
 {
 	public interface IRideService
 	{
+		RecommendedPrice BuildNormalizedRecommendedPrice(Tuple<double, double> recommendedPrice);
 		ValueTask<RideDto> CreateRide(ApplicationContext context, RidePreparationDto rideDto, CancellationToken ct);
 		ValueTask<RideDto> CreateRide(RideDto rideDto, CancellationToken ct);
 		ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(ApplicationContext context, Point pointFrom, Point pointTo, CancellationToken ct);
@@ -24,7 +25,7 @@ namespace WebApi.Services.Core
 		private const char _addressesDelimiter = '@';
 
 		private static readonly IReadOnlyDictionary<Guid, LegDto> _emptyLegsDict
-			= new Dictionary<Guid, LegDto>();
+			= ImmutableDictionary<Guid, LegDto>.Empty;
 
 		private readonly IServiceScopeFactory _serviceScopeFactory;
 		private readonly IRideServiceConfig _config;
@@ -38,6 +39,7 @@ namespace WebApi.Services.Core
 		private readonly IPriceDtoMapper _priceDtoMapper;
 		private readonly IValidator<RidePreparationDto> _ridePreparationValidator;
 		private readonly IRidePreparationDtoMapper _ridePreparationDtoMapper;
+		private readonly IRecommendedPriceDtoMapper _recommendedPriceDtoMapper;
 
 		public RideService(
 			IServiceScopeFactory serviceScopeFactory,
@@ -51,7 +53,8 @@ namespace WebApi.Services.Core
 			IValidator<RideDto> rideValidator,
 			IPriceDtoMapper priceDtoMapper,
 			IValidator<RidePreparationDto> ridePreparationValidator,
-			IRidePreparationDtoMapper ridePreparationDtoMapper)
+			IRidePreparationDtoMapper ridePreparationDtoMapper,
+			IRecommendedPriceDtoMapper recommendedPriceDtoMapper)
 		{
 			_serviceScopeFactory = serviceScopeFactory;
 			_config = config;
@@ -65,12 +68,13 @@ namespace WebApi.Services.Core
 			_priceDtoMapper = priceDtoMapper;
 			_ridePreparationValidator = ridePreparationValidator;
 			_ridePreparationDtoMapper = ridePreparationDtoMapper;
+			_recommendedPriceDtoMapper = recommendedPriceDtoMapper;
 		}
 
 		public async ValueTask<RideDto> CreateRide(RideDto rideDto, CancellationToken ct)
 		{
 			using var scope = BuildScope();
-			using var context = GetDbContext(scope);
+			using var context = scope.GetDbContext();
 			return await CreateRide(context, rideDto, ct);
 		}
 
@@ -163,7 +167,7 @@ namespace WebApi.Services.Core
 		public async ValueTask<ReservationDto> Reserve(ReservationDto reserveDto, CancellationToken ct)
 		{
 			using var scope = BuildScope();
-			using var context = GetDbContext(scope);
+			using var context = scope.GetDbContext();
 			return await Reserve(reserveDto, ct);
 		}
 
@@ -262,6 +266,13 @@ namespace WebApi.Services.Core
 		//			throw new NotImplementedException();
 		//		}
 
+		public async ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct)
+		{
+			using var scope = BuildScope();
+			using var context = scope.GetDbContext();
+			return await GetRecommendedPriceAsync(context, from, to, ct);
+		}
+
 		public async ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(ApplicationContext context, Point pointFrom, Point pointTo, CancellationToken ct)
 		{
 			const string suitedPrices = "suited_prices"
@@ -319,20 +330,49 @@ LIMIT 1;
 				cancellationToken: ct);
 			var result = await connection.QueryFirstAsync<Tuple<double, double>>(command);
 
-			return ((decimal)result.Item1, (decimal)result.Item2);
+			if (result.Item1 != -1 && result.Item2 != -1)
+
+				return ((decimal)result.Item1, (decimal)result.Item2);
+
+			throw new NotImplementedException();
 		}
 
-		public async ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct)
+		// TODO - переделать
+		public RecommendedPrice BuildNormalizedRecommendedPrice(Tuple<double, double> recommendedPrice)
 		{
-			using var scope = BuildScope();
-			using var context = GetDbContext(scope);
-			return await GetRecommendedPriceAsync(context, from, to, ct);
+			(var low, var high) = recommendedPrice;
+
+			var defaultPriceStep = _config.RecommendedPriceStepMinValueInRub;
+
+			var average = MathExtensions.RoundByStep((low + high) * 0.5, defaultPriceStep);
+
+			var variantsCount = _config.RecommendedPriceVariantsMaxCount;
+			var step = MathExtensions.RoundByStep((high - low) / variantsCount, defaultPriceStep);
+			while ((low + (step * variantsCount) > high || average - (step * (variantsCount / 2)) < low || average + (step * (variantsCount / 2)) > high) && variantsCount > 0)
+			{
+				variantsCount -= 2;
+				step = MathExtensions.RoundByStep((high - low) / variantsCount, defaultPriceStep);
+			}
+
+			if (variantsCount <= 0)
+			{
+				step = defaultPriceStep;
+				variantsCount = 3;
+			}
+
+			while (average - (step * (variantsCount / 2)) < defaultPriceStep)
+				average += defaultPriceStep;
+
+			return new RecommendedPrice
+			{
+				Average = average,
+				Step = step,
+				Low = average - (step * (variantsCount / 2)),
+				High = average + (step * (variantsCount / 2))
+			};
 		}
 
 		private AsyncServiceScope BuildScope()
 			=> _serviceScopeFactory.CreateAsyncScope();
-		private ApplicationContext GetDbContext(AsyncServiceScope scope)
-			=> scope.ServiceProvider.GetRequiredService<ApplicationContext>();
-
 	}
 }

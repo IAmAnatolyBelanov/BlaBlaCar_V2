@@ -83,4 +83,19 @@ namespace Tests
 			}
 		}
 	}
+
+	public class LimitedTheoryAttribute : TheoryAttribute
+	{
+		public LimitedTheoryAttribute() : base()
+		{
+			Timeout = 30_000;
+		}
+	}
+	public class LimitedFactAttribute : FactAttribute
+	{
+		public LimitedFactAttribute() : base()
+		{
+			Timeout = 30_000;
+		}
+	}
 }

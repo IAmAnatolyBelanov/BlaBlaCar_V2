@@ -18,4 +18,8 @@
 		Canceled,
 		StartedOrDone,
 	}
+
+	public record struct RideChange(DenormalizedRide Old, DenormalizedRide New);
+
+	public record struct DenormalizedRide(Ride Ride, IReadOnlyList<Leg> Legs, IReadOnlyList<Price> Prices);
 }
