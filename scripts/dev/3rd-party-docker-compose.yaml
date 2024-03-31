@@ -21,8 +21,8 @@ services:
       POSTGRES_PASSWORD: postgres
     # volumes:
     #   - C:/bbc/postgres/backups:/backups
-    # networks:
-    #   - bbc
+    networks:
+      - bbc
     ports:
       - 5432:5432
     # expose:

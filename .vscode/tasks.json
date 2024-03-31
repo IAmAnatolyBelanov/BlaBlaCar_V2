@@ -86,7 +86,8 @@
                         "containerPort": 8080,
                         "hostPort": 32770
                     }
-                ]
+                ],
+                "network": "dev_bbc"
             },
             "netCore": {
                 "appProject": "${workspaceFolder}/src/WebApi/WebApi.csproj",
