@@ -46,7 +46,7 @@ public class Program
 
 		SqlMapper.AddTypeHandler(new PointTypeMapper());
 
-		Log.Debug("{Config}", builder.Configuration.GetDebugView());
+		var configDebugView = builder.Configuration.GetDebugView();
 
 		builder.Services.RegisterConfigs(builder.Configuration.Bind);
 		builder.Services.RegisterMappers();
@@ -70,6 +70,8 @@ public class Program
 			.SetHandlerLifetime(TimeSpan.FromHours(1));
 
 		var app = builder.Build();
+
+		Log.Debug("{Config}", configDebugView);
 
 		app.Services.ValidateConfigs();
 
