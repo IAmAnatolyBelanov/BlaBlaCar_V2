@@ -2,18 +2,27 @@
 
 using Microsoft.EntityFrameworkCore;
 
+using Serilog;
+using Serilog.Context;
+
 using WebApi.DataAccess;
+using WebApi.Models;
 
 namespace Tests;
 
 public class CommonDbTests : IClassFixture<TestAppFactoryWithDb>
 {
-	private readonly IServiceProvider _provider;
-	public CommonDbTests(TestAppFactoryWithDb fixture)
+	private readonly IServiceScope _scope;
+	private readonly ApplicationContext _context;
+	private readonly Fixture _fixture;
+	public CommonDbTests(TestAppFactoryWithDb factory)
 	{
-		_provider = fixture.Services;
+		factory.MigrateDb();
 
-		fixture.MigrateDb();
+		_fixture = Shared.BuildDefaultFixture();
+
+		_scope = factory.Services.CreateScope();
+		_context = _scope.ServiceProvider.GetRequiredService<ApplicationContext>();
 	}
 
 	[Fact]
@@ -21,10 +30,7 @@ public class CommonDbTests : IClassFixture<TestAppFactoryWithDb>
 	{
 		var requiredFunctions = DbConstants.FunctionNames.AllConstants.Keys.AsList();
 
-		using var scope = _provider.CreateScope();
-		using var context = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
-
-		var allFunctions = context.Database.SqlQuery<string>($@"
+		var allFunctions = _context.Database.SqlQuery<string>($@"
 SELECT routine_name
 FROM  information_schema.routines
 WHERE routine_type = 'FUNCTION'

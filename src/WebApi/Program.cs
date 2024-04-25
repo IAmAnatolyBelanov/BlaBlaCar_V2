@@ -56,6 +56,8 @@ public class Program
 			options.UseNpgsql(
 				serviceProvider.GetRequiredService<IApplicationContextConfig>().ConnectionString,
 				x => x.UseNetTopologySuite())
+			.LogTo(x => Log.Information("{SqlCommand}", x))
+			.EnableSensitiveDataLogging()
 			.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
 
 		builder.Services.AddSingleton<IClock, Clock>();

@@ -340,6 +340,7 @@ LIMIT 1;
 		// TODO - переделать
 		public RecommendedPrice BuildNormalizedRecommendedPrice(Tuple<double, double> recommendedPrice)
 		{
+
 			(var low, var high) = recommendedPrice;
 
 			var defaultPriceStep = _config.RecommendedPriceStepMinValueInRub;

@@ -242,10 +242,10 @@ namespace Tests
 			{
 				var conf = PrepareTestConfigs(confBuilder).Build();
 
-				Log.Logger = new LoggerConfiguration()
-					.WriteTo.Console()
-					.MinimumLevel.Debug()
-					.CreateLogger();
+				// Log.Logger = new LoggerConfiguration()
+				// 	.WriteTo.Console()
+				// 	.MinimumLevel.Debug()
+				// 	.CreateLogger();
 			});
 		}
 
