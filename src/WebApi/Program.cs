@@ -12,6 +12,7 @@ using NpgsqlTypes;
 using System.Data;
 using WebApi.DataAccess;
 using WebApi.Services.Core;
+using WebApi.Services.Driver;
 using WebApi.Services.Redis;
 using WebApi.Services.Validators;
 using WebApi.Services.Yandex;
@@ -65,6 +66,7 @@ public class Program
 		builder.Services.AddSingleton<IGeocodeService, GeocodeService>();
 		builder.Services.AddSingleton<IRouteService, RouteService>();
 		builder.Services.AddSingleton<IRideService, RideService>();
+		builder.Services.AddSingleton<IDriverService, DriverService>();
 
 		builder.Services.AddHttpClient(Constants.DefaultHttpClientName)
 			.SetHandlerLifetime(TimeSpan.FromHours(1));

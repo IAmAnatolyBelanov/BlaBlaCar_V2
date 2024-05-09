@@ -20,6 +20,11 @@ namespace WebApi.DataAccess
 		public DbSet<Reservation> Reservations { get; set; }
 		public DbSet<Price> Prices { get; set; }
 
+		public DbSet<User> Users { get; set; }
+		public DbSet<PersonData> PersonDatas { get; set; }
+		public DbSet<CloudApiResponseInfo> CloudApiResponseInfos { get; set; }
+		public DbSet<DriverData> DriverDatas { get; set; }
+
 		/// <summary>
 		/// Не покажет создание триггеров и функций.
 		/// </summary>
@@ -31,7 +36,7 @@ namespace WebApi.DataAccess
 			Database.Migrate();
 
 			var newSql = Database.GenerateCreateScript();
-			_logger.Information("Migration from state {OldState} is finnished. New state is {NewState}", oldSql, newSql);
+			_logger.Information("Migration from state {OldState} is finished. New state is {NewState}", oldSql, newSql);
 		}
 
 		public async Task MigrateAsync(CancellationToken ct)
@@ -42,7 +47,7 @@ namespace WebApi.DataAccess
 			await Database.MigrateAsync(ct);
 
 			var newSql = Database.GenerateCreateScript();
-			_logger.Information("Migration from state {OldState} is finnished. New state is {NewState}", oldSql, newSql);
+			_logger.Information("Migration from state {OldState} is finished. New state is {NewState}", oldSql, newSql);
 		}
 
 		protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -126,6 +131,48 @@ namespace WebApi.DataAccess
 
 				builder.HasIndex(x => new { x.StartLegId, x.EndLegId })
 					.IsUnique();
+			});
+
+			modelBuilder.Entity<User>(builder =>
+			{
+				builder.HasKey(x => x.Id);
+			});
+
+			modelBuilder.Entity<PersonData>(builder =>
+			{
+				builder.HasKey(x => x.Id);
+				builder.HasIndex(x => x.Inn);
+				builder.HasIndex(x => new { x.PassportSeries, x.PassportNumber })
+					.IsUnique();
+
+				builder.HasOne<User>()
+					.WithMany()
+					.HasForeignKey(x => x.UserId);
+			});
+
+			modelBuilder.Entity<CloudApiResponseInfo>(builder =>
+			{
+				builder.HasKey(x => x.Id);
+
+				builder.Property(x => x.Response)
+					.HasColumnType("jsonb");
+
+				builder.Property(x => x.Created)
+					.HasDefaultValueSql("now() at time zone 'utc'");
+
+				builder.HasIndex(x => x.Created);
+				builder.HasIndex(x => x.RequestBasePath);
+			});
+
+			modelBuilder.Entity<DriverData>(builder =>
+			{
+				builder.HasKey(x => x.Id);
+				builder.HasIndex(x => new { x.LicenseSeries, x.LicenseNumber })
+					.IsUnique();
+
+				builder.HasOne<User>()
+					.WithMany()
+					.HasForeignKey(x => x.UserId);
 			});
 		}
 	}
