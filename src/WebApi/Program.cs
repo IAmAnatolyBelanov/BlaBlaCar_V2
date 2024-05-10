@@ -1,5 +1,4 @@
 using Dapper;
-
 using FluentValidation;
 
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +10,7 @@ using Npgsql;
 using NpgsqlTypes;
 using System.Data;
 using WebApi.DataAccess;
+using WebApi.Repositories;
 using WebApi.Services.Core;
 using WebApi.Services.Driver;
 using WebApi.Services.Redis;
@@ -53,13 +53,19 @@ public class Program
 		builder.Services.RegisterMappers();
 		builder.Services.AddValidatorsFromAssemblyContaining<LegDtoValidator>(lifetime: ServiceLifetime.Singleton);
 
+		builder.Services.AddPostgresMigrator();
+
 		builder.Services.AddDbContext<ApplicationContext>((serviceProvider, options) =>
 			options.UseNpgsql(
-				serviceProvider.GetRequiredService<IApplicationContextConfig>().ConnectionString,
+				serviceProvider.GetRequiredService<IPostgresConfig>().ConnectionString,
 				x => x.UseNetTopologySuite())
 			.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
 
 		builder.Services.AddSingleton<IClock, Clock>();
+
+		builder.Services.AddSingleton<SessionFactory>();
+
+		builder.Services.AddSingleton<CloudApiResponseInfoRepository>();
 
 		builder.Services.AddSingleton<IRedisCacheService, RedisCacheService>();
 		builder.Services.AddSingleton<ISuggestService, SuggestService>();
@@ -72,6 +78,9 @@ public class Program
 			.SetHandlerLifetime(TimeSpan.FromHours(1));
 
 		var app = builder.Build();
+
+		var scope = app.Services.CreateScope();
+		var ser = scope.ServiceProvider.GetRequiredService<IDriverService>();
 
 		app.Services.ValidateConfigs();
 
@@ -118,4 +127,6 @@ public class Program
 			throw new ArgumentException();
 		}
 	}
+
+
 }

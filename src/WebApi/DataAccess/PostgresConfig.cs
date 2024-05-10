@@ -1,11 +1,11 @@
 ﻿namespace WebApi.DataAccess
 {
-	public interface IApplicationContextConfig
+	public interface IPostgresConfig
 	{
 		string ConnectionString { get; }
 	}
 
-	public class ApplicationContextConfig : IBaseConfig, IApplicationContextConfig
+	public class PostgresConfig : IBaseConfig, IPostgresConfig
 	{
 		public string Position => "PostgreSQL";
 

@@ -1,8 +1,12 @@
-﻿using Newtonsoft.Json;
+﻿using FluentMigrator.Runner;
+using FluentMigrator.Runner.Initialization;
+using Newtonsoft.Json;
 
 using Riok.Mapperly.Abstractions;
 
 using System.Reflection;
+using WebApi.DataAccess;
+using WebApi.Migrations;
 
 namespace WebApi.Extensions
 {
@@ -127,6 +131,32 @@ namespace WebApi.Extensions
 				: base(() => provider.GetRequiredService<T>())
 			{
 			}
+		}
+
+		public static void AddPostgresMigrator(this IServiceCollection services)
+		{
+			services.AddKeyedSingleton<IMigrationRunner>(Constants.PostgresMigratorKey, (services, _) =>
+			{
+				var connectionString = services.GetRequiredService<IPostgresConfig>().ConnectionString;
+				var tempPgBuilder = Host.CreateDefaultBuilder();
+
+				tempPgBuilder.ConfigureServices(tmpServices =>
+				{
+					tmpServices.AddFluentMigratorCore()
+						.ConfigureRunner(rb =>
+							rb.AddPostgres()
+							.WithGlobalConnectionString(connectionString)
+							.ScanIn(typeof(InitialMigration).Assembly).For.Migrations())
+						.Configure<RunnerOptions>(x => x.Tags = [Constants.PostgresMigrationTag])
+						.AddLogging(lb => lb.AddSerilog().AddFluentMigratorConsole());
+				});
+
+				var tempPgApp = tempPgBuilder.Build();
+
+				var scope = tempPgApp.Services.CreateScope();
+				var runner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
+				return runner;
+			});
 		}
 	}
 

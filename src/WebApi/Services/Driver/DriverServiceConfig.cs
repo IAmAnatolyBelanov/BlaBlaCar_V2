@@ -31,7 +31,7 @@ public class DriverServiceClientConfig : IBaseConfig, IDriverServiceConfig
 
 	public string ApiCloudBaseUrl { get; set; } = "https://api-cloud.ru/api/";
 
-	public string ApiCloudApiKey { get; set; } = default!;
+	public string ApiCloudApiKey { get; set; } = "fake"; //= default!;
 
 	public int RetryCount { get; set; } = 2;
 
