@@ -63,9 +63,9 @@ public class Program
 
 		builder.Services.AddSingleton<IClock, Clock>();
 
-		builder.Services.AddSingleton<SessionFactory>();
+		builder.Services.AddSingleton<ISessionFactory, SessionFactory>();
 
-		builder.Services.AddSingleton<CloudApiResponseInfoRepository>();
+		builder.Services.RegisterRepositories();
 
 		builder.Services.AddSingleton<IRedisCacheService, RedisCacheService>();
 		builder.Services.AddSingleton<ISuggestService, SuggestService>();

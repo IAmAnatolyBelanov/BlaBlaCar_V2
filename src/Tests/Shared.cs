@@ -1,10 +1,12 @@
-﻿using WebApi.Models;
+﻿using FluentAssertions.Extensions;
+using WebApi.Models;
 
 namespace Tests
 {
 	public static class Shared
 	{
 		private static readonly object _locker = new();
+		private static IFixture _dateTimeFixture = new Fixture();
 
 		public static Fixture BuildDefaultFixture()
 		{
@@ -44,6 +46,20 @@ namespace Tests
 			fixture.Customize<PriceDto>(x => x
 				.Without(x => x.StartLeg)
 				.Without(x => x.EndLeg));
+
+			fixture.Register<DateTimeOffset>(() =>
+			{
+				var dateTime = _dateTimeFixture.Create<DateTimeOffset>();
+				var result = dateTime.AddNanoseconds(-dateTime.Nanosecond);
+				return result;
+			});
+
+			fixture.Register<DateTime>(() =>
+			{
+				var dateTime = fixture.Create<DateTimeOffset>();
+				var result = dateTime.DateTime;
+				return result;
+			});
 
 			return fixture;
 		}

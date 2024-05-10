@@ -1,5 +1,5 @@
 ﻿using DotNet.Testcontainers.Builders;
-
+using FluentMigrator.Runner;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
@@ -9,6 +9,7 @@ using Testcontainers.Redis;
 
 using WebApi.DataAccess;
 using WebApi.Extensions;
+using WebApi.Shared;
 
 namespace Tests
 {
@@ -124,7 +125,7 @@ namespace Tests
 			base.Dispose(disposing);
 		}
 
-		public void MigrateDb(int attemptsCount = 10, int sleepPeriodMs = 500)
+		public void MigrateDb(int attemptsCount = 120, int sleepPeriodMs = 1000)
 		{
 			// Хз, в чём причина, но на старте бд порой не успевает прийти в состояние готовности. В пределах тестов готов закрыть на это глаза.
 			for (int i = 0; i < attemptsCount + 1; i++)
@@ -132,8 +133,8 @@ namespace Tests
 				try
 				{
 					using var scope = Services.CreateScope();
-					using var context = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
-					context.Migrate();
+					var context = scope.ServiceProvider.GetRequiredKeyedService<IMigrationRunner>(Constants.PostgresMigratorKey);
+					context.MigrateUp();
 
 					break;
 				}

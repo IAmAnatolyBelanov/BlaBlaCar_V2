@@ -4,9 +4,9 @@ namespace WebApi.Models.DriverServiceModels
 {
     public partial class PersonMapper
     {
-        public partial global::WebApi.PersonData MapToPersonData(global::WebApi.Models.DriverServiceModels.Person person)
+        public partial global::WebApi.Models.PersonData MapToPersonData(global::WebApi.Models.DriverServiceModels.Person person)
         {
-            var target = new global::WebApi.PersonData();
+            var target = new global::WebApi.Models.PersonData();
             target.PassportSeries = person.PassportSeries;
             target.PassportNumber = person.PassportNumber;
             target.FirstName = person.FirstName;

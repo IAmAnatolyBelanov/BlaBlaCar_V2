@@ -2,7 +2,12 @@
 
 namespace WebApi.DataAccess;
 
-public class SessionFactory
+public interface ISessionFactory
+{
+	IPostgresSession OpenPostgresConnection(bool beginTransaction = false, bool trace = false);
+}
+
+public class SessionFactory : ISessionFactory
 {
 	private readonly IPostgresConfig _postgresConfig;
 
@@ -11,7 +16,7 @@ public class SessionFactory
 		_postgresConfig = postgresConfig;
 	}
 
-	public PostgresSession OpenPostgresConnection(bool beginTransaction = false, bool trace = false)
+	public IPostgresSession OpenPostgresConnection(bool beginTransaction = false, bool trace = false)
 	{
 		var connection = new NpgsqlConnection(_postgresConfig.ConnectionString);
 		connection.Open();

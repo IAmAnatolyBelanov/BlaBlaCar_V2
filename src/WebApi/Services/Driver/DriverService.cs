@@ -6,19 +6,19 @@ using System.Text;
 using WebApi.DataAccess;
 using WebApi.Models;
 using WebApi.Models.DriverServiceModels;
+using WebApi.Repositories;
 using WebApi.Services.Validators;
 
 namespace WebApi.Services.Driver;
 
 public interface IDriverService
 {
-	Task<DriverData> ValidateDriverLicense(User user, Models.DriverServiceModels.Driver driver, CancellationToken ct);
+	Task<DriverData> ValidateDriverLicense(Guid userId, Models.DriverServiceModels.Driver driver, CancellationToken ct);
 	Task<PersonData> ValidatePerson(Person person, CancellationToken ct);
 }
 
 public class DriverService : IDriverService
 {
-	private readonly IServiceScopeFactory _serviceScopeFactory;
 	private readonly IDriverServiceConfig _config;
 	private readonly IValidator<Person> _personValidator;
 	private readonly IPersonMapper _personMapper;
@@ -37,23 +37,33 @@ public class DriverService : IDriverService
 	private readonly string _mvdServiceBaseUrl;
 	private readonly string _gibddServiceBaseUrl;
 	private readonly IAsyncPolicy _asyncPolicy;
+	private readonly ISessionFactory _sessionFactory;
+	private readonly ICloudApiResponseInfoRepository _cloudApiResponseInfoRepository;
+	private readonly IPersonDataRepository _personDataRepository;
+	private readonly IDriverDataRepository _driverDataRepository;
 
 	public DriverService(
-		IServiceScopeFactory serviceScopeFactory,
 		IDriverServiceConfig driverServiceConfig,
 		IValidator<Person> personValidator,
 		IPersonMapper personMapper,
 		IClock clock,
 		IValidator<Models.DriverServiceModels.Driver> driverValidator,
-		IGibddServiceDrivingLicenseResponseMapper gibddMapper)
+		IGibddServiceDrivingLicenseResponseMapper gibddMapper,
+		ISessionFactory sessionFactory,
+		ICloudApiResponseInfoRepository cloudApiResponseInfoRepository,
+		IPersonDataRepository personDataRepository,
+		IDriverDataRepository driverDataRepository)
 	{
-		_serviceScopeFactory = serviceScopeFactory;
 		_config = driverServiceConfig;
 		_personValidator = personValidator;
 		_personMapper = personMapper;
 		_clock = clock;
 		_driverValidator = driverValidator;
 		_gibddMapper = gibddMapper;
+		_sessionFactory = sessionFactory;
+		_cloudApiResponseInfoRepository = cloudApiResponseInfoRepository;
+		_personDataRepository = personDataRepository;
+		_driverDataRepository = driverDataRepository;
 
 		var baseUrl = new Uri(_config.ApiCloudBaseUrl);
 
@@ -70,29 +80,30 @@ public class DriverService : IDriverService
 				_logger.Error("Failed to fetch api-cloud response. Attempt {Attempt}, time delay {TimeDelay}, context {Context}, exception {Exception}",
 					attempt, timeSpan, context, exception);
 			});
+
 	}
 
-	public async Task<DriverData> ValidateDriverLicense(User user, Models.DriverServiceModels.Driver driver, CancellationToken ct)
+	public async Task<DriverData> ValidateDriverLicense(Guid userId, Models.DriverServiceModels.Driver driver, CancellationToken ct)
 	{
 		var start = _clock.Now;
 		_driverValidator.ValidateAndThrowFriendly(driver);
 
-		using var scope = BuildScope();
-		using var context = GetDbContext(scope);
+		using var session = _sessionFactory.OpenPostgresConnection().BeginTransaction().StartTrace();
 
-		var actualPersonData = user.ActualPersonData
-			?? await context.PersonDatas
-				.Where(x => x.IsPassportValid && x.UserId == user.Id)
-				.OrderByDescending(x => x.Created)
-				.FirstOrDefaultAsync(ct);
+		var actualPersonData = await _personDataRepository.GetByUserId(session, userId, ct);
 
 		if (actualPersonData is null)
 		{
 			throw new UserFriendlyException(DriverValidatorCodes.EmptyPassport, "Водительское удостоверение можно заполнить только при наличии подтверждённого действительного паспорта.");
 		}
 
-		var driverData = await context.DriverDatas
-			.FirstOrDefaultAsync(x => x.LicenseSeries == driver.LicenseSeries && x.LicenseNumber == driver.LicenseNumber, ct);
+		ApplicationContext context = null!;
+
+		var driverData = await _driverDataRepository.GetByDrivingLicense(
+			session: session,
+			licenseSeries: driver.LicenseSeries,
+			licenseNumber: driver.LicenseNumber,
+			ct: ct);
 
 		if (driverData is not null)
 		{
@@ -141,7 +152,7 @@ public class DriverService : IDriverService
 		driverData.LastCheckDate = start;
 
 		if (driverData.BirthDate == actualPersonData.BirthDate)
-			driverData.UserId = user.Id;
+			driverData.UserId = userId;
 		else
 			driverData.UserId = null;
 
@@ -167,11 +178,12 @@ public class DriverService : IDriverService
 		person.Normalize();
 		_personValidator.ValidateAndThrowFriendly(person);
 
-		using var scope = BuildScope();
-		using var context = GetDbContext(scope);
+		using var session = _sessionFactory.OpenPostgresConnection().BeginTransaction().StartTrace();
+
+		ApplicationContext context = null;
 
 		// Если паспортные данные неверны, не удастся получить ИНН.
-		(var inn, var personData) = await GetInn(context, person, ct);
+		(var inn, var personData) = await GetInn(session, person, ct);
 
 		if (personData is null)
 		{
@@ -182,8 +194,8 @@ public class DriverService : IDriverService
 			personData.IsPassportValid = true;
 			personData.Id = Guid.NewGuid();
 
-			await context.PersonDatas.AddAsync(personData, CancellationToken.None);
-			await context.SaveChangesAsync(CancellationToken.None);
+			await _personDataRepository.Insert(session, personData, CancellationToken.None);
+			await session.CommitAsync(CancellationToken.None);
 		}
 
 		ct.ThrowIfCancellationRequested();
@@ -222,11 +234,15 @@ public class DriverService : IDriverService
 	/// <returns>
 	/// В случае ошибок получения ИНН выкинет ошибку. Если ИНН был взят из БД, то вместе с ИНН вернёт <see cref="PersonData"/>. В противном случае только ИНН.
 	/// </returns>
-	private async ValueTask<(long Inn, PersonData? PersonData)> GetInn(ApplicationContext context, Person person, CancellationToken ct)
+	private async ValueTask<(long Inn, PersonData? PersonData)> GetInn(IPostgresSession session, Person person, CancellationToken ct)
 	{
 		person.Normalize();
 
-		var personData = await context.PersonDatas.FirstOrDefaultAsync(x => x.PassportSeries == person.PassportSeries && x.PassportNumber == person.PassportNumber, ct);
+		var personData = await _personDataRepository.GetByPassport(
+			session: session,
+			passportSeries: person.PassportSeries,
+			passportNumber: person.PassportNumber,
+			ct: ct);
 
 		if (personData is not null)
 		{
@@ -325,7 +341,7 @@ public class DriverService : IDriverService
 			using var httpRequest = new HttpRequestMessage(HttpMethod.Get, requestUrl);
 			using var response = await _httpClient.SendAsync(httpRequest, internalCt);
 			response.EnsureSuccessStatusCode();
-			var body = await response.Content.ReadAsStringAsync(internalCt);
+			var body = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
 			_ = SaveCloudApiResponse(requestUrl, body);
 
@@ -348,15 +364,12 @@ public class DriverService : IDriverService
 			RequestBasePath = request.Substring(0, request.IndexOf("?")),
 			Response = response.IsNullOrWhiteSpace() ? "{}" : response,
 		};
-		using var scope = BuildScope();
-		using var context = GetDbContext(scope);
 
-		await context.CloudApiResponseInfos.AddAsync(info);
-		await context.SaveChangesAsync();
+		using var session = _sessionFactory.OpenPostgresConnection()
+			.BeginTransaction()
+			.StartTrace();
+
+		await _cloudApiResponseInfoRepository.Insert(session, info, CancellationToken.None);
+		await session.CommitAsync(CancellationToken.None);
 	}
-
-	private AsyncServiceScope BuildScope()
-		=> _serviceScopeFactory.CreateAsyncScope();
-	private ApplicationContext GetDbContext(AsyncServiceScope scope)
-		=> scope.ServiceProvider.GetRequiredService<ApplicationContext>();
 }

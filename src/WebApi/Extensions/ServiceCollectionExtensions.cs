@@ -7,6 +7,7 @@ using Riok.Mapperly.Abstractions;
 using System.Reflection;
 using WebApi.DataAccess;
 using WebApi.Migrations;
+using WebApi.Repositories;
 
 namespace WebApi.Extensions
 {
@@ -133,9 +134,10 @@ namespace WebApi.Extensions
 			}
 		}
 
+		private static IHost? _postgresMigratorHost;
 		public static void AddPostgresMigrator(this IServiceCollection services)
 		{
-			services.AddKeyedSingleton<IMigrationRunner>(Constants.PostgresMigratorKey, (services, _) =>
+			services.AddKeyedTransient<IMigrationRunner>(Constants.PostgresMigratorKey, (services, _) =>
 			{
 				var connectionString = services.GetRequiredService<IPostgresConfig>().ConnectionString;
 				var tempPgBuilder = Host.CreateDefaultBuilder();
@@ -148,15 +150,44 @@ namespace WebApi.Extensions
 							.WithGlobalConnectionString(connectionString)
 							.ScanIn(typeof(InitialMigration).Assembly).For.Migrations())
 						.Configure<RunnerOptions>(x => x.Tags = [Constants.PostgresMigrationTag])
-						.AddLogging(lb => lb.AddSerilog().AddFluentMigratorConsole());
+						.AddLogging(lb => lb.AddSerilog());
 				});
 
-				var tempPgApp = tempPgBuilder.Build();
+				_postgresMigratorHost = tempPgBuilder.Build();
 
-				var scope = tempPgApp.Services.CreateScope();
+				var scope = _postgresMigratorHost.Services.CreateScope();
 				var runner = scope.ServiceProvider.GetRequiredService<IMigrationRunner>();
 				return runner;
 			});
+		}
+
+		public static void RegisterRepositories(this IServiceCollection services)
+			=> RegisterRepositories(services, Assembly.GetExecutingAssembly());
+
+		public static void RegisterRepositories(this IServiceCollection services, Assembly assembly)
+		{
+			var repositoryTypes = GetAllRepositoryTypes(assembly);
+
+			foreach (var repoType in repositoryTypes)
+			{
+				var repoInterfaces = repoType.GetInterfaces()
+					.Where(i => i != typeof(IRepository))
+					.ToArray();
+
+				services.AddSingleton(repoType);
+
+				foreach (var repoInterface in repoInterfaces)
+				{
+					services.AddSingleton(repoInterface, provider => provider.GetRequiredService(repoType));
+				}
+			}
+		}
+
+		private static Type[] GetAllRepositoryTypes(Assembly assembly)
+		{
+			return assembly.GetTypes()
+				.Where(t => typeof(IRepository).IsAssignableFrom(t) && t != typeof(IRepository) && t.IsClass)
+				.ToArray();
 		}
 	}
 

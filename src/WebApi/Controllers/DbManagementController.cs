@@ -14,10 +14,10 @@ namespace WebApi.Controllers
 		private readonly ApplicationContext _context;
 		private readonly IServiceProvider _services;
 		private readonly IMigrationRunner _postgresMigrationRunner;
-		private readonly SessionFactory _sessionFactory;
-		private readonly CloudApiResponseInfoRepository _cloudApiResponseInfoRepository;
+		private readonly ISessionFactory _sessionFactory;
+		private readonly ICloudApiResponseInfoRepository _cloudApiResponseInfoRepository;
 
-		public DbManagementController(ApplicationContext context, IServiceProvider services, SessionFactory sessionFactory, CloudApiResponseInfoRepository cloudApiResponseInfoRepository)
+		public DbManagementController(ApplicationContext context, IServiceProvider services, ISessionFactory sessionFactory, ICloudApiResponseInfoRepository cloudApiResponseInfoRepository)
 		{
 			_context = context;
 			_services = services;
@@ -43,7 +43,7 @@ namespace WebApi.Controllers
 		public async Task Test()
 		{
 			using var session = _sessionFactory.OpenPostgresConnection(trace: true).BeginTransaction();
-			var result = await _cloudApiResponseInfoRepository.Select(session, 10, 0, CancellationToken.None);
+			var result = await _cloudApiResponseInfoRepository.Get(session, 10, 0, CancellationToken.None);
 
 			_logger.Information("{Result}", result);
 		}
