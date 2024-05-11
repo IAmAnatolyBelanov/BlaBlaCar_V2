@@ -17,6 +17,22 @@ public interface IPersonDataRepository : IRepository
 		IPostgresSession session,
 		Guid userId,
 		CancellationToken ct);
+
+	Task<PersonData?> GetById(
+		IPostgresSession session,
+		Guid id,
+		CancellationToken ct);
+
+	Task<int> UpdateUserId(
+		IPostgresSession session,
+		Guid personDataId,
+		Guid userId,
+		CancellationToken ct);
+
+	Task<int> DisablePersonData(
+		IPostgresSession session,
+		Guid personDataId,
+		CancellationToken ct);
 }
 
 public class PersonDataRepository : IPersonDataRepository
@@ -85,6 +101,55 @@ public class PersonDataRepository : IPersonDataRepository
 		";
 
 		var result = await session.QueryFirstOrDefaultAsync<PersonData>(sql, ct);
+		return result;
+	}
+
+	public async Task<PersonData?> GetById(
+		IPostgresSession session,
+		Guid id,
+		CancellationToken ct)
+	{
+		var sql = @$"
+			SELECT {_fullColumnsList}
+			FROM {_tableName}
+			WHERE
+				""{nameof(PersonData.Id)}"" = '{id}'
+				AND ""{nameof(PersonData.IsPassportValid)}"" = TRUE
+			LIMIT 1;
+		";
+
+		var result = await session.QueryFirstOrDefaultAsync<PersonData>(sql, ct);
+		return result;
+	}
+
+	public async Task<int> UpdateUserId(
+		IPostgresSession session,
+		Guid personDataId,
+		Guid userId,
+		CancellationToken ct)
+	{
+		var sql = @$"
+			UPDATE {_tableName}
+			SET ""{nameof(PersonData.UserId)}"" = '{userId}'
+			WHERE ""{nameof(PersonData.Id)}"" = '{personDataId}';
+		";
+
+		var result = await session.ExecuteAsync(sql, ct);
+		return result;
+	}
+
+	public async Task<int> DisablePersonData(
+		IPostgresSession session,
+		Guid personDataId,
+		CancellationToken ct)
+	{
+		var sql = @$"
+			UPDATE {_tableName}
+			SET ""{nameof(PersonData.IsPassportValid)}"" = FALSE
+			WHERE ""{nameof(PersonData.Id)}"" = '{personDataId}';
+		";
+
+		var result = await session.ExecuteAsync(sql, ct);
 		return result;
 	}
 

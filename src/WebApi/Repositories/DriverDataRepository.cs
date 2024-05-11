@@ -12,6 +12,11 @@ public interface IDriverDataRepository : IRepository
 		int licenseSeries,
 		int licenseNumber,
 		CancellationToken ct);
+
+	Task<DriverData?> GetByUserId(
+		IPostgresSession session,
+		Guid userId,
+		CancellationToken ct);
 }
 
 public class DriverDataRepository : IDriverDataRepository
@@ -53,6 +58,26 @@ public class DriverDataRepository : IDriverDataRepository
 			WHERE
 				""{nameof(DriverData.LicenseSeries)}"" = {licenseSeries}
 				AND ""{nameof(DriverData.LicenseNumber)}"" = {licenseNumber}
+				AND ""{nameof(DriverData.IsValid)}"" = TRUE
+			ORDER BY ""{nameof(DriverData.Issuance)}"" DESC
+			LIMIT 1;
+		";
+
+		var result = await session.QueryFirstOrDefaultAsync<DriverData>(sql, ct);
+		return result;
+	}
+
+
+	public async Task<DriverData?> GetByUserId(
+		IPostgresSession session,
+		Guid userId,
+		CancellationToken ct)
+	{
+		var sql = @$"
+			SELECT {_fullColumnsList}
+			FROM {_tableName}
+			WHERE
+				""{nameof(DriverData.UserId)}"" = '{userId}'
 				AND ""{nameof(DriverData.IsValid)}"" = TRUE
 			ORDER BY ""{nameof(DriverData.Issuance)}"" DESC
 			LIMIT 1;

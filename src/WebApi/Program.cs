@@ -14,6 +14,7 @@ using WebApi.Repositories;
 using WebApi.Services.Core;
 using WebApi.Services.Driver;
 using WebApi.Services.Redis;
+using WebApi.Services.User;
 using WebApi.Services.Validators;
 using WebApi.Services.Yandex;
 
@@ -73,6 +74,7 @@ public class Program
 		builder.Services.AddSingleton<IRouteService, RouteService>();
 		builder.Services.AddSingleton<IRideService, RideService>();
 		builder.Services.AddSingleton<IDriverService, DriverService>();
+		builder.Services.AddSingleton<IUserService, UserService>();
 
 		builder.Services.AddHttpClient(Constants.DefaultHttpClientName)
 			.SetHandlerLifetime(TimeSpan.FromHours(1));

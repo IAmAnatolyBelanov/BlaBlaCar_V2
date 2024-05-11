@@ -13,8 +13,8 @@ namespace WebApi.Services.Driver;
 
 public interface IDriverService
 {
-	Task<DriverData> ValidateDriverLicense(Guid userId, Models.DriverServiceModels.Driver driver, CancellationToken ct);
-	Task<PersonData> ValidatePerson(Person person, CancellationToken ct);
+	Task<DriverData> ValidateDriverLicense(IPostgresSession session, Guid userId, Models.DriverServiceModels.Driver driver, CancellationToken ct);
+	Task<PersonData> ValidatePerson(IPostgresSession session, Person person, CancellationToken ct);
 }
 
 public class DriverService : IDriverService
@@ -83,12 +83,10 @@ public class DriverService : IDriverService
 
 	}
 
-	public async Task<DriverData> ValidateDriverLicense(Guid userId, Models.DriverServiceModels.Driver driver, CancellationToken ct)
+	public async Task<DriverData> ValidateDriverLicense(IPostgresSession session, Guid userId, Models.DriverServiceModels.Driver driver, CancellationToken ct)
 	{
 		var start = _clock.Now;
 		_driverValidator.ValidateAndThrowFriendly(driver);
-
-		using var session = _sessionFactory.OpenPostgresConnection().BeginTransaction().StartTrace();
 
 		var actualPersonData = await _personDataRepository.GetByUserId(session, userId, ct);
 
@@ -96,8 +94,6 @@ public class DriverService : IDriverService
 		{
 			throw new UserFriendlyException(DriverValidatorCodes.EmptyPassport, "Водительское удостоверение можно заполнить только при наличии подтверждённого действительного паспорта.");
 		}
-
-		ApplicationContext context = null!;
 
 		var driverData = await _driverDataRepository.GetByDrivingLicense(
 			session: session,
@@ -119,6 +115,8 @@ public class DriverService : IDriverService
 
 			return driverData;
 		}
+
+		ct.ThrowIfCancellationRequested();
 
 		var requestUrl = BuildGibddDriverLicenseRequest(driver);
 		var getGibddResponse = await ExecuteCloudApiRequest<GibddServiceDrivingLicenseResponse>(requestUrl, ct);
@@ -156,8 +154,7 @@ public class DriverService : IDriverService
 		else
 			driverData.UserId = null;
 
-		await context.DriverDatas.AddAsync(driverData, CancellationToken.None);
-		await context.SaveChangesAsync(CancellationToken.None);
+		await _driverDataRepository.Insert(session, driverData, CancellationToken.None);
 
 		if (driverData.BirthDate != actualPersonData.BirthDate)
 			throw new UserFriendlyException(DriverValidatorCodes.IncorrectDriverLicenseData, "Неверные данные водительского удостоверения");
@@ -172,15 +169,13 @@ public class DriverService : IDriverService
 		return driverData;
 	}
 
-	public async Task<PersonData> ValidatePerson(Person person, CancellationToken ct)
+	public async Task<PersonData> ValidatePerson(IPostgresSession session, Person person, CancellationToken ct)
 	{
 		var start = _clock.Now;
 		person.Normalize();
 		_personValidator.ValidateAndThrowFriendly(person);
 
-		using var session = _sessionFactory.OpenPostgresConnection().BeginTransaction().StartTrace();
-
-		ApplicationContext context = null;
+		ct.ThrowIfCancellationRequested();
 
 		// Если паспортные данные неверны, не удастся получить ИНН.
 		(var inn, var personData) = await GetInn(session, person, ct);
@@ -195,7 +190,6 @@ public class DriverService : IDriverService
 			personData.Id = Guid.NewGuid();
 
 			await _personDataRepository.Insert(session, personData, CancellationToken.None);
-			await session.CommitAsync(CancellationToken.None);
 		}
 
 		ct.ThrowIfCancellationRequested();

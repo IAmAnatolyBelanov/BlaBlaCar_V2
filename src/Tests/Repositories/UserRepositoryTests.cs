@@ -72,4 +72,61 @@ public class UserRepositoryTests : BaseRepositoryTest
 			result.Should().BeEquivalentTo(users);
 		}
 	}
+
+	[Fact]
+	public async Task ValidateMultipleCommits()
+	{
+		using var session = _sessionFactory.OpenPostgresConnection().BeginTransaction();
+		var users = _fixture.CreateMany<User>(10).ToArray();
+		foreach (var user in users)
+		{
+			await _repo.Insert(session, user, CancellationToken.None);
+			lock (user)
+			{
+				session.CommitAsync(CancellationToken.None).Wait();
+			}
+		}
+	}
+
+
+	[Fact]
+	public async Task ParallelTransactionsTest()
+	{
+		using var session1 = _sessionFactory.OpenPostgresConnection();
+		using var session2 = _sessionFactory.OpenPostgresConnection();
+
+		var generatedUser = _fixture.Create<User>();
+		await _repo.Insert(session2, generatedUser, CancellationToken.None);
+
+		var fetchedUser = await _repo.GetById(session1, generatedUser.Id, CancellationToken.None);
+
+		fetchedUser.Should()
+			.NotBeNull()
+			.And
+			.BeEquivalentTo(generatedUser);
+
+		session1.Dispose();
+		session2.Dispose();
+
+		var session3 = _sessionFactory.OpenPostgresConnection();
+
+		fetchedUser = await _repo.GetById(session3, generatedUser.Id, CancellationToken.None);
+
+		fetchedUser.Should()
+			.NotBeNull()
+			.And
+			.BeEquivalentTo(generatedUser);
+	}
+
+	[Fact]
+	public async Task TestBeggingTransactionAfterExploringSession()
+	{
+		using var session = _sessionFactory.OpenPostgresConnection();
+		await _repo.Insert(session, _fixture.Create<User>(), CancellationToken.None);
+
+		session.BeginTransaction();
+
+		await _repo.Insert(session, _fixture.Create<User>(), CancellationToken.None);
+		await session.CommitAsync(CancellationToken.None);
+	}
 }
