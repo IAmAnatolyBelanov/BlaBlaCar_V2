@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
 using Polly;
+using System.Collections.Concurrent;
 using System.Text;
 using WebApi.DataAccess;
 using WebApi.Models;
@@ -42,6 +43,9 @@ public class DriverService : IDriverService
 	private readonly IPersonDataRepository _personDataRepository;
 	private readonly IDriverDataRepository _driverDataRepository;
 
+	private readonly ConcurrentQueue<CloudApiResponseInfo> _cloudApiResponsesForSave = new();
+	private readonly Task _cloudApiResponsesSaver;
+
 	public DriverService(
 		IDriverServiceConfig driverServiceConfig,
 		IValidator<Person> personValidator,
@@ -81,6 +85,7 @@ public class DriverService : IDriverService
 					attempt, timeSpan, context, exception);
 			});
 
+		_cloudApiResponsesSaver = StartSaverCloudApiResponseBackgroundTask();
 	}
 
 	public async Task<DriverData> ValidateDriverLicense(IPostgresSession session, Guid userId, Models.DriverServiceModels.Driver driver, CancellationToken ct)
@@ -337,7 +342,7 @@ public class DriverService : IDriverService
 			response.EnsureSuccessStatusCode();
 			var body = await response.Content.ReadAsStringAsync(CancellationToken.None);
 
-			_ = SaveCloudApiResponse(requestUrl, body);
+			SaveCloudApiResponse(requestUrl, body);
 
 			var innResponse = JsonConvert.DeserializeObject<T>(body);
 			return innResponse;
@@ -346,10 +351,8 @@ public class DriverService : IDriverService
 		return cloudApiResponse!;
 	}
 
-	private async Task SaveCloudApiResponse(string request, string response)
+	private void SaveCloudApiResponse(string request, string response)
 	{
-		await Task.CompletedTask;
-
 		var info = new CloudApiResponseInfo
 		{
 			Id = Guid.NewGuid(),
@@ -359,11 +362,44 @@ public class DriverService : IDriverService
 			Response = response.IsNullOrWhiteSpace() ? "{}" : response,
 		};
 
-		using var session = _sessionFactory.OpenPostgresConnection()
-			.BeginTransaction()
-			.StartTrace();
+		_cloudApiResponsesForSave.Enqueue(info);
+	}
 
-		await _cloudApiResponseInfoRepository.Insert(session, info, CancellationToken.None);
-		await session.CommitAsync(CancellationToken.None);
+	private async Task StartSaverCloudApiResponseBackgroundTask()
+	{
+		while (true)
+		{
+			if (_cloudApiResponsesForSave.Count < _config.CloudApiResponseSaverMaxBatchCount)
+				await Task.Delay(_config.CloudApiResponseSaverPollingDelay);
+
+			try
+			{
+				var count = _cloudApiResponsesForSave.Count;
+				if (count == 0)
+					continue;
+
+				if (count > _config.CloudApiResponseSaverMaxBatchCount)
+					count = _config.CloudApiResponseSaverMaxBatchCount;
+
+				using var session = _sessionFactory.OpenPostgresConnection().BeginTransaction().StartTrace();
+
+				var infos = new List<CloudApiResponseInfo>(count);
+
+				for (int i = 0; i < count; i++)
+				{
+					if (_cloudApiResponsesForSave.TryDequeue(out var info))
+					{
+						infos.Add(info);
+					}
+				}
+
+				await _cloudApiResponseInfoRepository.BulkInsert(session, infos, CancellationToken.None);
+				_logger.Information("Saved {Count} CloudApi responses", infos.Count);
+			}
+			catch (Exception ex)
+			{
+				_logger.Error(ex, "Failed to save CloudApi responses.");
+			}
+		}
 	}
 }

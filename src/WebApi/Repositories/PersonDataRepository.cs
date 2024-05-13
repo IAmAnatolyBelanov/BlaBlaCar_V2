@@ -155,16 +155,16 @@ public class PersonDataRepository : IPersonDataRepository
 
 	private const string _fullColumnsList = @$"
 		""{nameof(PersonData.Id)}""
-			, ""{nameof(PersonData.UserId)}""
-			, ""{nameof(PersonData.PassportSeries)}""
-			, ""{nameof(PersonData.PassportNumber)}""
-			, ""{nameof(PersonData.FirstName)}""
-			, ""{nameof(PersonData.LastName)}""
-			, ""{nameof(PersonData.SecondName)}""
-			, ""{nameof(PersonData.BirthDate)}""
-			, ""{nameof(PersonData.Inn)}""
-			, ""{nameof(PersonData.IsPassportValid)}""
-			, ""{nameof(PersonData.WasCheckedAtLeastOnce)}""
-			, ""{nameof(PersonData.LastCheckPassportDate)}""
-			, ""{nameof(PersonData.Created)}""";
+		, ""{nameof(PersonData.UserId)}""
+		, ""{nameof(PersonData.PassportSeries)}""
+		, ""{nameof(PersonData.PassportNumber)}""
+		, ""{nameof(PersonData.FirstName)}""
+		, ""{nameof(PersonData.LastName)}""
+		, ""{nameof(PersonData.SecondName)}""
+		, ""{nameof(PersonData.BirthDate)}""
+		, ""{nameof(PersonData.Inn)}""
+		, ""{nameof(PersonData.IsPassportValid)}""
+		, ""{nameof(PersonData.WasCheckedAtLeastOnce)}""
+		, ""{nameof(PersonData.LastCheckPassportDate)}""
+		, ""{nameof(PersonData.Created)}""";
 }

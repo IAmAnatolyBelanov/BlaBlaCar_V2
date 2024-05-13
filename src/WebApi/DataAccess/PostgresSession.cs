@@ -81,26 +81,35 @@ public interface IPostgresSession : IDisposable
 		CancellationToken ct,
 		[CallerFilePath] string sourceFilePath = "",
 		[CallerMemberName] string memberName = "");
+
+	Task<IPostgresBinaryImporter> BeginBinaryImport(string copyFromCommand, CancellationToken ct);
 }
 
 public class PostgresSession : IDisposable, IPostgresSession
 {
-	private static readonly ILogger _logger = Log.ForContext<PostgresSession>();
-
+	private readonly Guid _id = Guid.NewGuid();
+	private readonly DateTimeOffset _start;
+	private readonly ILogger _logger;
 	private bool _trace;
 
+	private readonly IClock _clock;
 	private readonly NpgsqlConnection _connection;
 	private NpgsqlTransaction? _transaction;
 
-	public PostgresSession(NpgsqlConnection connection, bool beginTransaction = false, bool trace = false)
+	public PostgresSession(NpgsqlConnection connection, IClock clock, bool beginTransaction = false, bool trace = false)
 	{
 		_connection = connection;
+		_clock = clock;
 
 		if (beginTransaction)
 			BeginTransaction();
 
 		if (trace)
 			StartTrace();
+
+		_start = _clock.Now;
+		_logger = Log.ForContext<PostgresSession>().ForContext("PostgresConnectionId", _id);
+		_logger.Information("Opened postgres connection {Id}", _id);
 	}
 
 	public IPostgresSession BeginTransaction()
@@ -309,17 +318,17 @@ public class PostgresSession : IDisposable, IPostgresSession
 		}
 	}
 
-		public Task<T?> QueryFirstOrDefaultAsync<T>(string sql, CancellationToken ct,
+	public Task<T?> QueryFirstOrDefaultAsync<T>(string sql, CancellationToken ct,
 		[CallerFilePath] string sourceFilePath = "",
 		[CallerMemberName] string memberName = "")
-		=> QueryFirstOrDefaultAsync<T>(
-			sql: sql,
-			ct: ct,
-			param: null,
-			commandTimeout: null,
-			commandType: null,
-			sourceFilePath: sourceFilePath,
-			memberName: memberName);
+	=> QueryFirstOrDefaultAsync<T>(
+		sql: sql,
+		ct: ct,
+		param: null,
+		commandTimeout: null,
+		commandType: null,
+		sourceFilePath: sourceFilePath,
+		memberName: memberName);
 
 	public Task<T?> QueryFirstOrDefaultAsync<T>(string sql, object param, CancellationToken ct,
 		[CallerFilePath] string sourceFilePath = "",
@@ -449,10 +458,19 @@ public class PostgresSession : IDisposable, IPostgresSession
 		}
 	}
 
+	public async Task<IPostgresBinaryImporter> BeginBinaryImport(string copyFromCommand, CancellationToken ct)
+	{
+		var importer = await _connection.BeginBinaryImportAsync(copyFromCommand, ct);
+		var result = new PostgresBinaryImporter(importer, _clock, _trace);
+		return result;
+	}
+
 	public void Dispose()
 	{
 		_transaction?.Dispose();
 		_connection.Dispose();
+
+		_logger.Information("Disposed postgres connection {Id} after {LifeTime}", _id, _clock.Now - _start);
 	}
 
 	~PostgresSession()

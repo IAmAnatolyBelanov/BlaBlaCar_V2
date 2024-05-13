@@ -15,7 +15,7 @@ public class CloudApiResponseInfoRepositoryTests : BaseRepositoryTest
 	[Fact]
 	public async Task InsertTest()
 	{
-		var fixture = Shared.BuildDefaultFixture();
+		var fixture = BuildFixture();
 		var info = fixture.Build<CloudApiResponseInfo>()
 			.With(x => x.Response, "{}")
 			.Create();
@@ -28,9 +28,25 @@ public class CloudApiResponseInfoRepositoryTests : BaseRepositoryTest
 	}
 
 	[Fact]
+	public async Task BulkInsertTest()
+	{
+		var fixture = BuildFixture();
+		var infos = fixture.Build<CloudApiResponseInfo>()
+			.With(x => x.Response, "{}")
+			.CreateMany(3000)
+			.ToArray();
+
+		using var session = _sessionFactory.OpenPostgresConnection().BeginTransaction();
+		var result = await _repo.BulkInsert(session, infos, CancellationToken.None);
+		await session.CommitAsync(CancellationToken.None);
+
+		result.Should().Be((ulong)infos.Length);
+	}
+
+	[Fact]
 	public async Task InsertAndGetWithOffsetTest()
 	{
-		var fixture = Shared.BuildDefaultFixture();
+		var fixture = BuildFixture();
 		var generatedInfos = fixture.Build<CloudApiResponseInfo>()
 			.With(x => x.Response, "{}")
 			.CreateMany(100)

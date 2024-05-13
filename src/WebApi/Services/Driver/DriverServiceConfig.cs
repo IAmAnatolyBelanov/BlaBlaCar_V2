@@ -23,6 +23,10 @@ public interface IDriverServiceConfig
 	bool NeedToCheckPassport { get; }
 
 	int MinAgesForDrivingLicense { get; }
+
+	TimeSpan CloudApiResponseSaverPollingDelay { get; }
+
+	int CloudApiResponseSaverMaxBatchCount { get; }
 }
 
 public class DriverServiceClientConfig : IBaseConfig, IDriverServiceConfig
@@ -44,6 +48,10 @@ public class DriverServiceClientConfig : IBaseConfig, IDriverServiceConfig
 	public bool NeedToCheckPassport { get; set; } = false;
 
 	public int MinAgesForDrivingLicense { get; set; } = 16;
+
+	public TimeSpan CloudApiResponseSaverPollingDelay { get; set; } = TimeSpan.FromSeconds(3);
+
+	public int CloudApiResponseSaverMaxBatchCount { get; set; } = 5_000;
 
 	public IEnumerable<string> GetValidationErrors()
 	{
@@ -67,5 +75,11 @@ public class DriverServiceClientConfig : IBaseConfig, IDriverServiceConfig
 
 		if (MinAgesForDrivingLicense <= 0)
 			yield return $"{nameof(MinAgesForDrivingLicense)} must be > 0";
+
+		if (CloudApiResponseSaverPollingDelay <= TimeSpan.Zero)
+			yield return $"{nameof(CloudApiResponseSaverPollingDelay)} must be > 0";
+
+		if (CloudApiResponseSaverMaxBatchCount <= 0)
+			yield return $"{nameof(CloudApiResponseSaverMaxBatchCount)} must be > 0";
 	}
 }
