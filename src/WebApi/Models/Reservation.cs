@@ -7,9 +7,9 @@
 		public Guid Id { get; set; }
 
 		public Guid StartLegId { get; set; }
-		public Leg StartLeg { get; set; } = default!;
+		public Leg_Obsolete StartLeg { get; set; } = default!;
 		public Guid EndLegId { get; set; }
-		public Leg EndLeg { get; set; } = default!;
+		public Leg_Obsolete EndLeg { get; set; } = default!;
 		/// <summary>
 		/// Айдишники Leg'ов, которые участвуют в резервации. Включая start и end. Нужен только для ускорения посика в postgres.
 		/// </summary>

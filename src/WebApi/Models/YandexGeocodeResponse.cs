@@ -65,14 +65,14 @@
 			//public string country_code { get; set; }
 			//public string postal_code { get; set; }
 			public string Formatted { get; set; } = default!;
-			//public Component[] Components { get; set; }
+			public Component[] Components { get; set; } = default!;
 		}
 
-		//public class Component
-		//{
-		//	public string kind { get; set; }
-		//	public string name { get; set; }
-		//}
+		public class Component
+		{
+			public string Kind { get; set; } = default!;
+			public string Name { get; set; } = default!;
+		}
 
 		//public class Addressdetails
 		//{

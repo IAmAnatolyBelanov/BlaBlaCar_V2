@@ -12,12 +12,12 @@ namespace WebApi.Models
 		public Guid StartLegId { get; set; }
 		[System.Text.Json.Serialization.JsonIgnore]
 		[Newtonsoft.Json.JsonIgnore]
-		public LegDto StartLeg { get; set; } = default!;
+		public LegDto_Obsolete StartLeg { get; set; } = default!;
 
 		public Guid EndLegId { get; set; }
 		[System.Text.Json.Serialization.JsonIgnore]
 		[Newtonsoft.Json.JsonIgnore]
-		public LegDto EndLeg { get; set; } = default!;
+		public LegDto_Obsolete EndLeg { get; set; } = default!;
 	}
 
 	public interface IPriceDtoMapper : IBaseMapper<Price, PriceDto>

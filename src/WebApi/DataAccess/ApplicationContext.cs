@@ -14,8 +14,8 @@ namespace WebApi.DataAccess
 			ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
 		}
 
-		public DbSet<Ride> Rides { get; set; }
-		public DbSet<Leg> Legs { get; set; }
+		public DbSet<Ride_Obsolete> Rides { get; set; }
+		public DbSet<Leg_Obsolete> Legs { get; set; }
 		public DbSet<CompositeLeg> CompositeLegs { get; set; }
 		public DbSet<Reservation> Reservations { get; set; }
 		public DbSet<Price> Prices { get; set; }
@@ -66,7 +66,7 @@ namespace WebApi.DataAccess
 		{
 			modelBuilder.HasPostgresExtension("postgis");
 
-			modelBuilder.Entity<Leg>(builder =>
+			modelBuilder.Entity<Leg_Obsolete>(builder =>
 			{
 				builder.Property(x => x.From).HasColumnType("geography (point)");
 				builder.Property(x => x.To).HasColumnType("geography (point)");

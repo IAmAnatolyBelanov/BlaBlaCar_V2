@@ -1,25 +1,10 @@
-﻿using NetTopologySuite.Geometries;
+namespace WebApi.Models;
 
-namespace WebApi.Models
+public class Leg
 {
-	public class Leg
-	{
-		private DateTimeOffset startTime;
-		private DateTimeOffset endTime;
-
-		public Guid Id { get; set; }
-		public Ride Ride { get; set; } = default!;
-		public Guid RideId { get; set; }
-
-		public Point From { get; set; } = default!;
-		public Point To { get; set; } = default!;
-		public DateTimeOffset StartTime { get => startTime; set => startTime = value.ToUniversalTime(); }
-		public DateTimeOffset EndTime { get => endTime; set => endTime = value.ToUniversalTime(); }
-		public string Description { get; set; } = default!;
-
-		public Guid? NextLegId { get; set; }
-		public Leg? NextLeg { get; set; }
-		public Guid? PreviousLegId { get; set; }
-		public Leg? PreviousLeg { get; set; }
-	}
+	public Guid Id { get; set; }
+	public Guid RideId { get; set; }
+	public Guid WaypointFromId { get; set; }
+	public Guid WaypointToId { get; set; }
+	public int PriceInRub { get; set; }
 }

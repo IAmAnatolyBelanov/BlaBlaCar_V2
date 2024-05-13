@@ -27,7 +27,7 @@ namespace Tests
 				DateTime = fixture.Create<DateTimeOffset>(),
 			});
 
-			fixture.Customize<RideDto>(x => x
+			fixture.Customize<RideDto_Obsolete>(x => x
 				.Without(r => r.Legs)
 				.Without(r => r.Prices)
 				.With(x => x.DriverId, () => (ulong)Random.Shared.Next(1, int.MaxValue)));
@@ -36,7 +36,7 @@ namespace Tests
 				.With(x => x.Count, () => Random.Shared.Next(1, 100))
 				.With(x => x.UserId, () => (ulong)Random.Shared.Next(1, int.MaxValue)));
 
-			fixture.Customize<LegDto>(x => x
+			fixture.Customize<LegDto_Obsolete>(x => x
 				.Without(x => x.Ride)
 				.Without(x => x.NextLeg)
 				.Without(x => x.NextLegId)

@@ -11,8 +11,8 @@ namespace WebApi.Services.Core
 {
 	public interface IRideService
 	{
-		ValueTask<RideDto> CreateRide(ApplicationContext context, RidePreparationDto rideDto, CancellationToken ct);
-		ValueTask<RideDto> CreateRide(RideDto rideDto, CancellationToken ct);
+		ValueTask<RideDto_Obsolete> CreateRide(ApplicationContext context, RidePreparationDto_Obsolete rideDto, CancellationToken ct);
+		ValueTask<RideDto_Obsolete> CreateRide(RideDto_Obsolete rideDto, CancellationToken ct);
 		ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(ApplicationContext context, Point pointFrom, Point pointTo, CancellationToken ct);
 		ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct);
 		ValueTask<ReservationDto> Reserve(ReservationDto reserveDto, CancellationToken ct);
@@ -23,8 +23,8 @@ namespace WebApi.Services.Core
 	{
 		private const char _addressesDelimiter = '@';
 
-		private static readonly IReadOnlyDictionary<Guid, LegDto> _emptyLegsDict
-			= new Dictionary<Guid, LegDto>();
+		private static readonly IReadOnlyDictionary<Guid, LegDto_Obsolete> _emptyLegsDict
+			= new Dictionary<Guid, LegDto_Obsolete>();
 
 		private readonly IServiceScopeFactory _serviceScopeFactory;
 		private readonly IRideServiceConfig _config;
@@ -34,9 +34,9 @@ namespace WebApi.Services.Core
 		private readonly IValidator<(FormattedPoint Point, YandexGeocodeResponseDto GeocodeResponse)> _yaGeocodeResponseValidator;
 		private readonly IReservationDtoMapper _reservationDtoMapper;
 		private readonly IClock _clock;
-		private readonly IValidator<RideDto> _rideValidator;
+		private readonly IValidator<RideDto_Obsolete> _rideValidator;
 		private readonly IPriceDtoMapper _priceDtoMapper;
-		private readonly IValidator<RidePreparationDto> _ridePreparationValidator;
+		private readonly IValidator<RidePreparationDto_Obsolete> _ridePreparationValidator;
 		private readonly IRidePreparationDtoMapper _ridePreparationDtoMapper;
 
 		public RideService(
@@ -48,9 +48,9 @@ namespace WebApi.Services.Core
 			IValidator<(FormattedPoint Point, YandexGeocodeResponseDto GeocodeResponse)> yaGeocodeResponseValidator,
 			IReservationDtoMapper reservationDtoMapper,
 			IClock clock,
-			IValidator<RideDto> rideValidator,
+			IValidator<RideDto_Obsolete> rideValidator,
 			IPriceDtoMapper priceDtoMapper,
-			IValidator<RidePreparationDto> ridePreparationValidator,
+			IValidator<RidePreparationDto_Obsolete> ridePreparationValidator,
 			IRidePreparationDtoMapper ridePreparationDtoMapper)
 		{
 			_serviceScopeFactory = serviceScopeFactory;
@@ -67,18 +67,18 @@ namespace WebApi.Services.Core
 			_ridePreparationDtoMapper = ridePreparationDtoMapper;
 		}
 
-		public async ValueTask<RideDto> CreateRide(RideDto rideDto, CancellationToken ct)
+		public async ValueTask<RideDto_Obsolete> CreateRide(RideDto_Obsolete rideDto, CancellationToken ct)
 		{
 			using var scope = BuildScope();
 			using var context = GetDbContext(scope);
 			return await CreateRide(context, rideDto, ct);
 		}
 
-		public async ValueTask<RideDto> CreateRide(ApplicationContext context, RidePreparationDto rideDto, CancellationToken ct)
+		public async ValueTask<RideDto_Obsolete> CreateRide(ApplicationContext context, RidePreparationDto_Obsolete rideDto, CancellationToken ct)
 		{
 			rideDto.Id = Guid.NewGuid();
 
-			var legDtos = rideDto.Legs ?? Array.Empty<LegDto>();
+			var legDtos = rideDto.Legs ?? Array.Empty<LegDto_Obsolete>();
 
 			for (var i = 0; i < legDtos.Count; i++)
 			{
@@ -99,7 +99,7 @@ namespace WebApi.Services.Core
 			var ride = _ridePreparationDtoMapper.FromDto(rideDto, mappedObjects);
 			var legs = _legDtoMapper.FromDtoList(legDtos, mappedObjects);
 
-			ride.Status = RideStatus.Preparation;
+			ride.Status = RideStatus.Draft;
 
 
 			throw new NotImplementedException();
@@ -145,7 +145,7 @@ namespace WebApi.Services.Core
 			//return result;
 		}
 
-		private async ValueTask FillLegDescription(LegDto leg, CancellationToken ct)
+		private async ValueTask FillLegDescription(LegDto_Obsolete leg, CancellationToken ct)
 		{
 			var from = await _geocodeService.PointToGeoCode(leg.From.Point, ct);
 			_yaGeocodeResponseValidator.ValidateAndThrowFriendly((leg.From.Point, from));
@@ -283,15 +283,15 @@ namespace WebApi.Services.Core
 WITH {suitedPrices} AS (
 	SELECT {priceRow}.""{nameof(Price.PriceInRub)}""
 	FROM ""{nameof(ApplicationContext.Prices)}"" {priceRow}
-	LEFT JOIN ""{nameof(ApplicationContext.Legs)}"" {startLegRow} ON {startLegRow}.""{nameof(Leg.Id)}"" = {priceRow}.""{nameof(Price.StartLegId)}""
-	LEFT JOIN ""{nameof(ApplicationContext.Legs)}"" {endLegRow} ON {endLegRow}.""{nameof(Leg.Id)}"" = {priceRow}.""{nameof(Price.EndLegId)}""
-	LEFT JOIN ""{nameof(ApplicationContext.Rides)}"" {rideRow} ON {rideRow}.""{nameof(Ride.Id)}"" = {startLegRow}.""{nameof(Leg.RideId)}"" AND {rideRow}.""{nameof(Ride.Id)}"" = {endLegRow}.""{nameof(Leg.RideId)}""
+	LEFT JOIN ""{nameof(ApplicationContext.Legs)}"" {startLegRow} ON {startLegRow}.""{nameof(Leg_Obsolete.Id)}"" = {priceRow}.""{nameof(Price.StartLegId)}""
+	LEFT JOIN ""{nameof(ApplicationContext.Legs)}"" {endLegRow} ON {endLegRow}.""{nameof(Leg_Obsolete.Id)}"" = {priceRow}.""{nameof(Price.EndLegId)}""
+	LEFT JOIN ""{nameof(ApplicationContext.Rides)}"" {rideRow} ON {rideRow}.""{nameof(Ride_Obsolete.Id)}"" = {startLegRow}.""{nameof(Leg_Obsolete.RideId)}"" AND {rideRow}.""{nameof(Ride_Obsolete.Id)}"" = {endLegRow}.""{nameof(Leg_Obsolete.RideId)}""
 	WHERE
-		{rideRow}.""{nameof(Ride.Status)}"" = {(int)RideStatus.StartedOrDone}
-		AND ST_Distance({startLegRow}.""{nameof(Leg.From)}"", @{nameof(pointFrom)}) <= {maxDistanceInMeters}
-		AND ST_Distance({endLegRow}.""{nameof(Leg.To)}"", @{nameof(pointTo)}) <= {maxDistanceInMeters}
-		AND {endLegRow}.""{nameof(Leg.EndTime)}"" < @{nameof(now)}
-		AND {endLegRow}.""{nameof(Leg.EndTime)}"" >= @{nameof(minEndTime)}
+		{rideRow}.""{nameof(Ride_Obsolete.Status)}"" = {(int)RideStatus.StartedOrDone}
+		AND ST_Distance({startLegRow}.""{nameof(Leg_Obsolete.From)}"", @{nameof(pointFrom)}) <= {maxDistanceInMeters}
+		AND ST_Distance({endLegRow}.""{nameof(Leg_Obsolete.To)}"", @{nameof(pointTo)}) <= {maxDistanceInMeters}
+		AND {endLegRow}.""{nameof(Leg_Obsolete.EndTime)}"" < @{nameof(now)}
+		AND {endLegRow}.""{nameof(Leg_Obsolete.EndTime)}"" >= @{nameof(minEndTime)}
 	ORDER BY {priceRow}.""{nameof(Price.PriceInRub)}""
 )
 SELECT

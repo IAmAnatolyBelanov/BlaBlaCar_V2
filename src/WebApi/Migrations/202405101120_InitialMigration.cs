@@ -1,4 +1,5 @@
 ﻿using FluentMigrator;
+using FluentMigrator.Postgres;
 
 namespace WebApi.Migrations;
 
@@ -81,5 +82,148 @@ public class InitialMigration : PostgresMigrator
 			.Ascending()
 			.OnColumn("LicenseNumber")
 			.Ascending();
+
+		Create.Table("Cars")
+			.WithColumn("Id").AsGuid().PrimaryKey()
+			.WithColumn("Created").AsDateTimeOffset()
+			.WithColumn("Vin").AsString()
+			.WithColumn("RegistrationNumber").AsString()
+			.WithColumn("DoesVinAndRegistrationNumberMatches").AsBoolean()
+			.WithColumn("Name").AsString()
+			.WithColumn("SeatsCount").AsInt32().WithColumnDescription("Count of seats in the car including driver's one")
+			.WithColumn("IsDeleted").AsBoolean()
+			.WithTechnicalCommentColumn();
+
+		Create.Index()
+			.OnTable("Cars")
+			.OnColumn("Vin");
+		Create.Index()
+			.OnTable("Cars")
+			.OnColumn("RegistrationNumber");
+		Create.Index()
+			.OnTable("Cars")
+			.OnColumn("Vin")
+			.Ascending()
+			.OnColumn("RegistrationNumber")
+			.Ascending();
+
+		Create.Table("Cars_Users")
+			.WithColumn("UserId").AsGuid()
+			.WithColumn("CarId").AsGuid();
+
+		Create.PrimaryKey()
+			.OnTable("Cars_Users")
+			.Columns("UserId", "CarId");
+
+		Create.Table("Rides")
+			.WithColumn("Id").AsGuid().PrimaryKey()
+			.WithColumn("AuthorId").AsGuid()
+			.WithColumn("DriverId").AsGuid().Nullable()
+			.WithColumn("CarId").AsGuid().Nullable()
+			.WithColumn("Created").AsDateTimeOffset()
+			.WithColumn("Status").AsInt32()
+			.WithColumn("AvailablePlacesCount").AsInt32()
+			.WithColumn("Comment").AsString().Nullable()
+			.WithColumn("IsCashPaymentMethodAvailable").AsBoolean()
+			.WithColumn("IsCashlessPaymentMethodAvailable").AsBoolean()
+			.WithColumn("ValidationMethod").AsInt32()
+			.WithColumn("ValidationTimeBeforeDeparture").AsTime().Nullable()
+			.WithColumn("AfterRideValidationAction").AsInt32()
+			.WithTechnicalCommentColumn();
+
+		Create.ForeignKey()
+			.FromTable("Rides").ForeignColumn("AuthorId")
+			.ToTable("Users").PrimaryColumn("Id");
+		Create.Index()
+			.OnTable("Rides")
+			.OnColumn("AuthorId");
+
+		Create.ForeignKey()
+			.FromTable("Rides").ForeignColumn("DriverId")
+			.ToTable("Users").PrimaryColumn("Id");
+		Create.Index()
+			.OnTable("Rides")
+			.OnColumn("DriverId");
+
+		Create.ForeignKey()
+			.FromTable("Rides").ForeignColumn("CarId")
+			.ToTable("Cars").PrimaryColumn("Id");
+		Create.Index()
+			.OnTable("Rides")
+			.OnColumn("CarId");
+
+		Create.Index()
+			.OnTable("Rides")
+			.OnColumn("IsCashPaymentMethodAvailable");
+		Create.Index()
+			.OnTable("Rides")
+			.OnColumn("IsCashlessPaymentMethodAvailable");
+
+		Create.Index()
+			.OnTable("Rides")
+			.OnColumn("ValidationMethod");
+
+		Create.Table("Waypoints")
+			.WithColumn("Id").AsGuid().PrimaryKey()
+			.WithColumn("RideId").AsGuid()
+			.WithColumn("Point").AsPoint()
+			.WithColumn("FullName").AsString()
+			.WithColumn("NameToCity").AsString()
+			.WithColumn("Arrival").AsDateTimeOffset()
+			.WithColumn("Departure").AsDateTimeOffset().Nullable();
+
+		Create.ForeignKey()
+			.FromTable("Waypoints").ForeignColumn("RideId")
+			.ToTable("Rides").PrimaryColumn("Id");
+		Create.Index()
+			.OnTable("Waypoints")
+			.OnColumn("RideId");
+
+		Create.Index()
+			.OnTable("Waypoints")
+			.OnColumn("Arrival");
+
+		Create.Index()
+			.OnTable("Waypoints")
+			.OnColumn("Departure");
+
+		Create.Index()
+			.OnTable("Waypoints")
+			.OnColumn("Point")
+			.Ascending()
+			.WithOptions()
+			.UsingGist();
+
+		Create.Table("Legs")
+			.WithColumn("Id").AsGuid().PrimaryKey()
+			.WithColumn("RideId").AsGuid()
+			.WithColumn("WaypointFromId").AsGuid()
+			.WithColumn("WaypointToId").AsGuid()
+			.WithColumn("PriceInRub").AsInt32();
+
+		Create.ForeignKey()
+			.FromTable("Legs").ForeignColumn("RideId")
+			.ToTable("Rides").PrimaryColumn("Id");
+		Create.Index()
+			.OnTable("Legs")
+			.OnColumn("RideId");
+
+		Create.ForeignKey()
+			.FromTable("Legs").ForeignColumn("WaypointFromId")
+			.ToTable("Waypoints").PrimaryColumn("Id");
+		Create.Index()
+			.OnTable("Legs")
+			.OnColumn("WaypointFromId");
+
+		Create.ForeignKey()
+			.FromTable("Legs").ForeignColumn("WaypointToId")
+			.ToTable("Waypoints").PrimaryColumn("Id");
+		Create.Index()
+			.OnTable("Legs")
+			.OnColumn("WaypointToId");
+
+		Create.Index()
+			.OnTable("Legs")
+			.OnColumn("PriceInRub");
 	}
 }

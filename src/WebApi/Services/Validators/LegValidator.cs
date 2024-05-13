@@ -22,7 +22,7 @@ namespace WebApi.Services.Validators
 		public const string InvalidCoordinates = "Point_InvalidCoordinates";
 	}
 
-	public class LegDtoValidator : AbstractValidator<LegDto>
+	public class LegDtoValidator : AbstractValidator<LegDto_Obsolete>
 	{
 		public LegDtoValidator()
 		{
@@ -33,12 +33,12 @@ namespace WebApi.Services.Validators
 			RuleFor(x => x.To)
 				.Must((leg, to) => to.DateTime > leg.From.DateTime)
 				.WithErrorCode(LegValidationCodes.InvalidStartAndEndTime)
-				.WithMessage($"{nameof(LegDto.To)}.{nameof(LegDto.To.DateTime)} должен быть больше {nameof(LegDto.From)}.{nameof(LegDto.From.DateTime)}");
+				.WithMessage($"{nameof(LegDto_Obsolete.To)}.{nameof(LegDto_Obsolete.To.DateTime)} должен быть больше {nameof(LegDto_Obsolete.From)}.{nameof(LegDto_Obsolete.From.DateTime)}");
 
 			RuleFor(x => x.RideId)
 				.Must((leg, _) => leg.RideId == leg.Ride.Id)
 				.WithErrorCode(LegValidationCodes.MismatchRideId)
-				.WithMessage($"{nameof(LegDto.RideId)} не совпадает с {nameof(LegDto.Ride)}.{nameof(LegDto.Ride.Id)}");
+				.WithMessage($"{nameof(LegDto_Obsolete.RideId)} не совпадает с {nameof(LegDto_Obsolete.Ride)}.{nameof(LegDto_Obsolete.Ride.Id)}");
 
 			RuleFor(x => x.From.Point.Longitude)
 				.GreaterThanOrEqualTo(-180)

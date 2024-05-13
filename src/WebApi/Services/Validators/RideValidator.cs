@@ -28,15 +28,15 @@ namespace WebApi.Services.Validators
 		public const string NotEveryLegPairHasPrice = "Ride_NotEveryLegPairHasPrice";
 	}
 
-	public class RidePreparationValidator : AbstractValidator<RidePreparationDto>
+	public class RidePreparationValidator : AbstractValidator<RidePreparationDto_Obsolete>
 	{
 		private readonly IRideServiceConfig _rideServiceConfig;
 
-		private readonly IValidator<LegDto> _legValidator;
+		private readonly IValidator<LegDto_Obsolete> _legValidator;
 
 		public RidePreparationValidator(
 			IRideServiceConfig rideServiceConfig,
-			IValidator<LegDto> legValidator)
+			IValidator<LegDto_Obsolete> legValidator)
 		{
 			_rideServiceConfig = rideServiceConfig;
 			_legValidator = legValidator;
@@ -61,7 +61,7 @@ namespace WebApi.Services.Validators
 					RuleFor(x => x.Legs)
 						.Must((ride, _) => !ride.Legs!.ContainsNull())
 						.WithErrorCode(RideValidationCodes.LegsCollectionContainsNull)
-						.WithMessage($"{nameof(RideDto.Legs)} содержит NULL элемент")
+						.WithMessage($"{nameof(RideDto_Obsolete.Legs)} содержит NULL элемент")
 						.DependentRules(() =>
 						{
 							RuleFor(x => x.Legs!.Count)
@@ -78,13 +78,13 @@ namespace WebApi.Services.Validators
 							RuleFor(x => x.Legs)
 								.Must(IsLegsChainValid!)
 								.WithErrorCode(RideValidationCodes.LegsChainIsInvalid)
-								.WithMessage($"Коллекция {nameof(RideDto.Legs)} не создаёт неразрывной последовательности");
+								.WithMessage($"Коллекция {nameof(RideDto_Obsolete.Legs)} не создаёт неразрывной последовательности");
 						});
 				});
 		}
 
 
-		private void LegValidatorWrapper(IReadOnlyList<LegDto> legs, ValidationContext<RidePreparationDto> context)
+		private void LegValidatorWrapper(IReadOnlyList<LegDto_Obsolete> legs, ValidationContext<RidePreparationDto_Obsolete> context)
 		{
 			bool anyError = false;
 
@@ -113,14 +113,14 @@ namespace WebApi.Services.Validators
 				{
 					Severity = Severity.Error,
 					ErrorCode = RideValidationCodes.ContainsInvalidLeg,
-					ErrorMessage = $"В коллекции {nameof(RidePreparationDto.Legs)} содержатся невалидные элементы",
-					PropertyName = nameof(RidePreparationDto.Legs),
+					ErrorMessage = $"В коллекции {nameof(RidePreparationDto_Obsolete.Legs)} содержатся невалидные элементы",
+					PropertyName = nameof(RidePreparationDto_Obsolete.Legs),
 					AttemptedValue = legs
 				});
 			}
 		}
 
-		private bool IsLegsChainValid(IReadOnlyList<LegDto> legs)
+		private bool IsLegsChainValid(IReadOnlyList<LegDto_Obsolete> legs)
 		{
 			if (legs.Count == 0)
 				return false;
@@ -161,10 +161,10 @@ namespace WebApi.Services.Validators
 		}
 	}
 
-	public class RideValidator : AbstractValidator<RideDto>
+	public class RideValidator : AbstractValidator<RideDto_Obsolete>
 	{
-		private readonly IValidator<RidePreparationDto> _ridePreparationValidator;
-		private readonly IValidator<LegDto> _legValidator;
+		private readonly IValidator<RidePreparationDto_Obsolete> _ridePreparationValidator;
+		private readonly IValidator<LegDto_Obsolete> _legValidator;
 		private readonly IValidator<PriceDto> _priceValidator;
 
 		private readonly IRideServiceConfig _rideServiceConfig;
@@ -173,8 +173,8 @@ namespace WebApi.Services.Validators
 		private readonly IReadOnlyDictionary<int, int> _validWaypointPriceCounts;
 
 		public RideValidator(
-			IValidator<RidePreparationDto> ridePreparationValidator,
-			IValidator<LegDto> legValidator,
+			IValidator<RidePreparationDto_Obsolete> ridePreparationValidator,
+			IValidator<LegDto_Obsolete> legValidator,
 			IRideServiceConfig rideServiceConfig,
 			IValidator<PriceDto> priceValidator)
 		{
@@ -200,7 +200,7 @@ namespace WebApi.Services.Validators
 					RuleFor(x => x.Prices)
 						.Must((ride, _) => !ride.Prices!.ContainsNull())
 						.WithErrorCode(RideValidationCodes.PricesCollectionContainsNull)
-						.WithMessage($"{nameof(RideDto.Prices)} содержит NULL элемент")
+						.WithMessage($"{nameof(RideDto_Obsolete.Prices)} содержит NULL элемент")
 						.DependentRules(() =>
 						{
 							RuleFor(x => x.Prices)
@@ -230,7 +230,7 @@ namespace WebApi.Services.Validators
 				.WithMessage("Не для каждой пары Legs удалось найти Price");
 		}
 
-		private void PriceValidatorWrapper(IReadOnlyList<PriceDto> prices, ValidationContext<RideDto> context)
+		private void PriceValidatorWrapper(IReadOnlyList<PriceDto> prices, ValidationContext<RideDto_Obsolete> context)
 		{
 			bool anyError = false;
 
@@ -257,14 +257,14 @@ namespace WebApi.Services.Validators
 				{
 					Severity = Severity.Error,
 					ErrorCode = RideValidationCodes.ContainsInvalidPrice,
-					ErrorMessage = $"В коллекции {nameof(RideDto.Prices)} содержатся невалидные элементы",
-					PropertyName = nameof(RideDto.Prices),
+					ErrorMessage = $"В коллекции {nameof(RideDto_Obsolete.Prices)} содержатся невалидные элементы",
+					PropertyName = nameof(RideDto_Obsolete.Prices),
 					AttemptedValue = prices
 				});
 			}
 		}
 
-		private bool IsPricesCountValid(RideDto ride)
+		private bool IsPricesCountValid(RideDto_Obsolete ride)
 		{
 			if (!_validPriceWaypointCounts.TryGetValue(ride.Prices!.Count, out var validWaypointsCount))
 				return false;
@@ -272,15 +272,15 @@ namespace WebApi.Services.Validators
 			return validWaypointsCount == ride.WaypointsCount;
 		}
 
-		private bool DoesEveryLegPairHavePrice(RideDto ride, IReadOnlyList<PriceDto> _)
+		private bool DoesEveryLegPairHavePrice(RideDto_Obsolete ride, IReadOnlyList<PriceDto> _)
 		{
 			// Эти проверки уже выполнены ранее
 			if (ride.Legs is null || ride.Legs.Count == 0)
 				return true;
-			if(ride.Prices is null || ride.Prices.Count == 0)
+			if (ride.Prices is null || ride.Prices.Count == 0)
 				return true;
 
-			for (int i = 0;  i < ride.Legs.Count;  i++)
+			for (int i = 0; i < ride.Legs.Count; i++)
 			{
 				for (int j = i; j < ride.Legs.Count; j++)
 				{
@@ -298,9 +298,9 @@ namespace WebApi.Services.Validators
 			return true;
 		}
 
-		private bool ContainsPriceForLegs(IReadOnlyList<PriceDto> prices, LegDto start, LegDto end)
+		private bool ContainsPriceForLegs(IReadOnlyList<PriceDto> prices, LegDto_Obsolete start, LegDto_Obsolete end)
 		{
-			for (int i = 0; i < prices.Count;i++)
+			for (int i = 0; i < prices.Count; i++)
 			{
 				var price = prices[i];
 

@@ -135,7 +135,12 @@ public class PostgresBinaryImporter : IDisposable, IPostgresBinaryImporter
 		_importer.Dispose();
 		_importerTimer.Stop();
 
-		_logger.Information("Disposed postgres binary importer {Id} after {LifeTime}", _id, _importerTimer.Elapsed);
+
+		if (_importerTimer.IsRunning)
+		{
+			_importerTimer.Stop();
+			_logger.Information("Disposed postgres binary importer {Id} after {LifeTime}", _id, _importerTimer.Elapsed);
+		}
 	}
 
 	~PostgresBinaryImporter()

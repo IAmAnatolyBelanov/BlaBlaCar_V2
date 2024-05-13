@@ -35,8 +35,8 @@ namespace Tests
 		[Fact(Timeout = 30_000)]
 		public async Task CreateRideTest()
 		{
-			var ride = _fixture.Create<RideDto>();
-			var legs = _fixture.CreateMany<LegDto>(3).ToArray();
+			var ride = _fixture.Create<RideDto_Obsolete>();
+			var legs = _fixture.CreateMany<LegDto_Obsolete>(3).ToArray();
 			ride.Legs = legs;
 			NormalizeFromTo(ride);
 			ride.Prices = BuildPrices(ride).ToArray();
@@ -63,18 +63,18 @@ namespace Tests
 
 				var point = Shared.GetNewPoint().ToPoint();
 
-				var rides = new List<Ride>();
-				var legs = new List<Leg>();
+				var rides = new List<Ride_Obsolete>();
+				var legs = new List<Leg_Obsolete>();
 				var prices = new List<Price>();
 
 				for (int i = 0; i < 1000; i++)
 				{
-					var ride = _fixture.Build<Ride>()
+					var ride = _fixture.Build<Ride_Obsolete>()
 						.With(x => x.Status, RideStatus.StartedOrDone)
 						.Create();
 					rides.Add(ride);
 
-					var legsForOneRide = _fixture.Build<Leg>()
+					var legsForOneRide = _fixture.Build<Leg_Obsolete>()
 						.Without(x => x.NextLeg)
 						.Without(x => x.NextLegId)
 						.Without(x => x.PreviousLeg)
@@ -122,7 +122,7 @@ namespace Tests
 			}
 		}
 
-		private void NormalizeFromTo(RideDto ride)
+		private void NormalizeFromTo(RideDto_Obsolete ride)
 		{
 			var now = DateTimeOffset.UtcNow;
 			var start = now.AddYears(-1);
@@ -130,7 +130,7 @@ namespace Tests
 			NormalizeFromTo(ride, start, duration);
 		}
 
-		private void NormalizeFromTo(RideDto ride, DateTimeOffset start, TimeSpan duration)
+		private void NormalizeFromTo(RideDto_Obsolete ride, DateTimeOffset start, TimeSpan duration)
 		{
 			var places = BuildPlaces(start, duration)
 				.Take(ride.WaypointsCount)
@@ -145,7 +145,7 @@ namespace Tests
 			}
 		}
 
-		public IEnumerable<PriceDto> BuildPrices(RideDto ride, int defaultPrice = 1000)
+		public IEnumerable<PriceDto> BuildPrices(RideDto_Obsolete ride, int defaultPrice = 1000)
 		{
 			for (int i = 0; i < ride.Legs!.Count; i++)
 			{
@@ -164,7 +164,7 @@ namespace Tests
 			}
 		}
 
-		public IEnumerable<Price> BuildPrices(IReadOnlyList<Leg> legs, int defaultPrice = 1000)
+		public IEnumerable<Price> BuildPrices(IReadOnlyList<Leg_Obsolete> legs, int defaultPrice = 1000)
 		{
 			for (int i = 0; i < legs!.Count; i++)
 			{

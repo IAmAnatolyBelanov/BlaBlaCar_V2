@@ -17,7 +17,7 @@ namespace WebApi.Controllers
 		}
 
 		[HttpPost]
-		public async ValueTask<BaseResponse<RideDto>> CreateRide(RideDto ride, CancellationToken ct)
+		public async ValueTask<BaseResponse<RideDto_Obsolete>> CreateRide(RideDto_Obsolete ride, CancellationToken ct)
 		{
 			var result = await _rideService.CreateRide(ride, ct);
 			return result;

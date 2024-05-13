@@ -467,8 +467,11 @@ public class PostgresSession : IDisposable, IPostgresSession
 		_transaction?.Dispose();
 		_connection.Dispose();
 
-		_sessionTimer.Stop();
-		_logger.Information("Disposed postgres connection {Id} after {LifeTime}", _id, _sessionTimer.Elapsed);
+		if (_sessionTimer.IsRunning)
+		{
+			_sessionTimer.Stop();
+			_logger.Information("Disposed postgres connection {Id} after {LifeTime}", _id, _sessionTimer.Elapsed);
+		}
 	}
 
 	~PostgresSession()

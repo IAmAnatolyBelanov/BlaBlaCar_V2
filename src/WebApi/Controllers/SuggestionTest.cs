@@ -66,16 +66,16 @@ namespace WebApi.Controllers
 		}
 
 		[HttpPost]
-		public async ValueTask<Leg?> GetLeg(Guid id)
+		public async ValueTask<Leg_Obsolete?> GetLeg(Guid id)
 		{
 			var leg = await _context.Legs.FirstOrDefaultAsync(x => x.Id == id);
 			return leg;
 		}
 
 		[HttpPost]
-		public async ValueTask<Leg> GenerateRandomLeg(CancellationToken ct)
+		public async ValueTask<Leg_Obsolete> GenerateRandomLeg(CancellationToken ct)
 		{
-			var ride = new Ride
+			var ride = new Ride_Obsolete
 			{
 				DriverId = 1,
 				Id = Guid.NewGuid(),
@@ -87,7 +87,7 @@ namespace WebApi.Controllers
 			var toGeocode = await _geocodeService.PointToGeoCode(to, ct);
 			var description = $"{fromGeocode!.Geoobjects[0].FormattedAddress}@{toGeocode!.Geoobjects[0].FormattedAddress}";
 
-			var leg = new Leg
+			var leg = new Leg_Obsolete
 			{
 				Id = Guid.NewGuid(),
 				Ride = ride,
@@ -109,9 +109,9 @@ namespace WebApi.Controllers
 		[HttpGet]
 		public async ValueTask<StringResponse> TestMapper(CancellationToken ct)
 		{
-			var ride = new RideDto { Id = Guid.NewGuid(), };
+			var ride = new RideDto_Obsolete { Id = Guid.NewGuid(), };
 
-			var legs = new LegDto[]
+			var legs = new LegDto_Obsolete[]
 			{
 				new () { Ride = ride, Id = Guid.NewGuid(), },
 				new () { Ride = ride, Id = Guid.NewGuid(), },

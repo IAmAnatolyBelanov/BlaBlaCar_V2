@@ -13,6 +13,11 @@ namespace WebApi.Models
 		public class YandexGeocodeResponseGeoobjectDto
 		{
 			public string FormattedAddress { get; set; } = default!;
+
+			/// <summary>
+			/// Название вплоть до населённого пункта включительно. Если населённого пункта нет, будет название целиком.
+			/// </summary>
+			public string ToLocalityName { get; set; } = default!;
 			public FormattedPoint Point { get; set; }
 		}
 	}
@@ -65,7 +70,26 @@ namespace WebApi.Models
 		protected override void ToDtoAbstract(YandexGeocodeResponse.Featuremember entity, YandexGeocodeResponseDto.YandexGeocodeResponseGeoobjectDto dto, IDictionary<object, object> mappedObjects)
 		{
 			dto.FormattedAddress = entity.GeoObject.MetaDataProperty.GeocoderMetaData.Address.Formatted;
+			dto.ToLocalityName = string.Join(", ", GetComponentsTillLocality(entity));
 			dto.Point = entity.GeoObject.Point.ToFormattedPoint();
+		}
+
+		private IEnumerable<string> GetComponentsTillLocality(YandexGeocodeResponse.Featuremember entity)
+		{
+			for (int i = 0; i < entity.GeoObject.MetaDataProperty.GeocoderMetaData.Address.Components.Length; i++)
+			{
+				var component = entity.GeoObject.MetaDataProperty.GeocoderMetaData.Address.Components[i];
+
+				if (!component.Name.Equals("locality", StringComparison.InvariantCultureIgnoreCase))
+				{
+					yield return component.Name;
+				}
+				else
+				{
+					yield return component.Name;
+					yield break;
+				}
+			}
 		}
 	}
 }

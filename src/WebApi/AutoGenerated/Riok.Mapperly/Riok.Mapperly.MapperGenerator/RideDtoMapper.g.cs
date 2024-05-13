@@ -4,7 +4,7 @@ namespace WebApi.Models
 {
     public partial class RideDtoMapper
     {
-        private partial void ToDtoAuto(global::WebApi.Models.Ride ride, global::WebApi.Models.RideDto dto)
+        private partial void ToDtoAuto(global::WebApi.Models.Ride_Obsolete ride, global::WebApi.Models.RideDto_Obsolete dto)
         {
             dto.Status = ride.Status;
             dto.Id = ride.Id;
@@ -12,7 +12,7 @@ namespace WebApi.Models
             dto.AvailablePlacesCount = ride.AvailablePlacesCount;
         }
 
-        private partial void FromDtoAuto(global::WebApi.Models.RideDto dto, global::WebApi.Models.Ride ride)
+        private partial void FromDtoAuto(global::WebApi.Models.RideDto_Obsolete dto, global::WebApi.Models.Ride_Obsolete ride)
         {
             ride.Id = dto.Id;
             ride.DriverId = dto.DriverId;
@@ -20,7 +20,7 @@ namespace WebApi.Models
             ride.Status = dto.Status;
         }
 
-        private partial void BetweenDtosAuto(global::WebApi.Models.RideDto from, global::WebApi.Models.RideDto to)
+        private partial void BetweenDtosAuto(global::WebApi.Models.RideDto_Obsolete from, global::WebApi.Models.RideDto_Obsolete to)
         {
             to.Prices = from.Prices;
             to.Status = from.Status;
@@ -30,7 +30,7 @@ namespace WebApi.Models
             to.AvailablePlacesCount = from.AvailablePlacesCount;
         }
 
-        private partial void BetweenEntitiesAuto(global::WebApi.Models.Ride from, global::WebApi.Models.Ride to)
+        private partial void BetweenEntitiesAuto(global::WebApi.Models.Ride_Obsolete from, global::WebApi.Models.Ride_Obsolete to)
         {
             to.Id = from.Id;
             to.DriverId = from.DriverId;

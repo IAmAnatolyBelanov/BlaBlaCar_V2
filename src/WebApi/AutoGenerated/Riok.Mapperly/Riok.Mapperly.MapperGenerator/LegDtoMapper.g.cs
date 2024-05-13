@@ -4,7 +4,7 @@ namespace WebApi.Models
 {
     public partial class LegDtoMapper
     {
-        private partial void ToDtoAuto(global::WebApi.Models.Leg leg, global::WebApi.Models.LegDto dto)
+        private partial void ToDtoAuto(global::WebApi.Models.Leg_Obsolete leg, global::WebApi.Models.LegDto_Obsolete dto)
         {
             dto.Id = leg.Id;
             dto.RideId = leg.RideId;
@@ -13,7 +13,7 @@ namespace WebApi.Models
             dto.PreviousLegId = leg.PreviousLegId;
         }
 
-        private partial void FromDtoAuto(global::WebApi.Models.LegDto legDto, global::WebApi.Models.Leg leg)
+        private partial void FromDtoAuto(global::WebApi.Models.LegDto_Obsolete legDto, global::WebApi.Models.Leg_Obsolete leg)
         {
             leg.Id = legDto.Id;
             leg.RideId = legDto.RideId;
@@ -22,7 +22,7 @@ namespace WebApi.Models
             leg.PreviousLegId = legDto.PreviousLegId;
         }
 
-        private partial void BetweenDtosAuto(global::WebApi.Models.LegDto from, global::WebApi.Models.LegDto to)
+        private partial void BetweenDtosAuto(global::WebApi.Models.LegDto_Obsolete from, global::WebApi.Models.LegDto_Obsolete to)
         {
             to.Id = from.Id;
             to.Ride = from.Ride;
@@ -36,7 +36,7 @@ namespace WebApi.Models
             to.PreviousLeg = from.PreviousLeg;
         }
 
-        private partial void BetweenEntitiesAuto(global::WebApi.Models.Leg from, global::WebApi.Models.Leg to)
+        private partial void BetweenEntitiesAuto(global::WebApi.Models.Leg_Obsolete from, global::WebApi.Models.Leg_Obsolete to)
         {
             to.Id = from.Id;
             to.Ride = from.Ride;
