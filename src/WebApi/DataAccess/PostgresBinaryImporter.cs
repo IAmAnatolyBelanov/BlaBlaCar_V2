@@ -27,20 +27,17 @@ public interface IPostgresBinaryImporter : IDisposable
 public class PostgresBinaryImporter : IDisposable, IPostgresBinaryImporter
 {
 	private readonly Guid _id = Guid.NewGuid();
-	private readonly DateTimeOffset _start;
 	private readonly ILogger _logger;
 	private readonly bool _trace;
 
-	private readonly IClock _clock;
+	private readonly Stopwatch _importerTimer = Stopwatch.StartNew();
 	private readonly NpgsqlBinaryImporter _importer;
 
-	public PostgresBinaryImporter(NpgsqlBinaryImporter importer, IClock clock, bool trace)
+	public PostgresBinaryImporter(NpgsqlBinaryImporter importer, bool trace)
 	{
 		_importer = importer;
 		_trace = trace;
-		_clock = clock;
 
-		_start = _clock.Now;
 		_logger = Log.ForContext<PostgresBinaryImporter>().ForContext("PostgresBinaryImporterId", _id);
 		_logger.Information("Opened postgres binary importer {Id}", _id);
 	}
@@ -136,8 +133,9 @@ public class PostgresBinaryImporter : IDisposable, IPostgresBinaryImporter
 	public void Dispose()
 	{
 		_importer.Dispose();
+		_importerTimer.Stop();
 
-		_logger.Information("Disposed postgres binary importer {Id} after {LifeTime}", _id, _clock.Now - _start);
+		_logger.Information("Disposed postgres binary importer {Id} after {LifeTime}", _id, _importerTimer.Elapsed);
 	}
 
 	~PostgresBinaryImporter()

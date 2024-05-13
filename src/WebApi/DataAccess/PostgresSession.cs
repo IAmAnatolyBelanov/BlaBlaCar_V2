@@ -88,18 +88,16 @@ public interface IPostgresSession : IDisposable
 public class PostgresSession : IDisposable, IPostgresSession
 {
 	private readonly Guid _id = Guid.NewGuid();
-	private readonly DateTimeOffset _start;
 	private readonly ILogger _logger;
-	private bool _trace;
+	private readonly Stopwatch _sessionTimer = Stopwatch.StartNew();
 
-	private readonly IClock _clock;
+	private bool _trace;
 	private readonly NpgsqlConnection _connection;
 	private NpgsqlTransaction? _transaction;
 
-	public PostgresSession(NpgsqlConnection connection, IClock clock, bool beginTransaction = false, bool trace = false)
+	public PostgresSession(NpgsqlConnection connection, bool beginTransaction = false, bool trace = false)
 	{
 		_connection = connection;
-		_clock = clock;
 
 		if (beginTransaction)
 			BeginTransaction();
@@ -107,7 +105,6 @@ public class PostgresSession : IDisposable, IPostgresSession
 		if (trace)
 			StartTrace();
 
-		_start = _clock.Now;
 		_logger = Log.ForContext<PostgresSession>().ForContext("PostgresConnectionId", _id);
 		_logger.Information("Opened postgres connection {Id}", _id);
 	}
@@ -461,7 +458,7 @@ public class PostgresSession : IDisposable, IPostgresSession
 	public async Task<IPostgresBinaryImporter> BeginBinaryImport(string copyFromCommand, CancellationToken ct)
 	{
 		var importer = await _connection.BeginBinaryImportAsync(copyFromCommand, ct);
-		var result = new PostgresBinaryImporter(importer, _clock, _trace);
+		var result = new PostgresBinaryImporter(importer, _trace);
 		return result;
 	}
 
@@ -470,7 +467,8 @@ public class PostgresSession : IDisposable, IPostgresSession
 		_transaction?.Dispose();
 		_connection.Dispose();
 
-		_logger.Information("Disposed postgres connection {Id} after {LifeTime}", _id, _clock.Now - _start);
+		_sessionTimer.Stop();
+		_logger.Information("Disposed postgres connection {Id} after {LifeTime}", _id, _sessionTimer.Elapsed);
 	}
 
 	~PostgresSession()
