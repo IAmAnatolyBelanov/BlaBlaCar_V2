@@ -394,6 +394,7 @@ public class DriverService : IDriverService
 				}
 
 				await _cloudApiResponseInfoRepository.BulkInsert(session, infos, CancellationToken.None);
+				await session.CommitAsync(CancellationToken.None);
 				_logger.Information("Saved {Count} CloudApi responses", infos.Count);
 			}
 			catch (Exception ex)
