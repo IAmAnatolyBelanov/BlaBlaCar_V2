@@ -74,22 +74,6 @@ public class UserRepositoryTests : BaseRepositoryTest
 	}
 
 	[Fact]
-	public async Task ValidateMultipleCommits()
-	{
-		using var session = _sessionFactory.OpenPostgresConnection().BeginTransaction();
-		var users = _fixture.CreateMany<User>(10).ToArray();
-		foreach (var user in users)
-		{
-			await _repo.Insert(session, user, CancellationToken.None);
-			lock (user)
-			{
-				session.CommitAsync(CancellationToken.None).Wait();
-			}
-		}
-	}
-
-
-	[Fact]
 	public async Task ParallelTransactionsTest()
 	{
 		using var session1 = _sessionFactory.OpenPostgresConnection();

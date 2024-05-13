@@ -29,13 +29,13 @@ public interface IDriverServiceConfig
 	int CloudApiResponseSaverMaxBatchCount { get; }
 }
 
-public class DriverServiceClientConfig : IBaseConfig, IDriverServiceConfig
+public class DriverServiceConfig : IBaseConfig, IDriverServiceConfig
 {
-	public string Position => "DriverServiceClient";
+	public string Position => "DriverService";
 
 	public string ApiCloudBaseUrl { get; set; } = "https://api-cloud.ru/api/";
 
-	public string ApiCloudApiKey { get; set; } = "fake"; //= default!;
+	public string ApiCloudApiKey { get; set; } = default!;
 
 	public int RetryCount { get; set; } = 2;
 

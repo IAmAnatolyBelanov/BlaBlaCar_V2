@@ -22,7 +22,7 @@ public class InitialMigration : PostgresMigrator
 
 		Create.Table("Users")
 			.WithColumn("Id").AsGuid().PrimaryKey()
-			.WithColumn("Comment").AsString().Nullable().WithColumnDescription("Comment for support. Does not used in service logic.");
+			.WithTechnicalCommentColumn();
 
 		Create.Table("PersonDatas")
 			.WithColumn("Id").AsGuid().PrimaryKey()
@@ -38,7 +38,7 @@ public class InitialMigration : PostgresMigrator
 			.WithColumn("WasCheckedAtLeastOnce").AsBoolean()
 			.WithColumn("LastCheckPassportDate").AsDateTimeOffset()
 			.WithColumn("Created").AsDateTimeOffset()
-			.WithColumn("Comment").AsString().Nullable().WithColumnDescription("Comment for support. Does not used in service logic.");
+			.WithTechnicalCommentColumn();
 
 		Create.ForeignKey()
 			.FromTable("PersonDatas").ForeignColumn("UserId")
@@ -66,7 +66,7 @@ public class InitialMigration : PostgresMigrator
 			.WithColumn("Created").AsDateTimeOffset()
 			.WithColumn("IsValid").AsBoolean()
 			.WithColumn("LastCheckDate").AsDateTimeOffset()
-			.WithColumn("Comment").AsString().Nullable().WithColumnDescription("Comment for support. Does not used in service logic.");
+			.WithTechnicalCommentColumn();
 
 		Create.ForeignKey()
 			.FromTable("DriverDatas").ForeignColumn("UserId")
