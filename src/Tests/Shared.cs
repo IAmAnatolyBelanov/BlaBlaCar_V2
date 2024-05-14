@@ -61,6 +61,16 @@ namespace Tests
 				return result;
 			});
 
+			fixture.Register<TimeSpan>(() =>
+			{
+				var seconds = Random.Shared.Next(1, 59);
+				var minutes = Random.Shared.Next(0, 59);
+				var hours = Random.Shared.Next(0, 23);
+
+				var result = new TimeSpan(hours: hours, minutes: minutes, seconds: seconds);
+				return result;
+			});
+
 			return fixture;
 		}
 
