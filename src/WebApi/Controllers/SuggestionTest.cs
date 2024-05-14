@@ -133,7 +133,7 @@ namespace WebApi.Controllers
 			var leg = _context.Legs.AsTracking()
 				.First(x => x.Id == Guid.Parse("47604cea-ebf5-4982-9322-c04efb885678"));
 
-			var reserv = new Reservation
+			var reserv = new Reservation_Obsolete
 			{
 				CreateDateTime = DateTimeOffset.UtcNow,
 				IsActive = true,

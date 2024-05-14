@@ -19,12 +19,12 @@ namespace WebApi.Models
 		public int Count { get; set; }
 	}
 
-	public interface IReservationDtoMapper : IBaseMapper<Reservation, ReservationDto>
+	public interface IReservationDtoMapper : IBaseMapper<Reservation_Obsolete, ReservationDto>
 	{
 	}
 
 	[Mapper]
-	public partial class ReservationDtoMapper : BaseMapper<Reservation, ReservationDto>, IReservationDtoMapper
+	public partial class ReservationDtoMapper : BaseMapper<Reservation_Obsolete, ReservationDto>, IReservationDtoMapper
 	{
 		private readonly Lazy<ILegDtoMapper> _legMapper;
 
@@ -37,22 +37,22 @@ namespace WebApi.Models
 
 		[MapperIgnoreTarget(nameof(ReservationDto.StartLeg))]
 		[MapperIgnoreTarget(nameof(ReservationDto.EndLeg))]
-		private partial void ToDtoAuto(Reservation entity, ReservationDto dto);
+		private partial void ToDtoAuto(Reservation_Obsolete entity, ReservationDto dto);
 
-		[MapperIgnoreTarget(nameof(Reservation.StartLeg))]
-		[MapperIgnoreTarget(nameof(Reservation.EndLeg))]
-		[MapperIgnoreTarget(nameof(Reservation.AffectedLegIds))]
-		private partial void FromDtoAuto(ReservationDto dto, Reservation entity);
+		[MapperIgnoreTarget(nameof(Reservation_Obsolete.StartLeg))]
+		[MapperIgnoreTarget(nameof(Reservation_Obsolete.EndLeg))]
+		[MapperIgnoreTarget(nameof(Reservation_Obsolete.AffectedLegIds))]
+		private partial void FromDtoAuto(ReservationDto dto, Reservation_Obsolete entity);
 
 		private partial void BetweenDtosAuto(ReservationDto from, ReservationDto to);
-		private partial void BetweenEntitiesAuto(Reservation from, Reservation to);
+		private partial void BetweenEntitiesAuto(Reservation_Obsolete from, Reservation_Obsolete to);
 
 
 		protected override void BetweenDtos(ReservationDto from, ReservationDto to)
 			=> BetweenDtosAuto(from, to);
-		protected override void BetweenEntities(Reservation from, Reservation to)
+		protected override void BetweenEntities(Reservation_Obsolete from, Reservation_Obsolete to)
 			=> BetweenEntities(from, to);
-		protected override void FromDtoAbstract(ReservationDto dto, Reservation entity, IDictionary<object, object> mappedObjects)
+		protected override void FromDtoAbstract(ReservationDto dto, Reservation_Obsolete entity, IDictionary<object, object> mappedObjects)
 		{
 			FromDtoAuto(dto, entity);
 
@@ -64,7 +64,7 @@ namespace WebApi.Models
 				: _legMapper.Value.FromDto(dto.EndLeg, mappedObjects);
 		}
 
-		protected override void ToDtoAbstract(Reservation entity, ReservationDto dto, IDictionary<object, object> mappedObjects)
+		protected override void ToDtoAbstract(Reservation_Obsolete entity, ReservationDto dto, IDictionary<object, object> mappedObjects)
 		{
 			ToDtoAuto(entity, dto);
 

@@ -1,23 +1,16 @@
-﻿namespace WebApi.Models
+namespace WebApi.Models;
+
+public class Reservation
 {
-	public class Reservation
-	{
-		private DateTimeOffset createDateTime;
+	private DateTimeOffset created;
 
-		public Guid Id { get; set; }
 
-		public Guid StartLegId { get; set; }
-		public Leg_Obsolete StartLeg { get; set; } = default!;
-		public Guid EndLegId { get; set; }
-		public Leg_Obsolete EndLeg { get; set; } = default!;
-		/// <summary>
-		/// Айдишники Leg'ов, которые участвуют в резервации. Включая start и end. Нужен только для ускорения посика в postgres.
-		/// </summary>
-		/// <remarks>Array вместо IReadOnlyList из-за EF - он не справился с интерфейсом.</remarks>
-		public Guid[] AffectedLegIds { get; set; } = default!;
-		public ulong UserId { get; set; }
-		public bool IsActive { get; set; }
-		public DateTimeOffset CreateDateTime { get => createDateTime; set => createDateTime = value.ToUniversalTime(); }
-		public int Count { get; set; }
-	}
+	public Guid Id { get; set; }
+	public Guid RideId { get; set; }
+	public Guid PassengerId { get; set; }
+	public int PeopleCount { get; set; }
+	public Guid WaypointFromId { get; set; }
+	public Guid WaypointToId { get; set; }
+	public bool IsDeleted { get; set; }
+	public DateTimeOffset Created { get => created; set => created = value.ToUniversalTime(); }
 }

@@ -4,7 +4,7 @@ namespace WebApi.Models
 {
     public partial class ReservationDtoMapper
     {
-        private partial void ToDtoAuto(global::WebApi.Models.Reservation entity, global::WebApi.Models.ReservationDto dto)
+        private partial void ToDtoAuto(global::WebApi.Models.Reservation_Obsolete entity, global::WebApi.Models.ReservationDto dto)
         {
             dto.Id = entity.Id;
             dto.StartLegId = entity.StartLegId;
@@ -15,7 +15,7 @@ namespace WebApi.Models
             dto.Count = entity.Count;
         }
 
-        private partial void FromDtoAuto(global::WebApi.Models.ReservationDto dto, global::WebApi.Models.Reservation entity)
+        private partial void FromDtoAuto(global::WebApi.Models.ReservationDto dto, global::WebApi.Models.Reservation_Obsolete entity)
         {
             entity.Id = dto.Id;
             entity.StartLegId = dto.StartLegId;
@@ -39,7 +39,7 @@ namespace WebApi.Models
             to.Count = from.Count;
         }
 
-        private partial void BetweenEntitiesAuto(global::WebApi.Models.Reservation from, global::WebApi.Models.Reservation to)
+        private partial void BetweenEntitiesAuto(global::WebApi.Models.Reservation_Obsolete from, global::WebApi.Models.Reservation_Obsolete to)
         {
             to.Id = from.Id;
             to.StartLegId = from.StartLegId;

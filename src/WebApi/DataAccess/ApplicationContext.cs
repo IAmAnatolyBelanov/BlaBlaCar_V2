@@ -17,7 +17,7 @@ namespace WebApi.DataAccess
 		public DbSet<Ride_Obsolete> Rides { get; set; }
 		public DbSet<Leg_Obsolete> Legs { get; set; }
 		public DbSet<CompositeLeg> CompositeLegs { get; set; }
-		public DbSet<Reservation> Reservations { get; set; }
+		public DbSet<Reservation_Obsolete> Reservations { get; set; }
 		public DbSet<Price> Prices { get; set; }
 
 		public DbSet<User> Users { get; set; }
@@ -106,11 +106,11 @@ namespace WebApi.DataAccess
 					.HasForeignKey(x => x.SubLegId);
 			});
 
-			modelBuilder.Entity<Reservation>(builder =>
+			modelBuilder.Entity<Reservation_Obsolete>(builder =>
 			{
 				builder.HasIndex(x => new { x.StartLegId, x.EndLegId, x.UserId })
 					.IsUnique()
-					.HasFilter($"\"{nameof(Reservation.IsActive)}\" IS TRUE")
+					.HasFilter($"\"{nameof(Reservation_Obsolete.IsActive)}\" IS TRUE")
 					.HasDatabaseName(DbConstants.IndexNames.Reservation_UniqueIfActive);
 
 				builder.HasOne(x => x.StartLeg)
