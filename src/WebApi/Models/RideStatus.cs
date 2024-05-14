@@ -4,7 +4,7 @@ namespace WebApi.Models
 	{
 		Unknown = 0,
 		Draft,
-		Active,
+		ActiveNotStarted,
 		Canceled,
 		StartedOrDone,
 		Deleted,

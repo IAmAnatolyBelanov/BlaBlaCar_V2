@@ -63,6 +63,7 @@ namespace WebApi.Models
 
 	public interface ILegDtoMapper : IBaseMapper<Leg_Obsolete, LegDto_Obsolete>
 	{
+		IReadOnlyList<Leg> ToLegs(RideDto rideDto);
 	}
 
 	[Mapper]
@@ -79,6 +80,21 @@ namespace WebApi.Models
 			_rideDtoMapper = rideDtoMapper;
 			_ridePreparationDtoMapper = ridePreparationDtoMapper;
 		}
+
+		public IReadOnlyList<Leg> ToLegs(RideDto rideDto)
+		{
+			var result = new Leg[rideDto.Legs.Count];
+			for (int i = 0; i < rideDto.Legs.Count; i++)
+			{
+				var leg = ToLeg(rideDto.Legs[i]);
+				leg.RideId = rideDto.Id;
+				result[i] = leg;
+			}
+			return result;
+		}
+
+		private partial Leg ToLeg(LegDto dto);
+
 
 		[MapperIgnoreTarget(nameof(LegDto_Obsolete.Ride))]
 		[MapperIgnoreTarget(nameof(LegDto_Obsolete.From))]

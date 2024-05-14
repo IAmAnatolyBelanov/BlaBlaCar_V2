@@ -24,6 +24,8 @@
 		int MaxWaypoints { get; }
 		int MinPriceInRub { get; }
 		int MaxPriceInRub { get; }
+
+		TimeSpan MinTimeForValidationPassengerBeforeDeparture { get; }
 	}
 
 	public class RideServiceConfig : IBaseConfig, IRideServiceConfig
@@ -48,6 +50,7 @@
 		public int MinPriceInRub { get; set; } = 1;
 		public int MaxPriceInRub { get; set; } = 100_000;
 
+		public TimeSpan MinTimeForValidationPassengerBeforeDeparture { get; set; } = TimeSpan.FromHours(1);
 
 		public IEnumerable<string> GetValidationErrors()
 		{
@@ -74,6 +77,9 @@
 
 			if (MaxPriceInRub <= MinPriceInRub)
 				yield return $"{nameof(MaxPriceInRub)} must be > {MinPriceInRub}";
+
+			if (MinTimeForValidationPassengerBeforeDeparture <= TimeSpan.Zero)
+				yield return $"{nameof(MinTimeForValidationPassengerBeforeDeparture)} must be > 0";
 		}
 	}
 }

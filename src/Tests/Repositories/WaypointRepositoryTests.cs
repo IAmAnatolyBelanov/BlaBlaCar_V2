@@ -60,6 +60,7 @@ public class WaypointRepositoryTests : BaseRepositoryTest
 			.With(x => x.RideId, ride.Id)
 			.CreateMany(50)
 			.ToArray();
+		waypoints.Last().Departure = null;
 
 		using (var session = _sessionFactory.OpenPostgresConnection().BeginTransaction())
 		{
@@ -73,7 +74,7 @@ public class WaypointRepositoryTests : BaseRepositoryTest
 		using (var session = _sessionFactory.OpenPostgresConnection())
 		{
 			var result = await _waypointRepository.GetByRideId(session, ride.Id, ct);
-			var orderedWaypoints = waypoints.OrderBy(x => x.Arrival).ThenBy(x => x.Departure);
+			var orderedWaypoints = waypoints.OrderBy(x => x.Arrival).ThenBy(x => x.Departure ?? DateTimeOffset.MaxValue);
 			result.Should().BeEquivalentTo(orderedWaypoints, options => options.WithStrictOrdering());
 		}
 	}

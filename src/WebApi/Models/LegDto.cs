@@ -2,9 +2,8 @@ namespace WebApi.Models;
 
 public class LegDto
 {
-	public Guid Id { get; set; }
-	public Guid WaypointFromId { get; set; }
-	public Guid WaypointToId { get; set; }
+	public FormattedPoint WaypointFrom { get; set; }
+	public FormattedPoint WaypointTo { get; set; }
 	public int PriceInRub { get; set; }
 	public int FreePlaces { get; set; }
 }

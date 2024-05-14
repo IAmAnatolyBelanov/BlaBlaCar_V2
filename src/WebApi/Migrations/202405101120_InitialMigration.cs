@@ -128,7 +128,7 @@ public class InitialMigration : PostgresMigrator
 			.WithColumn("IsCashlessPaymentMethodAvailable").AsBoolean()
 			.WithColumn("ValidationMethod").AsInt32()
 			.WithColumn("ValidationTimeBeforeDeparture").AsTime().Nullable()
-			.WithColumn("AfterRideValidationAction").AsInt32()
+			.WithColumn("AfterRideValidationTimeoutAction").AsInt32().Nullable()
 			.WithTechnicalCommentColumn();
 
 		Create.ForeignKey()

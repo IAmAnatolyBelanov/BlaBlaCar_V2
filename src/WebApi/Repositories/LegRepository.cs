@@ -54,7 +54,7 @@ public class LegRepository : ILegRepository
 			WHERE leg.""{nameof(Leg.RideId)}"" = '{rideId}'
 			ORDER BY
 				waypoint_from.""{nameof(Waypoint.Arrival)}"" ASC
-				, waypoint_to.""{nameof(Waypoint.Departure)}"" ASC;
+				, waypoint_to.""{nameof(Waypoint.Departure)}"" ASC NULLS LAST;
 		";
 
 		var result = await session.QueryAsync<Leg>(sql, ct);

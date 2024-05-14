@@ -5,12 +5,14 @@ using NetTopologySuite.Geometries;
 
 using WebApi.DataAccess;
 using WebApi.Models;
+using WebApi.Services.Validators;
 using WebApi.Services.Yandex;
 
 namespace WebApi.Services.Core
 {
 	public interface IRideService
 	{
+		Task<RideDto> CreateRide(RideDto dto, CancellationToken ct);
 		ValueTask<RideDto_Obsolete> CreateRide(ApplicationContext context, RidePreparationDto_Obsolete rideDto, CancellationToken ct);
 		ValueTask<RideDto_Obsolete> CreateRide(RideDto_Obsolete rideDto, CancellationToken ct);
 		ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(ApplicationContext context, Point pointFrom, Point pointTo, CancellationToken ct);
@@ -38,6 +40,7 @@ namespace WebApi.Services.Core
 		private readonly IPriceDtoMapper _priceDtoMapper;
 		private readonly IValidator<RidePreparationDto_Obsolete> _ridePreparationValidator;
 		private readonly IRidePreparationDtoMapper _ridePreparationDtoMapper;
+		private readonly IValidator<RideDto> _rideDtoValidator;
 
 		public RideService(
 			IServiceScopeFactory serviceScopeFactory,
@@ -51,7 +54,8 @@ namespace WebApi.Services.Core
 			IValidator<RideDto_Obsolete> rideValidator,
 			IPriceDtoMapper priceDtoMapper,
 			IValidator<RidePreparationDto_Obsolete> ridePreparationValidator,
-			IRidePreparationDtoMapper ridePreparationDtoMapper)
+			IRidePreparationDtoMapper ridePreparationDtoMapper,
+			IValidator<RideDto> rideDtoValidator)
 		{
 			_serviceScopeFactory = serviceScopeFactory;
 			_config = config;
@@ -65,6 +69,17 @@ namespace WebApi.Services.Core
 			_priceDtoMapper = priceDtoMapper;
 			_ridePreparationValidator = ridePreparationValidator;
 			_ridePreparationDtoMapper = ridePreparationDtoMapper;
+			_rideDtoValidator = rideDtoValidator;
+
+		}
+
+		public async Task<RideDto> CreateRide(RideDto dto, CancellationToken ct)
+		{
+			_rideDtoValidator.ValidateAndThrowFriendly(dto);
+			if (dto.Status != RideStatus.Draft && dto.Status != RideStatus.ActiveNotStarted)
+				throw new UserFriendlyException(RideValidationCodes.InvalidCreationStatus, $"При создании поездки доступны лишь статусы {nameof(RideStatus.Draft)} и {nameof(RideStatus.StartedOrDone)}");
+
+			throw new NotImplementedException();
 		}
 
 		public async ValueTask<RideDto_Obsolete> CreateRide(RideDto_Obsolete rideDto, CancellationToken ct)

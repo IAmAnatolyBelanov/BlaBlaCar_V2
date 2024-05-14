@@ -81,6 +81,7 @@ public class LegRepositoryTests : BaseRepositoryTest
 			.With(x => x.RideId, ride.Id)
 			.CreateMany(3)
 			.ToArray();
+		waypoints.Last().Departure = null;
 
 		var legs = new List<Leg>();
 		legs.Add(new Leg
@@ -119,7 +120,7 @@ public class LegRepositoryTests : BaseRepositoryTest
 				From = waypoints.First(x => x.Id == leg.WaypointFromId),
 				To = waypoints.First(x => x.Id == leg.WaypointToId),
 			}).OrderBy(x => x.From.Arrival)
-				.ThenBy(x => x.To.Departure)
+				.ThenBy(x => x.To.Departure ?? DateTimeOffset.MaxValue)
 				.Select(x => x.Leg);
 			result.Should().BeEquivalentTo(orderedLegs, options => options.WithStrictOrdering());
 		}

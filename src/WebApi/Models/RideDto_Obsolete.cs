@@ -65,6 +65,7 @@ namespace WebApi.Models
 
 	public interface IRideDtoMapper : IBaseMapper<Ride_Obsolete, RideDto_Obsolete>
 	{
+		Ride ToRide(RideDto dto);
 	}
 
 	public interface IRidePreparationDtoMapper : IBaseMapper<Ride_Obsolete, RidePreparationDto_Obsolete>
@@ -77,6 +78,29 @@ namespace WebApi.Models
 		public RideDtoMapper() : base(() => new(), () => new())
 		{
 		}
+
+		public Ride ToRide(RideDto dto)
+		{
+			var result = new Ride();
+			ToRide(dto, result);
+
+			for (int i = 0; i < dto.PaymentMethods.Count; i++)
+			{
+				var method = dto.PaymentMethods[i];
+				switch (method)
+				{
+					case PaymentMethod.Cash:
+					result.IsCashPaymentMethodAvailable = true;
+					break;
+					case PaymentMethod.Cashless:
+					result.IsCashlessPaymentMethodAvailable = true;
+					break;
+				}
+			}
+			return result;
+		}
+
+		private partial void ToRide(RideDto src, Ride target);
 
 
 		[MapperIgnoreTarget(nameof(RideDto_Obsolete.Prices))]

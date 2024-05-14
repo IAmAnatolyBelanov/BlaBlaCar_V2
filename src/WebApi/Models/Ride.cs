@@ -25,5 +25,5 @@ public class Ride
 	/// <summary>
 	/// Действия, что необходимо автоматически предпринять по окончанию <see cref="ValidationTimeBeforeDeparture"/>.
 	/// </summary>
-	public AfterRideValidationAction AfterRideValidationAction { get; set; }
+	public AfterRideValidationTimeoutAction? AfterRideValidationTimeoutAction { get; set; }
 }

@@ -5,7 +5,6 @@ public class WaypointDto
 	private DateTimeOffset arrival;
 	private DateTimeOffset? departure;
 
-	public Guid Id { get; set; }
 
 	public FormattedPoint Point { get; set; }
 

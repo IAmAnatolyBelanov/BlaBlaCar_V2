@@ -2,15 +2,18 @@ using Dapper;
 using FluentValidation;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using NetTopologySuite.Geometries;
+using Newtonsoft.Json.Converters;
+using Newtonsoft.Json.Serialization;
 
 using Npgsql;
 
 using NpgsqlTypes;
 using System.Data;
+using System.Reflection;
 using WebApi.DataAccess;
-using WebApi.Repositories;
 using WebApi.Services.Core;
 using WebApi.Services.Driver;
 using WebApi.Services.Redis;
@@ -24,17 +27,24 @@ public class Program
 	{
 		var builder = WebApplication.CreateBuilder(args);
 
-		builder.Services.AddControllers(options
-			=> options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true);
+		builder.Services.AddControllers(options =>
+		{
+			options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+		}).AddNewtonsoftJson(options =>
+		{
+			options.SerializerSettings.Converters.Add(new StringEnumConverter(new CamelCaseNamingStrategy()));
+		});
 
 		builder.Configuration
 			.AddDefaultConfigs()
 			.Build();
 
-		// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 		builder.Services.AddEndpointsApiExplorer();
-		builder.Services.AddSwaggerGen();
-
+		builder.Services.AddSwaggerGen(options =>
+		{
+			options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetExecutingAssembly().GetName().Name}.xml"));
+		});
+		builder.Services.AddSwaggerGenNewtonsoftSupport();
 		Serilog.Debugging.SelfLog.Enable(Console.Error);
 
 		Log.Logger = new LoggerConfiguration()
@@ -62,19 +72,19 @@ public class Program
 				x => x.UseNetTopologySuite())
 			.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
 
-		builder.Services.AddSingleton<IClock, Clock>();
+		builder.Services.TryAddSingleton<IClock, Clock>();
 
-		builder.Services.AddSingleton<ISessionFactory, SessionFactory>();
+		builder.Services.TryAddSingleton<ISessionFactory, SessionFactory>();
 
 		builder.Services.RegisterRepositories();
 
-		builder.Services.AddSingleton<IRedisCacheService, RedisCacheService>();
-		builder.Services.AddSingleton<ISuggestService, SuggestService>();
-		builder.Services.AddSingleton<IGeocodeService, GeocodeService>();
-		builder.Services.AddSingleton<IRouteService, RouteService>();
-		builder.Services.AddSingleton<IRideService, RideService>();
-		builder.Services.AddSingleton<IDriverService, DriverService>();
-		builder.Services.AddSingleton<IUserService, UserService>();
+		builder.Services.TryAddSingleton<IRedisCacheService, RedisCacheService>();
+		builder.Services.TryAddSingleton<ISuggestService, SuggestService>();
+		builder.Services.TryAddSingleton<IGeocodeService, GeocodeService>();
+		builder.Services.TryAddSingleton<IRouteService, RouteService>();
+		builder.Services.TryAddSingleton<IRideService, RideService>();
+		builder.Services.TryAddSingleton<IDriverService, DriverService>();
+		builder.Services.TryAddSingleton<IUserService, UserService>();
 
 		builder.Services.AddHttpClient(Constants.DefaultHttpClientName)
 			.SetHandlerLifetime(TimeSpan.FromHours(1));

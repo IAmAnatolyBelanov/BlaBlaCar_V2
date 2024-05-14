@@ -1,5 +1,6 @@
 ﻿using FluentMigrator.Runner;
 using FluentMigrator.Runner.Initialization;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Newtonsoft.Json;
 
 using Riok.Mapperly.Abstractions;
@@ -101,7 +102,7 @@ namespace WebApi.Extensions
 
 		public static void RegisterMappers(this IServiceCollection services)
 		{
-			services.AddSingleton(typeof(Lazy<>), typeof(Lazier<>));
+			services.TryAddSingleton(typeof(Lazy<>), typeof(Lazier<>));
 
 			var mappers = Assembly.GetExecutingAssembly().GetTypes()
 				.Where(x => x.GetCustomAttribute<MapperAttribute>() is not null)
@@ -109,9 +110,11 @@ namespace WebApi.Extensions
 
 			foreach (var mapper in mappers)
 			{
-				var mapperInterface = mapper.GetInterfaces()
-					.Single(x => !x.IsGenericType);
-				services.AddSingleton(mapperInterface, mapper);
+				var mapperInterfaces = mapper.GetInterfaces();
+				foreach (var mapperInterface in mapperInterfaces)
+				{
+					services.TryAddSingleton(mapperInterface, mapper);
+				}
 			}
 		}
 

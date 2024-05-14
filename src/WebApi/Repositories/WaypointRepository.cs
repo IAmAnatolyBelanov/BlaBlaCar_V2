@@ -48,7 +48,7 @@ public class WaypointRepository : IWaypointRepository
 			WHERE ""{nameof(Waypoint.RideId)}"" = '{rideId}'
 			ORDER BY
 				""{nameof(Waypoint.Arrival)}"" ASC
-				, ""{nameof(Waypoint.Departure)}"" ASC;
+				, ""{nameof(Waypoint.Departure)}"" ASC NULLS LAST;
 		";
 
 		var result = await session.QueryAsync<Waypoint>(sql, ct);

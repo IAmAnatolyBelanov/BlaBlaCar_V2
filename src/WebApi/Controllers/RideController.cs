@@ -17,7 +17,7 @@ namespace WebApi.Controllers
 		}
 
 		[HttpPost]
-		public async ValueTask<BaseResponse<RideDto_Obsolete>> CreateRide(RideDto_Obsolete ride, CancellationToken ct)
+		public async ValueTask<BaseResponse<RideDto_Obsolete>> CreateRide_Obsolete(RideDto_Obsolete ride, CancellationToken ct)
 		{
 			var result = await _rideService.CreateRide(ride, ct);
 			return result;
@@ -37,6 +37,13 @@ namespace WebApi.Controllers
 			var result = await _rideService.GetRecommendedPriceAsync(from.ToPoint(), to.ToPoint(), ct);
 
 			return new Tuple<decimal, decimal>(result.Low, result.High);
+		}
+
+		[HttpPost]
+		public async Task<BaseResponse<RideDto>> CreateRide(RideDto ride, CancellationToken ct)
+		{
+			var result = await _rideService.CreateRide(ride, ct);
+			return result;
 		}
 	}
 }

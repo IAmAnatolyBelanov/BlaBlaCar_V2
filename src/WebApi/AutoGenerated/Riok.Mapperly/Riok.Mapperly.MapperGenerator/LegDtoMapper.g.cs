@@ -4,6 +4,13 @@ namespace WebApi.Models
 {
     public partial class LegDtoMapper
     {
+        private partial global::WebApi.Models.Leg ToLeg(global::WebApi.Models.LegDto dto)
+        {
+            var target = new global::WebApi.Models.Leg();
+            target.PriceInRub = dto.PriceInRub;
+            return target;
+        }
+
         private partial void ToDtoAuto(global::WebApi.Models.Leg_Obsolete leg, global::WebApi.Models.LegDto_Obsolete dto)
         {
             dto.Id = leg.Id;

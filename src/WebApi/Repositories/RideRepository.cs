@@ -38,7 +38,7 @@ public class RideRepository : IRideRepository
 		await importer.Write(ride.IsCashlessPaymentMethodAvailable, ct);
 		await importer.Write((int)ride.ValidationMethod, ct);
 		await importer.WriteValueOrNull(ride.ValidationTimeBeforeDeparture, NpgsqlDbType.Time, ct);
-		await importer.Write((int)ride.AfterRideValidationAction, ct);
+		await importer.WriteValueOrNull((int?)ride.AfterRideValidationTimeoutAction, ct);
 
 		var result = await importer.Complete(ct);
 
@@ -70,6 +70,6 @@ public class RideRepository : IRideRepository
 		, ""{nameof(Ride.IsCashlessPaymentMethodAvailable)}""
 		, ""{nameof(Ride.ValidationMethod)}""
 		, ""{nameof(Ride.ValidationTimeBeforeDeparture)}""
-		, ""{nameof(Ride.AfterRideValidationAction)}""
+		, ""{nameof(Ride.AfterRideValidationTimeoutAction)}""
 	";
 }
