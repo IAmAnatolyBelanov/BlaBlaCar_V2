@@ -93,11 +93,13 @@ public class PostgresSession : IDisposable, IPostgresSession
 
 	private bool _trace;
 	private readonly NpgsqlConnection _connection;
+	private readonly NpgsqlDataSource _dataSource;
 	private NpgsqlTransaction? _transaction;
 
-	public PostgresSession(NpgsqlConnection connection, bool beginTransaction = false, bool trace = false)
+	public PostgresSession(NpgsqlConnection connection, NpgsqlDataSource dataSource, bool beginTransaction = false, bool trace = false)
 	{
 		_connection = connection;
+		_dataSource = dataSource;
 
 		if (beginTransaction)
 			BeginTransaction();
@@ -466,6 +468,7 @@ public class PostgresSession : IDisposable, IPostgresSession
 	{
 		_transaction?.Dispose();
 		_connection.Dispose();
+		_dataSource.Dispose();
 
 		if (_sessionTimer.IsRunning)
 		{

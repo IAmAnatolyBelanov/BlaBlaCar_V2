@@ -29,7 +29,6 @@ namespace Tests
 		{
 			var conf = new CsvConfiguration(CultureInfo.InvariantCulture);
 			conf.Delimiter = ",";
-			conf.NewLine = "\r\n";
 
 			using (var reader = new StreamReader("./CityInfos.csv"))
 			using (var csv = new CsvReader(reader, conf))
@@ -50,7 +49,7 @@ namespace Tests
 				_unusedCities = new(allCities);
 			}
 
-			lock(_locker)
+			lock (_locker)
 			{
 				return _unusedCities.Dequeue();
 			}

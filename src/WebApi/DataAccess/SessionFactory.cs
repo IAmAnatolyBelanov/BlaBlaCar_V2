@@ -10,17 +10,21 @@ public interface ISessionFactory
 public class SessionFactory : ISessionFactory
 {
 	private readonly IPostgresConfig _postgresConfig;
+	private readonly NpgsqlDataSourceBuilder _builder;
 
 	public SessionFactory(IPostgresConfig postgresConfig)
 	{
 		_postgresConfig = postgresConfig;
+		_builder = new NpgsqlDataSourceBuilder(_postgresConfig.ConnectionString);
+		_builder.UseNetTopologySuite();
 	}
 
 	public IPostgresSession OpenPostgresConnection(bool beginTransaction = false, bool trace = false)
 	{
-		var connection = new NpgsqlConnection(_postgresConfig.ConnectionString);
-		connection.Open();
-		var result = new PostgresSession(connection, beginTransaction, trace);
+		var dataSource = _builder.Build();
+		var connection = dataSource.OpenConnection();
+
+		var result = new PostgresSession(connection, dataSource, beginTransaction, trace);
 		return result;
 	}
 }

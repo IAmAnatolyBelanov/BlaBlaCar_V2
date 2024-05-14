@@ -1,4 +1,5 @@
 ﻿using FluentAssertions.Extensions;
+using NetTopologySuite.Geometries;
 using WebApi.Models;
 
 namespace Tests
@@ -68,6 +69,13 @@ namespace Tests
 				var hours = Random.Shared.Next(0, 23);
 
 				var result = new TimeSpan(hours: hours, minutes: minutes, seconds: seconds);
+				return result;
+			});
+
+			fixture.Register<Point>(() =>
+			{
+				var formattedPoint = fixture.Create<FormattedPoint>();
+				var result = formattedPoint.ToPoint();
 				return result;
 			});
 

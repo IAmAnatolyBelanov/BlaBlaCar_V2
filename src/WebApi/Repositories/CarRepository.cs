@@ -51,8 +51,8 @@ public class CarRepository : ICarRepository
 				car_user.""UserId"" = '{userId}'
 				AND car.""{nameof(Car.IsDeleted)}"" = FALSE
 			ORDER BY
-				car.""{nameof(Car.Name)}""
-				, car.""{nameof(Car.RegistrationNumber)}"";
+				car.""{nameof(Car.Name)}"" ASC
+				, car.""{nameof(Car.RegistrationNumber)}"" ASC;
 		";
 
 		var result = await session.QueryAsync<Car>(sql, ct);

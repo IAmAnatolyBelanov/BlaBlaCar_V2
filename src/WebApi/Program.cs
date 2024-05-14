@@ -81,9 +81,6 @@ public class Program
 
 		var app = builder.Build();
 
-		var scope = app.Services.CreateScope();
-		var ser = scope.ServiceProvider.GetRequiredService<IDriverService>();
-
 		app.Services.ValidateConfigs();
 
 		app.UseMiddleware<ExceptionMiddleware>();
