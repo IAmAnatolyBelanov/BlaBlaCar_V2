@@ -30,6 +30,8 @@ public class WaypointRepositoryTests : BaseRepositoryTest
 
 		var waypoints = _fixture.Build<Waypoint>()
 			.With(x => x.RideId, ride.Id)
+			.Without(x => x.PreviousWaypointId)
+			.Without(x => x.NextWaypointId)
 			.CreateMany(3)
 			.ToArray();
 
@@ -58,9 +60,12 @@ public class WaypointRepositoryTests : BaseRepositoryTest
 
 		var waypoints = _fixture.Build<Waypoint>()
 			.With(x => x.RideId, ride.Id)
+			.Without(x => x.PreviousWaypointId)
+			.Without(x => x.NextWaypointId)
 			.CreateMany(50)
 			.ToArray();
 		waypoints.Last().Departure = null;
+		waypoints.First().NextWaypointId = waypoints.Last().Id;
 
 		using (var session = _sessionFactory.OpenPostgresConnection().BeginTransaction())
 		{

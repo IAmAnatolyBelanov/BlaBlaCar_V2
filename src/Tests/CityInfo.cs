@@ -41,16 +41,16 @@ namespace Tests
 		private static Queue<CityInfo>? _unusedCities;
 		public static CityInfo GetUnique()
 		{
-			if (_unusedCities is null || _unusedCities.Count < 1)
-			{
-				var allCities = AllCities
-					.OrderBy(x => Random.Shared.Next())
-					.ToArray();
-				_unusedCities = new(allCities);
-			}
-
 			lock (_locker)
 			{
+				if (_unusedCities is null || _unusedCities.Count < 1)
+				{
+					var allCities = AllCities
+						.OrderBy(x => Random.Shared.Next())
+						.ToArray();
+					_unusedCities = new(allCities);
+				}
+
 				return _unusedCities.Dequeue();
 			}
 		}

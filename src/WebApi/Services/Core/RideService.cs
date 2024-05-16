@@ -5,11 +5,21 @@ using NetTopologySuite.Geometries;
 
 using WebApi.DataAccess;
 using WebApi.Models;
+using WebApi.Models.ControllersModels.RideControllerModels;
+using WebApi.Repositories;
 using WebApi.Services.Validators;
 using WebApi.Services.Yandex;
 
 namespace WebApi.Services.Core
 {
+	public class RideServiceValidationCodes : ValidationCodes
+	{
+		public const string DriverIdIsEmpty = "RideService_DriverIdIsEmpty";
+		public const string CarIdIsEmpty = "RideService_CarIdIsEmpty";
+		public const string DriverDataDoesNotExist = "RideService_DriverDataDoesNotExist";
+		public const string CarHasLessSeatsThanRideAvailablePlaces = "RideService_CarHasLessSeatsThanRideAvailablePlaces";
+	}
+
 	public interface IRideService
 	{
 		Task<RideDto> CreateRide(RideDto dto, CancellationToken ct);
@@ -41,6 +51,14 @@ namespace WebApi.Services.Core
 		private readonly IValidator<RidePreparationDto_Obsolete> _ridePreparationValidator;
 		private readonly IRidePreparationDtoMapper _ridePreparationDtoMapper;
 		private readonly IValidator<RideDto> _rideDtoValidator;
+		private readonly IUserRepository _userRepository;
+		private readonly ISessionFactory _sessionFactory;
+		private readonly ICarRepository _carRepository;
+		private readonly IWaypointMapper _waypointMapper;
+		private readonly IRideRepository _rideRepository;
+		private readonly IWaypointRepository _waypointRepository;
+		private readonly ILegRepository _legRepository;
+		private readonly IDriverDataRepository _driverDataRepository;
 
 		public RideService(
 			IServiceScopeFactory serviceScopeFactory,
@@ -55,7 +73,15 @@ namespace WebApi.Services.Core
 			IPriceDtoMapper priceDtoMapper,
 			IValidator<RidePreparationDto_Obsolete> ridePreparationValidator,
 			IRidePreparationDtoMapper ridePreparationDtoMapper,
-			IValidator<RideDto> rideDtoValidator)
+			IValidator<RideDto> rideDtoValidator,
+			IUserRepository userRepository,
+			ISessionFactory sessionFactory,
+			ICarRepository carRepository,
+			IWaypointMapper waypointMapper,
+			IRideRepository rideRepository,
+			IWaypointRepository waypointRepository,
+			ILegRepository legRepository,
+			IDriverDataRepository driverDataRepository)
 		{
 			_serviceScopeFactory = serviceScopeFactory;
 			_config = config;
@@ -70,16 +96,99 @@ namespace WebApi.Services.Core
 			_ridePreparationValidator = ridePreparationValidator;
 			_ridePreparationDtoMapper = ridePreparationDtoMapper;
 			_rideDtoValidator = rideDtoValidator;
-
+			_userRepository = userRepository;
+			_sessionFactory = sessionFactory;
+			_carRepository = carRepository;
+			_waypointMapper = waypointMapper;
+			_rideRepository = rideRepository;
+			_waypointRepository = waypointRepository;
+			_legRepository = legRepository;
+			_driverDataRepository = driverDataRepository;
 		}
 
-		public async Task<RideDto> CreateRide(RideDto dto, CancellationToken ct)
+		public async Task<RideDto> CreateRide(RideDto rideDto, CancellationToken ct)
 		{
-			_rideDtoValidator.ValidateAndThrowFriendly(dto);
-			if (dto.Status != RideStatus.Draft && dto.Status != RideStatus.ActiveNotStarted)
+			var start = _clock.Now;
+
+			if (rideDto.Status != RideStatus.Draft && rideDto.Status != RideStatus.ActiveNotStarted)
 				throw new UserFriendlyException(RideValidationCodes.InvalidCreationStatus, $"При создании поездки доступны лишь статусы {nameof(RideStatus.Draft)} и {nameof(RideStatus.StartedOrDone)}");
 
-			throw new NotImplementedException();
+			// TODO - для менеджеров условие не должно выполняться.
+			if (rideDto.Status == RideStatus.ActiveNotStarted)
+			{
+				if (rideDto.DriverId is null)
+					throw new UserFriendlyException(RideServiceValidationCodes.DriverIdIsEmpty, "Водитель может быть не указан только для черновика");
+				if (rideDto.CarId is null)
+					throw new UserFriendlyException(RideServiceValidationCodes.CarIdIsEmpty, "Автомобиль может быть не указан только для черновика");
+			}
+
+			_rideDtoValidator.ValidateAndThrowFriendly(rideDto);
+
+			using var session = _sessionFactory.OpenPostgresConnection().BeginTransaction().StartTrace();
+
+			var getAuthorTask = _userRepository.GetById(session, rideDto.AuthorId, ct);
+			var getDriverTask = rideDto.DriverId is null
+				? null
+				: rideDto.DriverId.Value == rideDto.AuthorId
+					? getAuthorTask
+					: _userRepository.GetById(session, rideDto.DriverId.Value, ct);
+			var getCarTask = rideDto.CarId is null
+				? null
+				: _carRepository.GetById(session, rideDto.CarId.Value, ct);
+
+			var author = await getAuthorTask;
+			if (author is null)
+				throw new UserFriendlyException(CommonValidationCodes.UserNotFound, $"Пользователь {rideDto.AuthorId} не найден");
+			var driver = getAuthorTask is null ? null : await getAuthorTask;
+			if (rideDto.DriverId is not null && driver is null)
+				throw new UserFriendlyException(CommonValidationCodes.UserNotFound, $"Пользователь {rideDto.DriverId} не найден");
+			var car = getCarTask is null ? null : await getCarTask;
+			if (rideDto.CarId is not null && car is null)
+				throw new UserFriendlyException(CommonValidationCodes.CarNotFound, $"Автомобиль {rideDto.CarId} не найден");
+
+			if (driver is not null && rideDto.Status == RideStatus.ActiveNotStarted)
+			{
+				var driverData = await _driverDataRepository.GetByUserId(session, driver.Id, ct);
+				if (driverData is null)
+					throw new UserFriendlyException(RideServiceValidationCodes.DriverDataDoesNotExist, "У пользователя, указанного как водитель, нет водительского удостоверения");
+			}
+
+			if (car is not null && car.PassengerSeatsCount < rideDto.AvailablePlacesCount)
+				throw new UserFriendlyException(RideServiceValidationCodes.CarHasLessSeatsThanRideAvailablePlaces, "У автомобиля не может быть пассажирских сидений меньше, чем свободных мест в поездке");
+
+			rideDto.Id = Guid.NewGuid();
+			rideDto.Created = start;
+			var ride = _rideDtoMapper.ToRide(rideDto);
+
+			var waypoints = _waypointMapper.ToWaypoints(rideDto);
+			foreach (var waypoint in waypoints)
+				waypoint.Id = Guid.NewGuid();
+			var waypointsDict = waypoints.ToDictionary(x => FormattedPoint.FromPoint(x.Point));
+			var legs = new List<Leg>(rideDto.Legs.Count);
+			foreach (var legDto in rideDto.Legs)
+			{
+				var leg = new Leg();
+				leg.Id = Guid.NewGuid();
+				leg.RideId = ride.Id;
+				leg.PriceInRub = legDto.PriceInRub;
+				leg.WaypointFromId = waypointsDict[legDto.WaypointFrom].Id;
+				leg.WaypointToId = waypointsDict[legDto.WaypointTo].Id;
+
+				legs.Add(leg);
+			}
+
+			await _rideRepository.Insert(session, ride, ct);
+			await _waypointRepository.BulkInsert(session, waypoints, ct);
+			await _legRepository.BulkInsert(session, legs, ct);
+
+			await session.CommitAsync(ct);
+
+			return rideDto;
+		}
+
+		public async Task<RideDto> GetRide(RideFilter filter, CancellationToken ct)
+		{
+			return null;
 		}
 
 		public async ValueTask<RideDto_Obsolete> CreateRide(RideDto_Obsolete rideDto, CancellationToken ct)

@@ -32,6 +32,8 @@ public class LegRepositoryTests : BaseRepositoryTest
 
 		var waypoints = _fixture.Build<Waypoint>()
 			.With(x => x.RideId, ride.Id)
+			.Without(x => x.NextWaypointId)
+			.Without(x => x.PreviousWaypointId)
 			.CreateMany(3)
 			.ToArray();
 
@@ -79,6 +81,8 @@ public class LegRepositoryTests : BaseRepositoryTest
 
 		var waypoints = _fixture.Build<Waypoint>()
 			.With(x => x.RideId, ride.Id)
+			.Without(x => x.NextWaypointId)
+			.Without(x => x.PreviousWaypointId)
 			.CreateMany(3)
 			.ToArray();
 		waypoints.Last().Departure = null;

@@ -1,5 +1,11 @@
 ﻿namespace WebApi.Services.Validators
 {
+	public class CommonValidationCodes : ValidationCodes
+	{
+		public const string UserNotFound = "CommonErrors_UserNotFound";
+		public const string CarNotFound = "CommonErrors_CarNotFound";
+	}
+
 	public abstract class ValidationCodes
 	{
 		public ValidationCodes()

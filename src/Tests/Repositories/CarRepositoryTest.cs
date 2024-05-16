@@ -55,4 +55,28 @@ public class CarRepositoryTest : BaseRepositoryTest
 			result[0].Should().BeEquivalentTo(car);
 		}
 	}
+
+	[Fact]
+	public async Task InsertAndGetById()
+	{
+		var ct = CancellationToken.None;
+
+		var user = _fixture.Build<User>().Create();
+		var car = _fixture.Build<Car>().Create();
+
+		using (var session = _sessionFactory.OpenPostgresConnection().BeginTransaction())
+		{
+			await _userRepository.Insert(session, user, ct);
+			await _carRepository.Insert(session, car, ct);
+			await _carUserRepository.Insert(session, car.Id, user.Id, ct);
+
+			await session.CommitAsync(ct);
+		}
+
+		using (var session = _sessionFactory.OpenPostgresConnection())
+		{
+			var result = await _carRepository.GetById(session, car.Id, ct);
+			result.Should().BeEquivalentTo(car);
+		}
+	}
 }

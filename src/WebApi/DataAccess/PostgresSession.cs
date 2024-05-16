@@ -93,13 +93,13 @@ public class PostgresSession : IDisposable, IPostgresSession
 
 	private bool _trace;
 	private readonly NpgsqlConnection _connection;
-	private readonly NpgsqlDataSource _dataSource;
 	private NpgsqlTransaction? _transaction;
 
-	public PostgresSession(NpgsqlConnection connection, NpgsqlDataSource dataSource, bool beginTransaction = false, bool trace = false)
+	private readonly SemaphoreSlim _semaphore = new(1, 1);
+
+	public PostgresSession(NpgsqlConnection connection, bool beginTransaction = false, bool trace = false)
 	{
 		_connection = connection;
-		_dataSource = dataSource;
 
 		if (beginTransaction)
 			BeginTransaction();
@@ -195,6 +195,7 @@ public class PostgresSession : IDisposable, IPostgresSession
 				memberName);
 		}
 
+		await _semaphore.WaitAsync(command.CancellationToken);
 		try
 		{
 			var result = await _connection.QueryAsync<T>(command);
@@ -212,6 +213,7 @@ public class PostgresSession : IDisposable, IPostgresSession
 		}
 		finally
 		{
+			_semaphore.Release();
 			if (timer is not null)
 			{
 				_logger.Information(
@@ -288,6 +290,7 @@ public class PostgresSession : IDisposable, IPostgresSession
 				memberName);
 		}
 
+		await _semaphore.WaitAsync(command.CancellationToken);
 		try
 		{
 			var result = await _connection.ExecuteAsync(command);
@@ -305,6 +308,7 @@ public class PostgresSession : IDisposable, IPostgresSession
 		}
 		finally
 		{
+			_semaphore.Release();
 			if (timer is not null)
 			{
 				_logger.Information(
@@ -381,6 +385,7 @@ public class PostgresSession : IDisposable, IPostgresSession
 				memberName);
 		}
 
+		await _semaphore.WaitAsync(command.CancellationToken);
 		try
 		{
 			var result = await _connection.QueryFirstOrDefaultAsync<T>(command);
@@ -398,6 +403,7 @@ public class PostgresSession : IDisposable, IPostgresSession
 		}
 		finally
 		{
+			_semaphore.Release();
 			if (timer is not null)
 			{
 				_logger.Information(
@@ -428,6 +434,7 @@ public class PostgresSession : IDisposable, IPostgresSession
 				memberName);
 		}
 
+		await _semaphore.WaitAsync(ct);
 		try
 		{
 			// Может быть null. Должно управляться слоем бизнес-логики.
@@ -445,6 +452,7 @@ public class PostgresSession : IDisposable, IPostgresSession
 		}
 		finally
 		{
+			_semaphore.Release();
 			if (timer is not null)
 			{
 				_logger.Information(
@@ -468,7 +476,7 @@ public class PostgresSession : IDisposable, IPostgresSession
 	{
 		_transaction?.Dispose();
 		_connection.Dispose();
-		_dataSource.Dispose();
+		_semaphore.Dispose();
 
 		if (_sessionTimer.IsRunning)
 		{

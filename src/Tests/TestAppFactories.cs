@@ -6,8 +6,6 @@ using Microsoft.Extensions.Configuration;
 using Serilog;
 using Testcontainers.PostgreSql;
 using Testcontainers.Redis;
-
-using WebApi.DataAccess;
 using WebApi.Extensions;
 using WebApi.Shared;
 
@@ -111,6 +109,7 @@ namespace Tests
 		{
 			PostgreSqlBuilder = new PostgreSqlBuilder()
 				.WithImage("postgis/postgis:16-3.4")
+				.WithCommand("-c", "max_connections=10000")
 				.WithWaitStrategy(Wait.ForUnixContainer())
 				.WithAutoRemove(true);
 
@@ -155,6 +154,9 @@ namespace Tests
 			var replace = new Dictionary<string, string?>
 			{
 				["PostgreSQL:ConnectionString"] = _postgreSqlContainer.GetConnectionString()
+					.Trim()
+					.Trim(';')
+					+ "; Maximum Pool Size=8000; Connection Pruning Interval=10;"
 			};
 
 			result = result.AddInMemoryCollection(replace);
@@ -253,7 +255,7 @@ namespace Tests
 		public virtual IConfigurationBuilder PrepareTestConfigs(IConfigurationBuilder configuration)
 		{
 			configuration.AddDefaultConfigs()
-				.AddJsonFile("appsettings.Test.json");
+				.AddJsonFile("appsettings.Test.json", optional: true, reloadOnChange: false);
 
 			return configuration;
 		}

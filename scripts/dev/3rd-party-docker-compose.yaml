@@ -17,6 +17,7 @@ services:
 
   postgres:
     image: postgis/postgis:16-3.4
+    command: -c 'max_connections=10000'
     environment:
       POSTGRES_PASSWORD: postgres
     # volumes:

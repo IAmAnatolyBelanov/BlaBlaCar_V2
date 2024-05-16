@@ -31,4 +31,7 @@ public class Waypoint
 	/// Время отправления из точки. Может быть <see langword="null"/>, если это конечная точка.
 	/// </summary>
 	public DateTimeOffset? Departure { get => departure; set => departure = value?.ToUniversalTime(); }
+
+	public Guid? PreviousWaypointId { get; set; }
+	public Guid? NextWaypointId { get; set; }
 }

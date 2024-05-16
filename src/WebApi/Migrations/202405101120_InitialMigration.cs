@@ -170,7 +170,9 @@ public class InitialMigration : PostgresMigrator
 			.WithColumn("FullName").AsString()
 			.WithColumn("NameToCity").AsString()
 			.WithColumn("Arrival").AsDateTimeOffset()
-			.WithColumn("Departure").AsDateTimeOffset().Nullable();
+			.WithColumn("Departure").AsDateTimeOffset().Nullable()
+			.WithColumn("PreviousWaypointId").AsGuid().Nullable()
+			.WithColumn("NextWaypointId").AsGuid().Nullable();
 
 		Create.ForeignKey()
 			.FromTable("Waypoints").ForeignColumn("RideId")
@@ -193,6 +195,13 @@ public class InitialMigration : PostgresMigrator
 			.Ascending()
 			.WithOptions()
 			.UsingGist();
+
+		Create.ForeignKey()
+			.FromTable("Waypoints").ForeignColumn("PreviousWaypointId")
+			.ToTable("Waypoints").PrimaryColumn("Id");
+		Create.ForeignKey()
+			.FromTable("Waypoints").ForeignColumn("NextWaypointId")
+			.ToTable("Waypoints").PrimaryColumn("Id");
 
 		Create.Table("Legs")
 			.WithColumn("Id").AsGuid().PrimaryKey()

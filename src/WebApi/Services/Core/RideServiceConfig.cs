@@ -26,6 +26,13 @@
 		int MaxPriceInRub { get; }
 
 		TimeSpan MinTimeForValidationPassengerBeforeDeparture { get; }
+
+		public int MinRadiusForSearchKilometers { get; }
+		public int MaxRadiusForSearchKilometers { get; }
+
+		public TimeSpan MaxSearchPeriod { get; }
+
+		public int MaxSqlLimit { get; }
 	}
 
 	public class RideServiceConfig : IBaseConfig, IRideServiceConfig
@@ -47,10 +54,17 @@
 		/// <inheritdoc/>
 		public int MaxWaypoints { get; set; } = 10;
 
-		public int MinPriceInRub { get; set; } = 1;
-		public int MaxPriceInRub { get; set; } = 100_000;
+		public int MinPriceInRub { get; set; } = 100;
+		public int MaxPriceInRub { get; set; } = 300_000;
 
 		public TimeSpan MinTimeForValidationPassengerBeforeDeparture { get; set; } = TimeSpan.FromHours(1);
+
+		public int MinRadiusForSearchKilometers { get; set; } = 10;
+		public int MaxRadiusForSearchKilometers { get; set; } = 100;
+
+		public TimeSpan MaxSearchPeriod { get; set; } = TimeSpan.FromDays(14);
+
+		public int MaxSqlLimit { get; set; } = 5_000;
 
 		public IEnumerable<string> GetValidationErrors()
 		{
@@ -80,6 +94,19 @@
 
 			if (MinTimeForValidationPassengerBeforeDeparture <= TimeSpan.Zero)
 				yield return $"{nameof(MinTimeForValidationPassengerBeforeDeparture)} must be > 0";
+
+			if (MinRadiusForSearchKilometers <= 0)
+				yield return $"{nameof(MinRadiusForSearchKilometers)} must be > 0";
+			if (MaxRadiusForSearchKilometers <= 0)
+				yield return $"{nameof(MaxRadiusForSearchKilometers)} must be > 0";
+			if (MaxRadiusForSearchKilometers <= MinRadiusForSearchKilometers)
+				yield return $"{nameof(MaxRadiusForSearchKilometers)} must be > {nameof(MinRadiusForSearchKilometers)}";
+
+			if (MaxSearchPeriod <= TimeSpan.Zero)
+				yield return $"{nameof(MaxSearchPeriod)} must be > 0";
+
+			if (MaxSqlLimit <= 0)
+				yield return $"{nameof(MaxSqlLimit)} must be > 0";
 		}
 	}
 }

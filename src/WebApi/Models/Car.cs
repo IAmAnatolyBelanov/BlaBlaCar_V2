@@ -17,6 +17,8 @@ public class Car
 	/// </summary>
 	public int SeatsCount { get; set; }
 
+	public int PassengerSeatsCount => SeatsCount - 1;
+
 	/// <summary>
 	/// Например, владелец продал авто, новый владелец повторно зарегистрировал его, но с новым номером. Старый номер таким образом перестаёт быть активным.
 	/// </summary>

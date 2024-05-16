@@ -122,8 +122,8 @@ namespace WebApi.Extensions
 		{
 			var result = configuration
 				.SetBasePath(Directory.GetCurrentDirectory())
-				.AddJsonFile("appsettings.json")
-				.AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable(variable: "ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true)
+				.AddJsonFile("appsettings.json", optional: true, reloadOnChange: false)
+				.AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable(variable: "ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true, reloadOnChange: false)
 				.AddEnvironmentVariables("BBC_");
 
 			return result;

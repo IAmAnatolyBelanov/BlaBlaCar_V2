@@ -35,6 +35,8 @@ public class WaypointRepository : IWaypointRepository
 			await importer.Write(waypoint.NameToCity, ct);
 			await importer.Write(waypoint.Arrival, ct);
 			await importer.Write(waypoint.Departure, ct);
+			await importer.WriteValueOrNull(waypoint.PreviousWaypointId, ct);
+			await importer.WriteValueOrNull(waypoint.NextWaypointId, ct);
 		}
 
 		var result = await importer.Complete(ct);
@@ -63,5 +65,7 @@ public class WaypointRepository : IWaypointRepository
 		, ""{nameof(Waypoint.NameToCity)}""
 		, ""{nameof(Waypoint.Arrival)}""
 		, ""{nameof(Waypoint.Departure)}""
+		, ""{nameof(Waypoint.PreviousWaypointId)}""
+		, ""{nameof(Waypoint.NextWaypointId)}""
 	";
 }

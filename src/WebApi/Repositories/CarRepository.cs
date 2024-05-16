@@ -7,6 +7,7 @@ public interface ICarRepository : IRepository
 {
 	Task<int> Insert(IPostgresSession session, Car car, CancellationToken ct);
 	Task<IReadOnlyList<Car>> GetByUserId(IPostgresSession session, Guid userId, CancellationToken ct);
+	Task<Car?> GetById(IPostgresSession session, Guid id, CancellationToken ct);
 }
 
 public class CarRepository : ICarRepository
@@ -56,6 +57,18 @@ public class CarRepository : ICarRepository
 		";
 
 		var result = await session.QueryAsync<Car>(sql, ct);
+		return result;
+	}
+
+	public async Task<Car?> GetById(IPostgresSession session, Guid id, CancellationToken ct)
+	{
+		var sql = $@"
+			SELECT {_fullColumnsList} FROM {_tableName}
+			WHERE ""{nameof(Car.Id)}"" = '{id}'
+			LIMIT 1;
+		";
+
+		var result = await session.QueryFirstOrDefaultAsync<Car>(sql, ct);
 		return result;
 	}
 
