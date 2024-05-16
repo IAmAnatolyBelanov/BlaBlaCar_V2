@@ -75,6 +75,6 @@ public class SearchRideDbResponse
 
 
 	// Prices
-	public int? LegPrice { get; set; }
-	public int DefaultPrice { get; set; }
+	public int Price { get; set; }
+	public bool IsPriceManual { get; set; }
 }

@@ -220,7 +220,7 @@ public class RideRepositoryTests : BaseRepositoryTest
 		var ct = CancellationToken.None;
 
 		var filter = _fixture.Build<RideDbFilter>()
-			.With(x => x.SortType, RideSortType.ByPrice)
+			.With(x => x.SortType, RideSortType.ByStartPointDistance)
 			.With(x => x.SortDirection, SortDirection.Asc)
 			.With(x => x.PaymentMethods, new PaymentMethod[] { PaymentMethod.Cash, PaymentMethod.Cashless })
 			.Create();

@@ -33,6 +33,8 @@ public class LegRepository : ILegRepository
 			await importer.Write(leg.WaypointFromId, ct);
 			await importer.Write(leg.WaypointToId, ct);
 			await importer.Write(leg.PriceInRub, ct);
+			await importer.Write(leg.IsManual, ct);
+			await importer.Write(leg.IsMinimal, ct);
 		}
 
 		var result = await importer.Complete(ct);
@@ -48,6 +50,8 @@ public class LegRepository : ILegRepository
 				, leg.""{nameof(Leg.WaypointFromId)}""
 				, leg.""{nameof(Leg.WaypointToId)}""
 				, leg.""{nameof(Leg.PriceInRub)}""
+				, leg.""{nameof(Leg.IsManual)}""
+				, leg.""{nameof(Leg.IsMinimal)}""
 			FROM {_tableName} leg
 			INNER JOIN {_waypointsTableName} waypoint_from ON waypoint_from.""{nameof(Waypoint.Id)}"" = leg.""{nameof(Leg.WaypointFromId)}""
 			INNER JOIN {_waypointsTableName} waypoint_to ON waypoint_to.""{nameof(Waypoint.Id)}"" = leg.""{nameof(Leg.WaypointToId)}""
@@ -67,5 +71,7 @@ public class LegRepository : ILegRepository
 		, ""{nameof(Leg.WaypointFromId)}""
 		, ""{nameof(Leg.WaypointToId)}""
 		, ""{nameof(Leg.PriceInRub)}""
+		, ""{nameof(Leg.IsManual)}""
+		, ""{nameof(Leg.IsMinimal)}""
 	";
 }

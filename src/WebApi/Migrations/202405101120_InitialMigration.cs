@@ -208,7 +208,9 @@ public class InitialMigration : PostgresMigrator
 			.WithColumn("RideId").AsGuid()
 			.WithColumn("WaypointFromId").AsGuid()
 			.WithColumn("WaypointToId").AsGuid()
-			.WithColumn("PriceInRub").AsInt32();
+			.WithColumn("PriceInRub").AsInt32()
+			.WithColumn("IsManual").AsBoolean()
+			.WithColumn("IsMinimal").AsBoolean();
 
 		Create.ForeignKey()
 			.FromTable("Legs").ForeignColumn("RideId")
