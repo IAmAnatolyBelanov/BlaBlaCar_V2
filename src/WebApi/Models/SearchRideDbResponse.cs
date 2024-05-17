@@ -1,9 +1,6 @@
 using NetTopologySuite.Geometries;
-using Newtonsoft.Json;
 
 namespace WebApi.Models;
-
-// TODO - сделать модель для возвращения респонса на фронт. И маппер.
 
 public class SearchRideDbResponse
 {
@@ -46,9 +43,7 @@ public class SearchRideDbResponse
 
 	public Guid WaypointFromId { get; set; }
 
-	[JsonIgnore]
 	public Point FromPoint { get; set; } = default!;
-	public FormattedPoint FromPointFormatted => FormattedPoint.FromPoint(FromPoint);
 
 	public float FromDistanceKilometers { get; set; }
 
@@ -69,9 +64,7 @@ public class SearchRideDbResponse
 
 	public Guid WaypointToId { get; set; }
 
-	[JsonIgnore]
 	public Point ToPoint { get; set; } = default!;
-	public FormattedPoint FormattedToPoint => FormattedPoint.FromPoint(ToPoint);
 
 	public float ToDistanceKilometers { get; set; }
 

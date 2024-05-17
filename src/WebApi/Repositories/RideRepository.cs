@@ -91,8 +91,9 @@ public class RideRepository : IRideRepository
 	{
 		var sql = $@"
 			WITH leg_reserved_seats AS(
-				{_defaultAffectedLegAlias}.""{nameof(AffectedByReservationLeg.LegId)}"" AS ""LegId""
-				, SUM({_defaultReservationAlias}.""{nameof(Reservation.PeopleCount)}"") AS ""AlreadyReservedSeatsCount""
+				SELECT
+					{_defaultAffectedLegAlias}.""{nameof(AffectedByReservationLeg.LegId)}"" AS ""LegId""
+					, SUM({_defaultReservationAlias}.""{nameof(Reservation.PeopleCount)}"") AS ""AlreadyReservedSeatsCount""
 				FROM {_affectedByReservationsLegsTableName} {_defaultAffectedLegAlias}
 				INNER JOIN {_reservationsTableName} {_defaultReservationAlias}
 					ON {_defaultReservationAlias}.""{nameof(Reservation.Id)}"" = {_defaultAffectedLegAlias}.""{nameof(AffectedByReservationLeg.ReservationId)}""
@@ -246,7 +247,7 @@ public class RideRepository : IRideRepository
 			yield return $"{legAliasWithDot}\"{nameof(Leg.PriceInRub)}\" <= @{nameof(RideDbFilter.MaxPriceInRub)}";
 
 		if (filter.FreeSeatsCount.HasValue)
-			yield return $"({rideAliasWithDot}\"{nameof(Ride.AvailablePlacesCount)}\" - leg_reserved_seat.\"AlreadyReservedSeatsCount\") >= @{nameof(RideDbFilter.FreeSeatsCount)}";
+			yield return $"({rideAliasWithDot}\"{nameof(Ride.AvailablePlacesCount)}\" - COALESCE(leg_reserved_seat.\"AlreadyReservedSeatsCount\", 0)) >= @{nameof(RideDbFilter.FreeSeatsCount)}";
 	}
 
 	private string GetSqlSortType(

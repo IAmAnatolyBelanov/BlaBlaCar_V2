@@ -138,7 +138,7 @@ public class RideFilterValidator : AbstractValidator<RideFilter>
 		When(x => x.MinPriceInRub.HasValue, () =>
 		{
 			RuleFor(x => x.MinPriceInRub)
-				.GreaterThan(_config.MinPriceInRub)
+				.GreaterThanOrEqualTo(_config.MinPriceInRub)
 				.WithErrorCode(RideFilterValidationCodes.IncorrectPriceLimits)
 				.WithMessage("Цена не может быть меньше минимальной");
 			RuleFor(x => x.MinPriceInRub)
@@ -150,7 +150,7 @@ public class RideFilterValidator : AbstractValidator<RideFilter>
 		When(x => x.MaxPriceInRub.HasValue, () =>
 		{
 			RuleFor(x => x.MaxPriceInRub)
-				.GreaterThan(_config.MinPriceInRub)
+				.GreaterThanOrEqualTo(_config.MinPriceInRub)
 				.WithErrorCode(RideFilterValidationCodes.IncorrectPriceLimits)
 				.WithMessage("Цена не может быть меньше системной минимальной");
 			RuleFor(x => x.MaxPriceInRub)
@@ -175,22 +175,26 @@ public class RideFilterValidator : AbstractValidator<RideFilter>
 		RuleFor(x => x.PaymentMethods)
 			.NotEmpty()
 			.WithErrorCode(RideFilterValidationCodes.EmptyPaymentMethods)
-			.WithMessage("Не заполнены допустимые способы оплаты");
-
-		RuleFor(x => x.PaymentMethods)
-			.Must(x => x.All(p => p != PaymentMethod.Unknown && Enum.IsDefined(p)))
-			.WithErrorCode(RideFilterValidationCodes.UnknownPaymentMethod)
-			.WithErrorCode("Список способов оплаты содержит неизвестные значения");
+			.WithMessage("Не заполнены допустимые способы оплаты")
+			.DependentRules(() =>
+			{
+				RuleFor(x => x.PaymentMethods)
+					.Must(x => x.All(p => p != PaymentMethod.Unknown && Enum.IsDefined(p)))
+					.WithErrorCode(RideFilterValidationCodes.UnknownPaymentMethod)
+					.WithErrorCode("Список способов оплаты содержит неизвестные значения");
+			});
 
 		RuleFor(x => x.ValidationMethods)
 			.NotEmpty()
 			.WithErrorCode(RideFilterValidationCodes.EmptyValidationMethods)
-			.WithMessage("Не заполнены допустимые способы валидации пассажиров");
-
-		RuleFor(x => x.ValidationMethods)
-			.Must(x => x.All(p => p != RideValidationMethod.Unknown && Enum.IsDefined(p)))
-			.WithErrorCode(RideFilterValidationCodes.UnknownValidationMethod)
-			.WithErrorCode("Список способов валидации пассажиров содержит неизвестные значения");
+			.WithMessage("Не заполнены допустимые способы валидации пассажиров")
+			.DependentRules(() =>
+			{
+				RuleFor(x => x.ValidationMethods)
+					.Must(x => x.All(p => p != RideValidationMethod.Unknown && Enum.IsDefined(p)))
+					.WithErrorCode(RideFilterValidationCodes.UnknownValidationMethod)
+					.WithErrorCode("Список способов валидации пассажиров содержит неизвестные значения");
+			});
 
 		When(x => x.AvailableStatuses is not null, () =>
 		{

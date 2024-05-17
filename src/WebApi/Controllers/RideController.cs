@@ -42,7 +42,7 @@ namespace WebApi.Controllers
 		}
 
 		[HttpPost]
-		public async Task<IReadOnlyList<SearchRideDbResponse>> SearchRides([FromBody] RideFilter filter, CancellationToken ct)
+		public async Task<IReadOnlyList<SearchRideResponse>> SearchRides([FromBody] RideFilter filter, CancellationToken ct)
 		{
 			var result = await _rideService.SearchRides(filter, ct);
 			return result;

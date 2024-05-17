@@ -3,8 +3,13 @@ using WebApi.Models.ControllersModels.RideControllerModels;
 
 namespace WebApi.Models;
 
+public interface IRideFilterMapper
+{
+	RideDbFilter MapToDbFilter(RideFilter filter);
+}
+
 [Mapper]
-public partial class RideFilterMapper
+public partial class RideFilterMapper : IRideFilterMapper
 {
 	public RideDbFilter MapToDbFilter(RideFilter filter)
 	{

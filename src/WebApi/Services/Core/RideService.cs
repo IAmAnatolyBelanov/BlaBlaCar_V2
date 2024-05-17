@@ -23,7 +23,7 @@ namespace WebApi.Services.Core
 	{
 		Task<RideDto> CreateRide(RideDto dto, CancellationToken ct);
 		ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct);
-		Task<IReadOnlyList<SearchRideDbResponse>> SearchRides(RideFilter filter, CancellationToken ct);
+		Task<IReadOnlyList<SearchRideResponse>> SearchRides(RideFilter filter, CancellationToken ct);
 	}
 
 	public class RideService : IRideService
@@ -54,6 +54,9 @@ namespace WebApi.Services.Core
 		private readonly IWaypointRepository _waypointRepository;
 		private readonly ILegRepository _legRepository;
 		private readonly IDriverDataRepository _driverDataRepository;
+		private readonly IRideFilterMapper _rideFilterMapper;
+		private readonly IValidator<RideFilter> _rideFilterValidator;
+		private readonly ISearchRideResponseMapper _searchRideResponseMapper;
 
 		public RideService(
 			IServiceScopeFactory serviceScopeFactory,
@@ -76,7 +79,10 @@ namespace WebApi.Services.Core
 			IRideRepository rideRepository,
 			IWaypointRepository waypointRepository,
 			ILegRepository legRepository,
-			IDriverDataRepository driverDataRepository)
+			IDriverDataRepository driverDataRepository,
+			IRideFilterMapper rideFilterMapper,
+			IValidator<RideFilter> rideFilterValidator,
+			ISearchRideResponseMapper searchRideResponseMapper)
 		{
 			_serviceScopeFactory = serviceScopeFactory;
 			_config = config;
@@ -99,6 +105,10 @@ namespace WebApi.Services.Core
 			_waypointRepository = waypointRepository;
 			_legRepository = legRepository;
 			_driverDataRepository = driverDataRepository;
+			_rideFilterMapper = rideFilterMapper;
+			_rideFilterValidator = rideFilterValidator;
+			_searchRideResponseMapper = searchRideResponseMapper;
+
 		}
 
 		public async Task<RideDto> CreateRide(RideDto rideDto, CancellationToken ct)
@@ -265,18 +275,17 @@ namespace WebApi.Services.Core
 			return null;
 		}
 
-		public async Task<IReadOnlyList<SearchRideDbResponse>> SearchRides(RideFilter filter, CancellationToken ct)
+		public async Task<IReadOnlyList<SearchRideResponse>> SearchRides(RideFilter filter, CancellationToken ct)
 		{
-			var dbFilter = new RideDbFilter
-			{
-				SortType = RideSortType.ByStartPointDistance,
-				SortDirection = SortDirection.Asc,
-				Limit = 1000,
-				Offset = 0,
-			};
+			_rideFilterValidator.ValidateAndThrowFriendly(filter);
+
+			var dbFilter = _rideFilterMapper.MapToDbFilter(filter);
+
 			using var session = _sessionFactory.OpenPostgresConnection().StartTrace();
 
-			var result = await _rideRepository.GetByFilter(session, dbFilter, ct);
+			var dbResult = await _rideRepository.GetByFilter(session, dbFilter, ct);
+
+			var result = dbResult.Select(_searchRideResponseMapper.MapToResponse).ToArray();
 
 			return result;
 		}

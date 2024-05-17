@@ -60,7 +60,7 @@
 		public TimeSpan MinTimeForValidationPassengerBeforeDeparture { get; set; } = TimeSpan.FromHours(1);
 
 		public int MinRadiusForSearchKilometers { get; set; } = 10;
-		public int MaxRadiusForSearchKilometers { get; set; } = 100;
+		public int MaxRadiusForSearchKilometers { get; set; } = 1000;
 
 		public TimeSpan MaxSearchPeriod { get; set; } = TimeSpan.FromDays(14);
 
