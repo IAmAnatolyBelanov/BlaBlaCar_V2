@@ -96,6 +96,7 @@ public class RideRepository : IRideRepository
 				FROM {_affectedByReservationsLegsTableName} {_defaultAffectedLegAlias}
 				INNER JOIN {_reservationsTableName} {_defaultReservationAlias}
 					ON {_defaultReservationAlias}.""{nameof(Reservation.Id)}"" = {_defaultAffectedLegAlias}.""{nameof(AffectedByReservationLeg.ReservationId)}""
+				WHERE {_defaultReservationAlias}.""{nameof(Reservation.IsDeleted)}"" = FALSE
 				GROUP BY {_defaultAffectedLegAlias}.""{nameof(AffectedByReservationLeg.LegId)}""
 			)
 
