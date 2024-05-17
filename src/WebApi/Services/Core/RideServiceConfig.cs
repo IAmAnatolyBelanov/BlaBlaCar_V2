@@ -52,7 +52,7 @@
 		public int PriceStatisticsMinRowsCount { get; set; } = 300;
 
 		/// <inheritdoc/>
-		public int MaxWaypoints { get; set; } = 10;
+		public int MaxWaypoints { get; set; } = 30;
 
 		public int MinPriceInRub { get; set; } = 100;
 		public int MaxPriceInRub { get; set; } = 300_000;
