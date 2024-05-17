@@ -246,11 +246,12 @@ public class RideRepository : IRideRepository
 			yield return $"{legAliasWithDot}\"{nameof(Leg.PriceInRub)}\" <= @{nameof(RideDbFilter.MaxPriceInRub)}";
 
 		if (filter.FreeSeatsCount.HasValue)
-			yield return $"leg_reserved_seat.\"AlreadyReservedSeatsCount\" >= @{nameof(RideDbFilter.FreeSeatsCount)}";
+			yield return $"({rideAliasWithDot}\"{nameof(Ride.AvailablePlacesCount)}\" - leg_reserved_seat.\"AlreadyReservedSeatsCount\") >= @{nameof(RideDbFilter.FreeSeatsCount)}";
 	}
 
 	private string GetSqlSortType(
 		RideSortType sortType,
+		string rideAlias = _defaultRideAlias + ".",
 		string legAlias = _defaultLegAlias + ".",
 		string waypointDepartureAlias = _defaultWaypointDepartureAlias + ".",
 		string waypointArrivalAlias = _defaultWaypointArrivalAlias + ".")
@@ -269,7 +270,7 @@ public class RideRepository : IRideRepository
 			RideSortType.ByEndPointDistance => $"(ST_DISTANCE({waypointArrivalAlias}\"{nameof(Waypoint.Point)}\", COALESCE(@{nameof(RideDbFilter.ArrivalPoint)}, {waypointArrivalAlias}\"{nameof(Waypoint.Point)}\")))",
 			RideSortType.ByStartTime => $"{waypointDepartureAlias}\"{nameof(Waypoint.Arrival)}\"",
 			RideSortType.ByEndTime => $"{waypointArrivalAlias}\"{nameof(Waypoint.Departure)}\"",
-			RideSortType.ByFreeSeatsCount => $"leg_reserved_seat.\"AlreadyReservedSeatsCount\"",
+			RideSortType.ByFreeSeatsCount => $"({rideAlias}\"{nameof(Ride.AvailablePlacesCount)}\" - leg_reserved_seat.\"AlreadyReservedSeatsCount\")",
 			_ => throw new ArgumentOutOfRangeException(nameof(sortType)),
 		};
 		return result;
