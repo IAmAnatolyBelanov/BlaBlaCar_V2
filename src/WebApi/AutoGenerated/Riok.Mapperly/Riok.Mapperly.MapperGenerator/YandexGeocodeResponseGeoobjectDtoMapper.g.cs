@@ -4,11 +4,5 @@ namespace WebApi.Models
 {
     public partial class YandexGeocodeResponseGeoobjectDtoMapper
     {
-        private partial void BetweenDtosAuto(global::WebApi.Models.YandexGeocodeResponseDto.YandexGeocodeResponseGeoobjectDto from, global::WebApi.Models.YandexGeocodeResponseDto.YandexGeocodeResponseGeoobjectDto to)
-        {
-            to.FormattedAddress = from.FormattedAddress;
-            to.ToLocalityName = from.ToLocalityName;
-            to.Point = from.Point;
-        }
     }
 }

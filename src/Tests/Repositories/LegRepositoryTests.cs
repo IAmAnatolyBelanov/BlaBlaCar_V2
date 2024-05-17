@@ -123,8 +123,8 @@ public class LegRepositoryTests : BaseRepositoryTest
 				Leg = leg,
 				From = waypoints.First(x => x.Id == leg.WaypointFromId),
 				To = waypoints.First(x => x.Id == leg.WaypointToId),
-			}).OrderBy(x => x.From.Arrival)
-				.ThenBy(x => x.To.Departure ?? DateTimeOffset.MaxValue)
+			}).OrderBy(x => x.From.Departure ?? DateTimeOffset.MaxValue)
+				.ThenBy(x => x.To.Arrival)
 				.Select(x => x.Leg);
 			result.Should().BeEquivalentTo(orderedLegs, options => options.WithStrictOrdering());
 		}

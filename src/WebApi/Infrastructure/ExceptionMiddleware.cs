@@ -25,12 +25,10 @@ namespace WebApi.Infrastructure
 		}
 
 		private readonly RequestDelegate _next;
-		private readonly IErrorDetailsMapper _errorMapper;
 
-		public ExceptionMiddleware(RequestDelegate next, IErrorDetailsMapper errorMapper)
+		public ExceptionMiddleware(RequestDelegate next)
 		{
 			_next = next;
-			_errorMapper = errorMapper;
 		}
 
 		public async Task InvokeAsync(HttpContext context)

@@ -11,53 +11,5 @@ namespace WebApi.Models
             target.IsBetweenNeighborPoints = dto.IsBetweenNeighborPoints;
             return target;
         }
-
-        private partial void ToDtoAuto(global::WebApi.Models.Leg_Obsolete leg, global::WebApi.Models.LegDto_Obsolete dto)
-        {
-            dto.Id = leg.Id;
-            dto.RideId = leg.RideId;
-            dto.Description = leg.Description;
-            dto.NextLegId = leg.NextLegId;
-            dto.PreviousLegId = leg.PreviousLegId;
-        }
-
-        private partial void FromDtoAuto(global::WebApi.Models.LegDto_Obsolete legDto, global::WebApi.Models.Leg_Obsolete leg)
-        {
-            leg.Id = legDto.Id;
-            leg.RideId = legDto.RideId;
-            leg.Description = legDto.Description;
-            leg.NextLegId = legDto.NextLegId;
-            leg.PreviousLegId = legDto.PreviousLegId;
-        }
-
-        private partial void BetweenDtosAuto(global::WebApi.Models.LegDto_Obsolete from, global::WebApi.Models.LegDto_Obsolete to)
-        {
-            to.Id = from.Id;
-            to.Ride = from.Ride;
-            to.RideId = from.RideId;
-            to.From = from.From;
-            to.To = from.To;
-            to.Description = from.Description;
-            to.NextLegId = from.NextLegId;
-            to.NextLeg = from.NextLeg;
-            to.PreviousLegId = from.PreviousLegId;
-            to.PreviousLeg = from.PreviousLeg;
-        }
-
-        private partial void BetweenEntitiesAuto(global::WebApi.Models.Leg_Obsolete from, global::WebApi.Models.Leg_Obsolete to)
-        {
-            to.Id = from.Id;
-            to.Ride = from.Ride;
-            to.RideId = from.RideId;
-            to.From = from.From;
-            to.To = from.To;
-            to.StartTime = from.StartTime;
-            to.EndTime = from.EndTime;
-            to.Description = from.Description;
-            to.NextLegId = from.NextLegId;
-            to.NextLeg = from.NextLeg;
-            to.PreviousLegId = from.PreviousLegId;
-            to.PreviousLeg = from.PreviousLeg;
-        }
     }
 }

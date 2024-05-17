@@ -4,53 +4,5 @@ namespace WebApi.Models
 {
     public partial class ReservationDtoMapper
     {
-        private partial void ToDtoAuto(global::WebApi.Models.Reservation_Obsolete entity, global::WebApi.Models.ReservationDto dto)
-        {
-            dto.Id = entity.Id;
-            dto.StartLegId = entity.StartLegId;
-            dto.EndLegId = entity.EndLegId;
-            dto.UserId = entity.UserId;
-            dto.IsActive = entity.IsActive;
-            dto.CreateDateTime = entity.CreateDateTime;
-            dto.Count = entity.Count;
-        }
-
-        private partial void FromDtoAuto(global::WebApi.Models.ReservationDto dto, global::WebApi.Models.Reservation_Obsolete entity)
-        {
-            entity.Id = dto.Id;
-            entity.StartLegId = dto.StartLegId;
-            entity.EndLegId = dto.EndLegId;
-            entity.UserId = dto.UserId;
-            entity.IsActive = dto.IsActive;
-            entity.CreateDateTime = dto.CreateDateTime;
-            entity.Count = dto.Count;
-        }
-
-        private partial void BetweenDtosAuto(global::WebApi.Models.ReservationDto from, global::WebApi.Models.ReservationDto to)
-        {
-            to.Id = from.Id;
-            to.StartLegId = from.StartLegId;
-            to.StartLeg = from.StartLeg;
-            to.EndLegId = from.EndLegId;
-            to.EndLeg = from.EndLeg;
-            to.UserId = from.UserId;
-            to.IsActive = from.IsActive;
-            to.CreateDateTime = from.CreateDateTime;
-            to.Count = from.Count;
-        }
-
-        private partial void BetweenEntitiesAuto(global::WebApi.Models.Reservation_Obsolete from, global::WebApi.Models.Reservation_Obsolete to)
-        {
-            to.Id = from.Id;
-            to.StartLegId = from.StartLegId;
-            to.StartLeg = from.StartLeg;
-            to.EndLegId = from.EndLegId;
-            to.EndLeg = from.EndLeg;
-            to.AffectedLegIds = from.AffectedLegIds;
-            to.UserId = from.UserId;
-            to.IsActive = from.IsActive;
-            to.CreateDateTime = from.CreateDateTime;
-            to.Count = from.Count;
-        }
     }
 }

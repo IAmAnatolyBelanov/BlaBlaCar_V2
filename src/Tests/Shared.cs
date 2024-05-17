@@ -22,31 +22,6 @@ namespace Tests
 					Longitude = randomCity.Longitude,
 				};
 			});
-			fixture.Register<PlaceAndTime>(() => new PlaceAndTime
-			{
-				Point = fixture.Create<FormattedPoint>(),
-				DateTime = fixture.Create<DateTimeOffset>(),
-			});
-
-			fixture.Customize<RideDto_Obsolete>(x => x
-				.Without(r => r.Legs)
-				.Without(r => r.Prices)
-				.With(x => x.DriverId, () => (ulong)Random.Shared.Next(1, int.MaxValue)));
-
-			fixture.Customize<ReservationDto>(x => x
-				.With(x => x.Count, () => Random.Shared.Next(1, 100))
-				.With(x => x.UserId, () => (ulong)Random.Shared.Next(1, int.MaxValue)));
-
-			fixture.Customize<LegDto_Obsolete>(x => x
-				.Without(x => x.Ride)
-				.Without(x => x.NextLeg)
-				.Without(x => x.NextLegId)
-				.Without(x => x.PreviousLeg)
-				.Without(x => x.PreviousLegId));
-
-			fixture.Customize<PriceDto>(x => x
-				.Without(x => x.StartLeg)
-				.Without(x => x.EndLeg));
 
 			fixture.Register<DateTimeOffset>(() =>
 			{

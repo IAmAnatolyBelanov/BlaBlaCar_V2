@@ -37,7 +37,7 @@
 		{
 			var errors = validationResult?.IsValid != false
 				? Array.Empty<ErrorDetails>()
-				: _errorDetailsMapper.ToDtoListLight(validationResult.Errors)!;
+				: validationResult.Errors.Select(_errorDetailsMapper.ToErrorDetail).ToArray();
 
 			return new BaseResponse<T>()
 			{
@@ -63,7 +63,7 @@
 		{
 			var errors = validationResult?.IsValid != false
 				? Array.Empty<ErrorDetails>()
-				: _errorDetailsMapper.ToDtoListLight(validationResult.Errors)!;
+				: validationResult.Errors.Select(_errorDetailsMapper.ToErrorDetail).ToArray();
 
 			return new StringResponse()
 			{

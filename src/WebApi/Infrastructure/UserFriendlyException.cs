@@ -22,7 +22,7 @@ namespace WebApi.Infrastructure
 
 		public UserFriendlyException(IReadOnlyList<ValidationFailure> validationFailure)
 		{
-			Errors = _errorDetailsMapper.ToDtoListLight(validationFailure)!;
+			Errors = validationFailure.Select(_errorDetailsMapper.ToErrorDetail).ToArray();
 		}
 
 		public UserFriendlyException(ValidationResult validationResult)

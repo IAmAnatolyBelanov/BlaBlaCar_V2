@@ -1,5 +1,4 @@
 using NetTopologySuite.Geometries;
-using WebApi.Models.ControllersModels.RideControllerModels;
 
 namespace WebApi.Models;
 

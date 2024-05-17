@@ -8,13 +8,5 @@ namespace WebApi.Models
         {
             dto.Uri = entity.Uri;
         }
-
-        private partial void BetweenDtosAuto(global::WebApi.Models.YandexSuggestResponseDto.YandexSuggestResponseDtoResult from, global::WebApi.Models.YandexSuggestResponseDto.YandexSuggestResponseDtoResult to)
-        {
-            to.FormattedAddress = from.FormattedAddress;
-            to.Title = from.Title;
-            to.SubTitle = from.SubTitle;
-            to.Uri = from.Uri;
-        }
     }
 }

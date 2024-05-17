@@ -32,7 +32,7 @@ namespace WebApi.Services.Core
 		private const char _addressesDelimiter = '@';
 
 		private readonly IRideServiceConfig _config;
-		private readonly IRideDtoMapper _rideDtoMapper;
+		private readonly IRideMapper _rideDtoMapper;
 		private readonly ILegDtoMapper _legDtoMapper;
 		private readonly IGeocodeService _geocodeService;
 		private readonly IValidator<(FormattedPoint Point, YandexGeocodeResponseDto GeocodeResponse)> _yaGeocodeResponseValidator;
@@ -54,7 +54,7 @@ namespace WebApi.Services.Core
 
 		public RideService(
 			IRideServiceConfig config,
-			IRideDtoMapper rideDtoMapper,
+			IRideMapper rideDtoMapper,
 			ILegDtoMapper legDtoMapper,
 			IGeocodeService geocodeService,
 			IValidator<(FormattedPoint Point, YandexGeocodeResponseDto GeocodeResponse)> yaGeocodeResponseValidator,
@@ -340,20 +340,20 @@ namespace WebApi.Services.Core
 			return result;
 		}
 
-		private async ValueTask FillLegDescription(LegDto_Obsolete leg, CancellationToken ct)
-		{
-			var from = await _geocodeService.PointToGeoCode(leg.From.Point, ct);
-			_yaGeocodeResponseValidator.ValidateAndThrowFriendly((leg.From.Point, from));
+		// private async ValueTask FillLegDescription(LegDto_Obsolete leg, CancellationToken ct)
+		// {
+		// 	var from = await _geocodeService.PointToGeoCode(leg.From.Point, ct);
+		// 	_yaGeocodeResponseValidator.ValidateAndThrowFriendly((leg.From.Point, from));
 
-			var to = await _geocodeService.PointToGeoCode(leg.To.Point, ct);
-			_yaGeocodeResponseValidator.ValidateAndThrowFriendly((leg.To.Point, to));
+		// 	var to = await _geocodeService.PointToGeoCode(leg.To.Point, ct);
+		// 	_yaGeocodeResponseValidator.ValidateAndThrowFriendly((leg.To.Point, to));
 
 
-			var fromStr = from!.Geoobjects[0].FormattedAddress;
-			var toStr = to!.Geoobjects[0].FormattedAddress;
+		// 	var fromStr = from!.Geoobjects[0].FormattedAddress;
+		// 	var toStr = to!.Geoobjects[0].FormattedAddress;
 
-			leg.Description = $"{fromStr}{_addressesDelimiter}{toStr}";
-		}
+		// 	leg.Description = $"{fromStr}{_addressesDelimiter}{toStr}";
+		// }
 
 		//		public async ValueTask<(decimal low, decimal high)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct)
 		//		{

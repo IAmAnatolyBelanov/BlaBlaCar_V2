@@ -8,11 +8,5 @@ namespace WebApi.Models
         {
             dto.Success = entity.Success;
         }
-
-        private partial void BetweenDtosAuto(global::WebApi.Models.YandexGeocodeResponseDto from, global::WebApi.Models.YandexGeocodeResponseDto to)
-        {
-            to.Success = from.Success;
-            to.Geoobjects = from.Geoobjects;
-        }
     }
 }

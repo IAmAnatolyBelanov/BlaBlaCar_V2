@@ -13,6 +13,7 @@ using NpgsqlTypes;
 using System.Data;
 using System.Reflection;
 using WebApi.DataAccess;
+using WebApi.Models;
 using WebApi.Services.Core;
 using WebApi.Services.Driver;
 using WebApi.Services.Redis;
@@ -61,7 +62,7 @@ public class Program
 
 		builder.Services.RegisterConfigs(builder.Configuration.Bind);
 		builder.Services.RegisterMappers();
-		builder.Services.AddValidatorsFromAssemblyContaining<LegDtoValidator>(lifetime: ServiceLifetime.Singleton);
+		builder.Services.AddValidatorsFromAssemblyContaining<RideMapper>(lifetime: ServiceLifetime.Singleton);
 
 		builder.Services.AddPostgresMigrator();
 

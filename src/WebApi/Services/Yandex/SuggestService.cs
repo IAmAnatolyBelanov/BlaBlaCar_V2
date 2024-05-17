@@ -32,7 +32,7 @@ namespace WebApi.Services.Yandex
 
 		private readonly ISuggestServiceConfig _config;
 		private readonly IRedisCacheService _redisCacheService;
-		private readonly IYandexSuggestResponseDtoMapper _yandexSuggestResponseDtoMapper;
+		private readonly IYandexSuggestResponseMapper _yandexSuggestResponseDtoMapper;
 
 		private readonly IAsyncPolicy<string> _asyncPolicy;
 		private readonly IInMemoryCache<YandexSuggestResponseDto> _memoryCache;
@@ -40,7 +40,7 @@ namespace WebApi.Services.Yandex
 		public SuggestService(
 			ISuggestServiceConfig config,
 			IRedisCacheService redisCacheService,
-			IYandexSuggestResponseDtoMapper yandexSuggestResponseDtoMapper,
+			IYandexSuggestResponseMapper yandexSuggestResponseDtoMapper,
 			IInMemoryCacheConfigMapper inMemoryCacheConfigMapper)
 		{
 			_config = config;
@@ -92,7 +92,7 @@ namespace WebApi.Services.Yandex
 				if (cachedResponse is null)
 					return _failResponse;
 
-				cachedResponseDto = _yandexSuggestResponseDtoMapper.ToDtoLight(cachedResponse);
+				cachedResponseDto = _yandexSuggestResponseDtoMapper.ToResponseDto(cachedResponse);
 				_memoryCache.Set(input, cachedResponseDto, _config.InMemoryCacheObjectLifetime);
 
 				return cachedResponseDto;
@@ -136,7 +136,7 @@ namespace WebApi.Services.Yandex
 			}
 
 			_ = _redisCacheService.SetStringAsync(redisKey, suggestionBody.Result, _config.DistributedCacheExpiry, CancellationToken.None);
-			cachedResponseDto = _yandexSuggestResponseDtoMapper.ToDtoLight(suggestion);
+			cachedResponseDto = _yandexSuggestResponseDtoMapper.ToResponseDto(suggestion);
 			_memoryCache.Set(input, cachedResponseDto, _config.DistributedCacheExpiry);
 			return cachedResponseDto;
 		}
