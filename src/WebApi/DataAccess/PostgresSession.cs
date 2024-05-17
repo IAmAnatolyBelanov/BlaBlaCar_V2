@@ -183,6 +183,7 @@ public class PostgresSession : IDisposable, IPostgresSession
 		[CallerMemberName] string memberName = "")
 	{
 		var queryId = Guid.NewGuid();
+		List<T>? result = null;
 
 		Stopwatch? timer = _trace ? Stopwatch.StartNew() : null;
 
@@ -198,8 +199,9 @@ public class PostgresSession : IDisposable, IPostgresSession
 		await _semaphore.WaitAsync(command.CancellationToken);
 		try
 		{
-			var result = await _connection.QueryAsync<T>(command);
-			return result.AsList();
+			var queryResult = await _connection.QueryAsync<T>(command);
+			result = queryResult.AsList();
+			return result;
 		}
 		catch (Exception ex)
 		{
@@ -217,11 +219,12 @@ public class PostgresSession : IDisposable, IPostgresSession
 			if (timer is not null)
 			{
 				_logger.Information(
-					"Sql query {QueryId} from {File} from member {Member} executed in {Elapsed}",
+					"Sql query {QueryId} from {File} from member {Member} executed in {Elapsed} and returned {RowsCount} rows",
 					queryId,
 					sourceFilePath,
 					memberName,
-					timer.Elapsed);
+					timer.Elapsed,
+					result?.Count ?? 0);
 			}
 		}
 	}
@@ -278,6 +281,7 @@ public class PostgresSession : IDisposable, IPostgresSession
 		[CallerMemberName] string memberName = "")
 	{
 		var queryId = Guid.NewGuid();
+		int result = 0;
 
 		Stopwatch? timer = _trace ? Stopwatch.StartNew() : null;
 
@@ -293,7 +297,7 @@ public class PostgresSession : IDisposable, IPostgresSession
 		await _semaphore.WaitAsync(command.CancellationToken);
 		try
 		{
-			var result = await _connection.ExecuteAsync(command);
+			result = await _connection.ExecuteAsync(command);
 			return result;
 		}
 		catch (Exception ex)
@@ -312,11 +316,12 @@ public class PostgresSession : IDisposable, IPostgresSession
 			if (timer is not null)
 			{
 				_logger.Information(
-					"Sql query {QueryId} from {File} from member {Member} executed in {Elapsed}",
+					"Sql query {QueryId} from {File} from member {Member} executed in {Elapsed} and affected {RowsCount} rows",
 					queryId,
 					sourceFilePath,
 					memberName,
-					timer.Elapsed);
+					timer.Elapsed,
+					result);
 			}
 		}
 	}

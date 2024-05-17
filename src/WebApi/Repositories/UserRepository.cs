@@ -16,12 +16,13 @@ public class UserRepository : IUserRepository
 
 	public async Task<IReadOnlyList<User>> GetByIds(IPostgresSession session, IReadOnlyCollection<Guid> ids, CancellationToken ct)
 	{
+		var args = new { ids };
 		const string sql = @$"
 			SELECT ""{nameof(User.Id)}"" FROM {_tableName}
-			WHERE ""{nameof(User.Id)}"" = ANY(@{nameof(ids)});
+			WHERE ""{nameof(User.Id)}"" = ANY(@{nameof(args.ids)});
 		";
 
-		var result = await session.QueryAsync<User>(sql, new { ids }, ct);
+		var result = await session.QueryAsync<User>(sql, args, ct);
 		return result;
 	}
 

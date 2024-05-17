@@ -19,6 +19,21 @@ namespace WebApi.Models
             target.AfterRideValidationTimeoutAction = src.AfterRideValidationTimeoutAction;
         }
 
+        private partial void ToRideDto(global::WebApi.Models.Ride src, global::WebApi.Models.RideDto target)
+        {
+            target.Id = src.Id;
+            target.AuthorId = src.AuthorId;
+            target.DriverId = src.DriverId;
+            target.CarId = src.CarId;
+            target.Created = src.Created;
+            target.Status = src.Status;
+            target.AvailablePlacesCount = src.AvailablePlacesCount;
+            target.Comment = src.Comment;
+            target.ValidationMethod = src.ValidationMethod;
+            target.ValidationTimeBeforeDeparture = src.ValidationTimeBeforeDeparture;
+            target.AfterRideValidationTimeoutAction = src.AfterRideValidationTimeoutAction;
+        }
+
         private partial void ToDtoAuto(global::WebApi.Models.Ride_Obsolete ride, global::WebApi.Models.RideDto_Obsolete dto)
         {
             dto.Status = ride.Status;

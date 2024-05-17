@@ -117,7 +117,7 @@ public class LegRepositoryTests : BaseRepositoryTest
 
 		using (var session = _sessionFactory.OpenPostgresConnection())
 		{
-			var result = await _legRepository.GetByRideId(session, ride.Id, ct);
+			var result = await _legRepository.GetByRideId(session, ride.Id, ct, onlyManual: false);
 			var orderedLegs = legs.Select(leg => new
 			{
 				Leg = leg,

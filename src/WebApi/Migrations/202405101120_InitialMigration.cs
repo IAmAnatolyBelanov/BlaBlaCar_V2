@@ -210,7 +210,7 @@ public class InitialMigration : PostgresMigrator
 			.WithColumn("WaypointToId").AsGuid()
 			.WithColumn("PriceInRub").AsInt32()
 			.WithColumn("IsManual").AsBoolean()
-			.WithColumn("IsMinimal").AsBoolean();
+			.WithColumn("IsBetweenNeighborPoints").AsBoolean();
 
 		Create.ForeignKey()
 			.FromTable("Legs").ForeignColumn("RideId")

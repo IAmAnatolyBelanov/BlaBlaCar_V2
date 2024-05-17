@@ -34,10 +34,9 @@ namespace WebApi.Controllers
 		}
 
 		[HttpPost]
-		public async Task<BaseResponse<RideDto>> GetRideById([FromBody] GetRideByIdRequest request, CancellationToken ct)
+		public async Task<BaseResponse<GetRideResponse?>> GetRideById([FromBody] GetRideByIdRequest request, CancellationToken ct)
 		{
-			throw new NotImplementedException();
-			var result = await _rideService.CreateRide((RideDto)null, ct);
+			var result = await _rideService.GetRideById(request.RideId, ct);
 			return result;
 		}
 

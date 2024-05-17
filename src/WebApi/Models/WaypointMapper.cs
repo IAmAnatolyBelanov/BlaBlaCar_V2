@@ -5,6 +5,7 @@ namespace WebApi.Models;
 public interface IWaypointMapper
 {
 	IReadOnlyList<Waypoint> ToWaypoints(RideDto rideDto);
+	WaypointDto ToWaypointDto(Waypoint waypoint);
 }
 
 [Mapper]
@@ -21,6 +22,8 @@ public partial class WaypointMapper : IWaypointMapper
 		}
 		return result;
 	}
+
+	public partial WaypointDto ToWaypointDto(Waypoint waypoint);
 
 	private partial Waypoint ToWaypoint(WaypointDto dto);
 }

@@ -48,7 +48,7 @@ public class ReservationRepositoryTests : BaseRepositoryTest
 				WaypointFromId = waypoints[0].Id,
 				WaypointToId = waypoints[1].Id,
 				IsManual = false,
-				IsMinimal = true,
+				IsBetweenNeighborPoints = true,
 				PriceInRub = _fixture.Create<int>(),
 			},
 			new Leg
@@ -58,7 +58,7 @@ public class ReservationRepositoryTests : BaseRepositoryTest
 				WaypointFromId = waypoints[1].Id,
 				WaypointToId = waypoints[2].Id,
 				IsManual = false,
-				IsMinimal = true,
+				IsBetweenNeighborPoints = true,
 				PriceInRub = _fixture.Create<int>(),
 			},
 		};
@@ -111,7 +111,7 @@ public class ReservationRepositoryTests : BaseRepositoryTest
 				WaypointFromId = waypoints[0].Id,
 				WaypointToId = waypoints[1].Id,
 				IsManual = false,
-				IsMinimal = true,
+				IsBetweenNeighborPoints = true,
 				PriceInRub = _fixture.Create<int>(),
 			},
 			new Leg
@@ -121,7 +121,7 @@ public class ReservationRepositoryTests : BaseRepositoryTest
 				WaypointFromId = waypoints[1].Id,
 				WaypointToId = waypoints[2].Id,
 				IsManual = false,
-				IsMinimal = true,
+				IsBetweenNeighborPoints = true,
 				PriceInRub = _fixture.Create<int>(),
 			},
 		};
@@ -200,7 +200,7 @@ public class ReservationRepositoryTests : BaseRepositoryTest
 				WaypointFromId = waypoints[0].Id,
 				WaypointToId = waypoints[1].Id,
 				IsManual = false,
-				IsMinimal = true,
+				IsBetweenNeighborPoints = true,
 				PriceInRub = _fixture.Create<int>(),
 			},
 			new Leg
@@ -210,7 +210,7 @@ public class ReservationRepositoryTests : BaseRepositoryTest
 				WaypointFromId = waypoints[1].Id,
 				WaypointToId = waypoints[2].Id,
 				IsManual = false,
-				IsMinimal = true,
+				IsBetweenNeighborPoints = true,
 				PriceInRub = _fixture.Create<int>(),
 			},
 		};

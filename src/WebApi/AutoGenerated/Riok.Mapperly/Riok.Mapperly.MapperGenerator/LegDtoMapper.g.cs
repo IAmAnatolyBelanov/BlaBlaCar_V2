@@ -8,6 +8,7 @@ namespace WebApi.Models
         {
             var target = new global::WebApi.Models.Leg();
             target.PriceInRub = dto.PriceInRub;
+            target.IsBetweenNeighborPoints = dto.IsBetweenNeighborPoints;
             return target;
         }
 

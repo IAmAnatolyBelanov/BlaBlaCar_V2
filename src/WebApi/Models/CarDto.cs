@@ -16,4 +16,6 @@ public class CarDto
 	/// Количество мест в авто, включая водительское.
 	/// </summary>
 	public int SeatsCount { get; set; }
+
+	public int PassengerSeatsCount => SeatsCount - 1;
 }

@@ -8,5 +8,5 @@ public class Leg
 	public Guid WaypointToId { get; set; }
 	public int PriceInRub { get; set; }
 	public bool IsManual { get; set; }
-	public bool IsMinimal { get; set; }
+	public bool IsBetweenNeighborPoints { get; set; }
 }

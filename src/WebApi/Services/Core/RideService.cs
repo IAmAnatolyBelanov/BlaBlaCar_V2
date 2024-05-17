@@ -24,16 +24,13 @@ namespace WebApi.Services.Core
 		Task<RideDto> CreateRide(RideDto dto, CancellationToken ct);
 		ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct);
 		Task<IReadOnlyList<SearchRideResponse>> SearchRides(RideFilter filter, CancellationToken ct);
+		Task<GetRideResponse?> GetRideById(Guid rideId, CancellationToken ct);
 	}
 
 	public class RideService : IRideService
 	{
 		private const char _addressesDelimiter = '@';
 
-		private static readonly IReadOnlyDictionary<Guid, LegDto_Obsolete> _emptyLegsDict
-			= new Dictionary<Guid, LegDto_Obsolete>();
-
-		private readonly IServiceScopeFactory _serviceScopeFactory;
 		private readonly IRideServiceConfig _config;
 		private readonly IRideDtoMapper _rideDtoMapper;
 		private readonly ILegDtoMapper _legDtoMapper;
@@ -41,10 +38,6 @@ namespace WebApi.Services.Core
 		private readonly IValidator<(FormattedPoint Point, YandexGeocodeResponseDto GeocodeResponse)> _yaGeocodeResponseValidator;
 		private readonly IReservationDtoMapper _reservationDtoMapper;
 		private readonly IClock _clock;
-		private readonly IValidator<RideDto_Obsolete> _rideValidator;
-		private readonly IPriceDtoMapper _priceDtoMapper;
-		private readonly IValidator<RidePreparationDto_Obsolete> _ridePreparationValidator;
-		private readonly IRidePreparationDtoMapper _ridePreparationDtoMapper;
 		private readonly IValidator<RideDto> _rideDtoValidator;
 		private readonly IUserRepository _userRepository;
 		private readonly ISessionFactory _sessionFactory;
@@ -57,9 +50,9 @@ namespace WebApi.Services.Core
 		private readonly IRideFilterMapper _rideFilterMapper;
 		private readonly IValidator<RideFilter> _rideFilterValidator;
 		private readonly ISearchRideResponseMapper _searchRideResponseMapper;
+		private readonly ICarMapper _carMapper;
 
 		public RideService(
-			IServiceScopeFactory serviceScopeFactory,
 			IRideServiceConfig config,
 			IRideDtoMapper rideDtoMapper,
 			ILegDtoMapper legDtoMapper,
@@ -67,10 +60,6 @@ namespace WebApi.Services.Core
 			IValidator<(FormattedPoint Point, YandexGeocodeResponseDto GeocodeResponse)> yaGeocodeResponseValidator,
 			IReservationDtoMapper reservationDtoMapper,
 			IClock clock,
-			IValidator<RideDto_Obsolete> rideValidator,
-			IPriceDtoMapper priceDtoMapper,
-			IValidator<RidePreparationDto_Obsolete> ridePreparationValidator,
-			IRidePreparationDtoMapper ridePreparationDtoMapper,
 			IValidator<RideDto> rideDtoValidator,
 			IUserRepository userRepository,
 			ISessionFactory sessionFactory,
@@ -82,9 +71,9 @@ namespace WebApi.Services.Core
 			IDriverDataRepository driverDataRepository,
 			IRideFilterMapper rideFilterMapper,
 			IValidator<RideFilter> rideFilterValidator,
-			ISearchRideResponseMapper searchRideResponseMapper)
+			ISearchRideResponseMapper searchRideResponseMapper,
+			ICarMapper carMapper)
 		{
-			_serviceScopeFactory = serviceScopeFactory;
 			_config = config;
 			_rideDtoMapper = rideDtoMapper;
 			_legDtoMapper = legDtoMapper;
@@ -92,10 +81,6 @@ namespace WebApi.Services.Core
 			_yaGeocodeResponseValidator = yaGeocodeResponseValidator;
 			_reservationDtoMapper = reservationDtoMapper;
 			_clock = clock;
-			_rideValidator = rideValidator;
-			_priceDtoMapper = priceDtoMapper;
-			_ridePreparationValidator = ridePreparationValidator;
-			_ridePreparationDtoMapper = ridePreparationDtoMapper;
 			_rideDtoValidator = rideDtoValidator;
 			_userRepository = userRepository;
 			_sessionFactory = sessionFactory;
@@ -108,7 +93,7 @@ namespace WebApi.Services.Core
 			_rideFilterMapper = rideFilterMapper;
 			_rideFilterValidator = rideFilterValidator;
 			_searchRideResponseMapper = searchRideResponseMapper;
-
+			_carMapper = carMapper;
 		}
 
 		public async Task<RideDto> CreateRide(RideDto rideDto, CancellationToken ct)
@@ -203,7 +188,7 @@ namespace WebApi.Services.Core
 				leg.WaypointToId = waypointsDictByCoordinates[legDto.WaypointTo].Id;
 				leg.IsManual = true;
 				var pointFrom = waypointsDictById[leg.WaypointFromId];
-				leg.IsMinimal = pointFrom.NextWaypointId == leg.WaypointToId;
+				leg.IsBetweenNeighborPoints = pointFrom.NextWaypointId == leg.WaypointToId;
 
 				legs.Add(leg);
 			}
@@ -241,7 +226,7 @@ namespace WebApi.Services.Core
 							{
 								Id = Guid.NewGuid(),
 								IsManual = false,
-								IsMinimal = false,
+								IsBetweenNeighborPoints = false,
 								PriceInRub = price,
 								RideId = ride.Id,
 								WaypointFromId = startPoint.Id,
@@ -270,9 +255,53 @@ namespace WebApi.Services.Core
 			return rideDto;
 		}
 
-		public async Task<RideDto> GetRide(RideFilter filter, CancellationToken ct)
+		public async Task<GetRideResponse?> GetRideById(Guid rideId, CancellationToken ct)
 		{
-			return null;
+			using var session = _sessionFactory.OpenPostgresConnection();
+			var ride = await _rideRepository.GetById(session, rideId, ct);
+
+			if (ride is null)
+				return null;
+
+			var carTask = ride.CarId.HasValue
+				? _carRepository.GetById(session, ride.CarId.Value, ct)
+				: null;
+
+			var waypointsTask = _waypointRepository.GetByRideId(session, ride.Id, ct);
+			var legsTask = _legRepository.GetByRideId(session, ride.Id, ct, onlyManual: true);
+
+			var rideDto = _rideDtoMapper.ToRideDto(ride);
+
+			var car = carTask is null ? null : await carTask;
+			var carDto = car is null ? null : _carMapper.ToCarDto(car);
+
+			var waypoints = await waypointsTask;
+			var waypointsDict = waypoints.ToDictionary(x => x.Id);
+			var waypointDtos = waypoints.Select(_waypointMapper.ToWaypointDto).ToArray();
+
+			var legs = await legsTask;
+			var legDtos = new List<LegDto>(legs.Count);
+			foreach (var leg in legs)
+			{
+				var departurePoint = waypointsDict[leg.WaypointFromId];
+				var arrivalPoint = waypointsDict[leg.WaypointToId];
+				legDtos.Add(new LegDto
+				{
+					WaypointFrom = departurePoint.Point,
+					WaypointTo = arrivalPoint.Point,
+					PriceInRub = leg.PriceInRub,
+					IsBetweenNeighborPoints = leg.IsBetweenNeighborPoints,
+				});
+			}
+
+			rideDto.Waypoints = waypointDtos;
+			rideDto.Legs = legDtos;
+
+			return new GetRideResponse
+			{
+				Car = carDto,
+				Ride = rideDto,
+			};
 		}
 
 		public async Task<IReadOnlyList<SearchRideResponse>> SearchRides(RideFilter filter, CancellationToken ct)

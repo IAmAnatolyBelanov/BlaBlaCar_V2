@@ -4,6 +4,17 @@ namespace WebApi.Models
 {
     public partial class WaypointMapper
     {
+        public partial global::WebApi.Models.WaypointDto ToWaypointDto(global::WebApi.Models.Waypoint waypoint)
+        {
+            var target = new global::WebApi.Models.WaypointDto();
+            target.Point = (global::WebApi.Models.FormattedPoint)waypoint.Point;
+            target.FullName = waypoint.FullName;
+            target.NameToCity = waypoint.NameToCity;
+            target.Arrival = waypoint.Arrival;
+            target.Departure = waypoint.Departure;
+            return target;
+        }
+
         private partial global::WebApi.Models.Waypoint ToWaypoint(global::WebApi.Models.WaypointDto dto)
         {
             var target = new global::WebApi.Models.Waypoint();

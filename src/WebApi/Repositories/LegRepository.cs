@@ -6,7 +6,7 @@ namespace WebApi.Repositories;
 public interface ILegRepository : IRepository
 {
 	Task<ulong> BulkInsert(IPostgresSession session, IReadOnlyList<Leg> legs, CancellationToken ct);
-	Task<IReadOnlyList<Leg>> GetByRideId(IPostgresSession session, Guid rideId, CancellationToken ct);
+	Task<IReadOnlyList<Leg>> GetByRideId(IPostgresSession session, Guid rideId, CancellationToken ct, bool onlyManual = true);
 }
 
 public class LegRepository : ILegRepository
@@ -34,14 +34,14 @@ public class LegRepository : ILegRepository
 			await importer.Write(leg.WaypointToId, ct);
 			await importer.Write(leg.PriceInRub, ct);
 			await importer.Write(leg.IsManual, ct);
-			await importer.Write(leg.IsMinimal, ct);
+			await importer.Write(leg.IsBetweenNeighborPoints, ct);
 		}
 
 		var result = await importer.Complete(ct);
 		return result;
 	}
 
-	public async Task<IReadOnlyList<Leg>> GetByRideId(IPostgresSession session, Guid rideId, CancellationToken ct)
+	public async Task<IReadOnlyList<Leg>> GetByRideId(IPostgresSession session, Guid rideId, CancellationToken ct, bool onlyManual = true)
 	{
 		var sql = $@"
 			SELECT
@@ -51,14 +51,18 @@ public class LegRepository : ILegRepository
 				, leg.""{nameof(Leg.WaypointToId)}""
 				, leg.""{nameof(Leg.PriceInRub)}""
 				, leg.""{nameof(Leg.IsManual)}""
-				, leg.""{nameof(Leg.IsMinimal)}""
+				, leg.""{nameof(Leg.IsBetweenNeighborPoints)}""
 			FROM {_tableName} leg
-			INNER JOIN {_waypointsTableName} waypoint_from ON waypoint_from.""{nameof(Waypoint.Id)}"" = leg.""{nameof(Leg.WaypointFromId)}""
-			INNER JOIN {_waypointsTableName} waypoint_to ON waypoint_to.""{nameof(Waypoint.Id)}"" = leg.""{nameof(Leg.WaypointToId)}""
-			WHERE leg.""{nameof(Leg.RideId)}"" = '{rideId}'
+			INNER JOIN {_waypointsTableName} waypoint_from
+				ON waypoint_from.""{nameof(Waypoint.Id)}"" = leg.""{nameof(Leg.WaypointFromId)}""
+			INNER JOIN {_waypointsTableName} waypoint_to
+				ON waypoint_to.""{nameof(Waypoint.Id)}"" = leg.""{nameof(Leg.WaypointToId)}""
+			WHERE
+				leg.""{nameof(Leg.RideId)}"" = '{rideId}'
+				{(onlyManual ? $"AND leg.\"{nameof(Leg.IsManual)}\" = TRUE" : string.Empty)}
 			ORDER BY
-				waypoint_from.""{nameof(Waypoint.Arrival)}"" ASC
-				, waypoint_to.""{nameof(Waypoint.Departure)}"" ASC NULLS LAST;
+				waypoint_from.""{nameof(Waypoint.Departure)}"" ASC NULLS LAST
+				, waypoint_to.""{nameof(Waypoint.Arrival)}"" ASC;
 		";
 
 		var result = await session.QueryAsync<Leg>(sql, ct);
@@ -72,6 +76,6 @@ public class LegRepository : ILegRepository
 		, ""{nameof(Leg.WaypointToId)}""
 		, ""{nameof(Leg.PriceInRub)}""
 		, ""{nameof(Leg.IsManual)}""
-		, ""{nameof(Leg.IsMinimal)}""
+		, ""{nameof(Leg.IsBetweenNeighborPoints)}""
 	";
 }
