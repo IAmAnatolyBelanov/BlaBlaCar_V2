@@ -34,7 +34,7 @@ public class RideDbFilter
 	public int? MinPriceInRub { get; set; }
 	public int? MaxPriceInRub { get; set; }
 
-	public int FreeSeatsCount { get; set; }
+	public int? FreeSeatsCount { get; set; }
 
 	public IReadOnlyList<PaymentMethod>? PaymentMethods { get; set; }
 	public int[]? ValidationMethods { get; set; }

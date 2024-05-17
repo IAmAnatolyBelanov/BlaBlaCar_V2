@@ -1,9 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-
-using WebApi.DataAccess;
 using WebApi.Models;
-using WebApi.Services.Core;
 using WebApi.Services.Yandex;
 
 namespace WebApi.Controllers
@@ -14,22 +10,13 @@ namespace WebApi.Controllers
 	{
 		private readonly ISuggestService _suggestService;
 		private readonly IGeocodeService _geocodeService;
-		private readonly IRideService _rideService;
-		private readonly ApplicationContext _context;
-		private readonly ILegDtoMapper _legDtoMapper;
 
 		public SuggestionTest(
 			ISuggestService suggestService,
-			IGeocodeService geocodeService,
-			IRideService rideService,
-			ApplicationContext context,
-			ILegDtoMapper legDtoMapper)
+			IGeocodeService geocodeService)
 		{
 			_suggestService = suggestService;
 			_geocodeService = geocodeService;
-			_rideService = rideService;
-			_context = context;
-			_legDtoMapper = legDtoMapper;
 		}
 
 		[HttpGet]
@@ -54,99 +41,6 @@ namespace WebApi.Controllers
 		public async ValueTask<YandexGeocodeResponseDto?> GetGeocodeByPoint(FormattedPoint point, CancellationToken ct)
 		{
 			return await _geocodeService.PointToGeoCode(point, ct);
-		}
-
-		[HttpPost]
-		public async ValueTask TestGettingPrice(Tuple<FormattedPoint, FormattedPoint> arg, CancellationToken ct)
-		{
-			(var from, var to) = arg;
-			var f = from.ToPoint();
-			var t = to.ToPoint();
-			var result = await _rideService.GetRecommendedPriceAsync(f, t, ct);
-		}
-
-		[HttpPost]
-		public async ValueTask<Leg_Obsolete?> GetLeg(Guid id)
-		{
-			var leg = await _context.Legs.FirstOrDefaultAsync(x => x.Id == id);
-			return leg;
-		}
-
-		[HttpPost]
-		public async ValueTask<Leg_Obsolete> GenerateRandomLeg(CancellationToken ct)
-		{
-			var ride = new Ride_Obsolete
-			{
-				DriverId = 1,
-				Id = Guid.NewGuid(),
-			};
-
-			var from = new FormattedPoint { Latitude = 44.228393, Longitude = 42.048261 };
-			var to = new FormattedPoint { Latitude = 55.755484, Longitude = 37.618237 };
-			var fromGeocode = await _geocodeService.PointToGeoCode(from, ct);
-			var toGeocode = await _geocodeService.PointToGeoCode(to, ct);
-			var description = $"{fromGeocode!.Geoobjects[0].FormattedAddress}@{toGeocode!.Geoobjects[0].FormattedAddress}";
-
-			var leg = new Leg_Obsolete
-			{
-				Id = Guid.NewGuid(),
-				Ride = ride,
-				RideId = ride.Id,
-				EndTime = DateTime.UtcNow,
-				StartTime = DateTime.UtcNow.AddHours(-4),
-				From = from.ToPoint(),
-				To = to.ToPoint(),
-				Description = description,
-			};
-
-			_context.Legs.Add(leg);
-			_context.Rides.Add(ride);
-			await _context.SaveChangesAsync();
-
-			return leg;
-		}
-
-		[HttpGet]
-		public async ValueTask<StringResponse> TestMapper(CancellationToken ct)
-		{
-			var ride = new RideDto_Obsolete { Id = Guid.NewGuid(), };
-
-			var legs = new LegDto_Obsolete[]
-			{
-				new () { Ride = ride, Id = Guid.NewGuid(), },
-				new () { Ride = ride, Id = Guid.NewGuid(), },
-				new () { Ride = ride, Id = Guid.NewGuid(), },
-			};
-
-			var res = _legDtoMapper.FromDtoList(legs);
-			ride.Legs = legs;
-			Console.WriteLine(res);
-
-			await _rideService.CreateRide(_context, ride, ct);
-
-			return StringResponse.Empty;
-		}
-
-		[HttpPost]
-		public async ValueTask<StringResponse> TestReservations(CancellationToken ct)
-		{
-			var leg = _context.Legs.AsTracking()
-				.First(x => x.Id == Guid.Parse("47604cea-ebf5-4982-9322-c04efb885678"));
-
-			var reserv = new Reservation_Obsolete
-			{
-				CreateDateTime = DateTimeOffset.UtcNow,
-				IsActive = true,
-				StartLeg = leg,
-				StartLegId = leg.Id,
-				UserId = 15,
-				Count = 1,
-			};
-
-			_context.Reservations.Add(reserv);
-			await _context.SaveChangesAsync(ct);
-
-			return StringResponse.Empty;
 		}
 	}
 }

@@ -19,12 +19,15 @@ public class RideRepository : IRideRepository
 	private const string _waypointsTableName = "\"Waypoints\"";
 	private const string _legsTableName = "\"Legs\"";
 	private const string _reservationsTableName = "\"Reservations\"";
+	private const string _affectedByReservationsLegsTableName = "\"AffectedByReservationsLegs\"";
 
 
 	private const string _defaultRideAlias = "ride";
 	private const string _defaultWaypointDepartureAlias = "waypoint_departure";
 	private const string _defaultWaypointArrivalAlias = "waypoint_arrival";
 	private const string _defaultLegAlias = "leg";
+	private const string _defaultReservationAlias = "reservation";
+	private const string _defaultAffectedLegAlias = "affected_leg";
 
 
 	public async Task<int> Insert(IPostgresSession session, Ride ride, CancellationToken ct)
@@ -87,6 +90,15 @@ public class RideRepository : IRideRepository
 	public async Task<IReadOnlyList<SearchRideDbResponse>> GetByFilter(IPostgresSession session, RideDbFilter filter, CancellationToken ct)
 	{
 		var sql = $@"
+			WITH leg_reserved_seats AS(
+				{_defaultAffectedLegAlias}.""{nameof(AffectedByReservationLeg.LegId)}"" AS ""LegId""
+				, SUM({_defaultReservationAlias}.""{nameof(Reservation.PeopleCount)}"") AS ""AlreadyReservedSeatsCount""
+				FROM {_affectedByReservationsLegsTableName} {_defaultAffectedLegAlias}
+				INNER JOIN {_reservationsTableName} {_defaultReservationAlias}
+					ON {_defaultReservationAlias}.""{nameof(Reservation.Id)}"" = {_defaultAffectedLegAlias}.""{nameof(AffectedByReservationLeg.ReservationId)}""
+				GROUP BY {_defaultAffectedLegAlias}.""{nameof(AffectedByReservationLeg.LegId)}""
+			)
+
 			SELECT
 				{_defaultRideAlias}.""{nameof(Ride.Id)}"" AS ""{nameof(SearchRideDbResponse.RideId)}""
 				, {_defaultRideAlias}.""{nameof(Ride.AuthorId)}"" AS ""{nameof(SearchRideDbResponse.AuthorId)}""
@@ -120,6 +132,8 @@ public class RideRepository : IRideRepository
 
 				, {_defaultLegAlias}.""{nameof(Leg.PriceInRub)}"" AS ""{nameof(SearchRideDbResponse.Price)}""
 				, {_defaultLegAlias}.""{nameof(Leg.IsManual)}"" AS ""{nameof(SearchRideDbResponse.IsPriceManual)}""
+
+				, leg_reserved_seat.""AlreadyReservedSeatsCount"" AS {nameof(SearchRideDbResponse.AlreadyReservedSeatsCount)}
 			FROM {_rideTableName} {_defaultRideAlias}
 			INNER JOIN {_legsTableName} {_defaultLegAlias}
 				ON {_defaultLegAlias}.""{nameof(Leg.RideId)}"" = {_defaultRideAlias}.""{nameof(Ride.Id)}""
@@ -129,10 +143,14 @@ public class RideRepository : IRideRepository
 			INNER JOIN {_waypointsTableName} {_defaultWaypointArrivalAlias}
 				ON {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.RideId)}"" = {_defaultRideAlias}.""{nameof(Ride.Id)}""
 				AND {_defaultLegAlias}.""{nameof(Leg.WaypointToId)}"" = {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Id)}""
+			LEFT JOIN leg_reserved_seats leg_reserved_seat
+				ON leg_reserved_seat.""LegId"" = {_defaultLegAlias}.""{nameof(Leg.Id)}""
 			{BuildWhereSection(filter)}
 			ORDER BY
 				{GetSqlSortType(filter.SortType)} {filter.SortDirection}
 				, {_defaultRideAlias}.""{nameof(Ride.Created)}"" DESC
+				, {_defaultWaypointDepartureAlias}.""{nameof(Waypoint.Departure)}"" ASC
+				, {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Arrival)}"" ASC NULLS LAST
 			OFFSET @{nameof(filter.Offset)}
 			LIMIT @{nameof(filter.Limit)};
 		";
@@ -225,6 +243,9 @@ public class RideRepository : IRideRepository
 
 		if (filter.MaxPriceInRub.HasValue)
 			yield return $"{legAliasWithDot}\"{nameof(Leg.PriceInRub)}\" <= @{nameof(RideDbFilter.MaxPriceInRub)}";
+
+		if (filter.FreeSeatsCount.HasValue)
+			yield return $"leg_reserved_seat.\"AlreadyReservedSeatsCount\" >= @{nameof(RideDbFilter.FreeSeatsCount)}";
 	}
 
 	private string GetSqlSortType(
@@ -247,6 +268,7 @@ public class RideRepository : IRideRepository
 			RideSortType.ByEndPointDistance => $"(ST_DISTANCE({waypointArrivalAlias}\"{nameof(Waypoint.Point)}\", COALESCE(@{nameof(RideDbFilter.ArrivalPoint)}, {waypointArrivalAlias}\"{nameof(Waypoint.Point)}\")))",
 			RideSortType.ByStartTime => $"{waypointDepartureAlias}\"{nameof(Waypoint.Arrival)}\"",
 			RideSortType.ByEndTime => $"{waypointArrivalAlias}\"{nameof(Waypoint.Departure)}\"",
+			RideSortType.ByFreeSeatsCount => $"leg_reserved_seat.\"AlreadyReservedSeatsCount\"",
 			_ => throw new ArgumentOutOfRangeException(nameof(sortType)),
 		};
 		return result;

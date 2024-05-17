@@ -200,6 +200,7 @@ public class RideRepositoryTests : BaseRepositoryTest
 			SortType = RideSortType.ByStartTime,
 			MinArrivalTime = DateTimeOffset.UtcNow.AddYears(-30),
 			MaxArrivalTime = DateTimeOffset.UtcNow.AddYears(50),
+			FreeSeatsCount = 1,
 		};
 
 		using (var session = _sessionFactory.OpenPostgresConnection().StartTrace())

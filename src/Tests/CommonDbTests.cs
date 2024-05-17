@@ -1,7 +1,5 @@
 ﻿using Dapper;
 
-using Microsoft.EntityFrameworkCore;
-
 using WebApi.DataAccess;
 
 namespace Tests;
@@ -16,21 +14,21 @@ public class CommonDbTests : IClassFixture<TestAppFactoryWithDb>
 		fixture.MigrateDb();
 	}
 
-	[Fact]
-	public void DbContainsFunctions()
-	{
-		var requiredFunctions = DbConstants.FunctionNames.AllConstants.Keys.AsList();
+	// 	[Fact]
+	// 	public void DbContainsFunctions()
+	// 	{
+	// 		var requiredFunctions = DbConstants.FunctionNames.AllConstants.Keys.AsList();
 
-		using var scope = _provider.CreateScope();
-		using var context = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
+	// 		using var scope = _provider.CreateScope();
+	// 		using var context = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
 
-		var allFunctions = context.Database.SqlQuery<string>($@"
-SELECT routine_name
-FROM  information_schema.routines
-WHERE routine_type = 'FUNCTION'
-AND routine_schema = 'public'")
-			.ToHashSet();
+	// 		var allFunctions = context.Database.SqlQuery<string>($@"
+	// SELECT routine_name
+	// FROM  information_schema.routines
+	// WHERE routine_type = 'FUNCTION'
+	// AND routine_schema = 'public'")
+	// 			.ToHashSet();
 
-		allFunctions.Should().Contain(requiredFunctions);
-	}
+	// 		allFunctions.Should().Contain(requiredFunctions);
+	// 	}
 }

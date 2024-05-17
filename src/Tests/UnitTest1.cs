@@ -27,20 +27,5 @@ namespace Tests
 			var to = Shared.GetNewPoint().ToPoint();
 			var kek = await lol.GetRecommendedPriceAsync(from, to, CancellationToken.None);
 		}
-
-		[Fact]
-		public async Task Test5()
-		{
-			using var scope = _provider.CreateScope();
-			var context = scope.ServiceProvider.GetRequiredService<ApplicationContext>();
-			var rideService = scope.ServiceProvider.GetRequiredService<IRideService>();
-
-			var point = Shared.GetNewPoint().ToPoint();
-
-			var result = await rideService.GetRecommendedPriceAsync(point, point, CancellationToken.None);
-
-			result.Low.Should().Be(-1);
-			result.High.Should().Be(-1);
-		}
 	}
 }

@@ -1,6 +1,5 @@
 ﻿using Dapper;
 using FluentValidation;
-using Microsoft.EntityFrameworkCore;
 using NetTopologySuite.Geometries;
 
 using WebApi.DataAccess;
@@ -23,12 +22,8 @@ namespace WebApi.Services.Core
 	public interface IRideService
 	{
 		Task<RideDto> CreateRide(RideDto dto, CancellationToken ct);
-		ValueTask<RideDto_Obsolete> CreateRide(ApplicationContext context, RidePreparationDto_Obsolete rideDto, CancellationToken ct);
-		ValueTask<RideDto_Obsolete> CreateRide(RideDto_Obsolete rideDto, CancellationToken ct);
-		ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(ApplicationContext context, Point pointFrom, Point pointTo, CancellationToken ct);
 		ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct);
-		ValueTask<ReservationDto> Reserve(ReservationDto reserveDto, CancellationToken ct);
-		ValueTask<ReservationDto> Reserve(ApplicationContext context, ReservationDto reserveDto, CancellationToken ct);
+		Task<IReadOnlyList<SearchRideDbResponse>> SearchRides(RideFilter filter, CancellationToken ct);
 	}
 
 	public class RideService : IRideService
@@ -160,10 +155,33 @@ namespace WebApi.Services.Core
 			rideDto.Created = start;
 			var ride = _rideDtoMapper.ToRide(rideDto);
 
-			var waypoints = _waypointMapper.ToWaypoints(rideDto);
-			foreach (var waypoint in waypoints)
-				waypoint.Id = Guid.NewGuid();
-			var waypointsDict = waypoints.ToDictionary(x => FormattedPoint.FromPoint(x.Point));
+			var waypoints = _waypointMapper.ToWaypoints(rideDto)
+				.OrderBy(x => x.Arrival)
+				.ThenBy(x => x.Departure ?? DateTimeOffset.MaxValue)
+				.ToArray();
+			waypoints[0].Id = Guid.NewGuid();
+			waypoints[1].Id = Guid.NewGuid();
+			waypoints[^1].Id = Guid.NewGuid();
+			waypoints[^2].Id = Guid.NewGuid();
+
+			waypoints[0].NextWaypointId = waypoints[1].Id;
+			waypoints[^1].PreviousWaypointId = waypoints[^2].Id;
+
+			for (int i = 1; i < waypoints.Length - 1; i++)
+			{
+				waypoints[i].Id = Guid.NewGuid();
+
+				waypoints[i - 1].NextWaypointId = waypoints[i].Id;
+				waypoints[i].PreviousWaypointId = waypoints[i - 1].Id;
+				waypoints[i].NextWaypointId = waypoints[i + 1].Id;
+				waypoints[i + 1].PreviousWaypointId = waypoints[i].Id;
+			}
+
+			var waypointsDictByCoordinates = waypoints.ToDictionary(x => FormattedPoint.FromPoint(x.Point));
+			var waypointsDictById = waypoints.ToDictionary(x => x.Id);
+			var legsDtoDictByCoordinates = rideDto.Legs
+				.ToDictionary(x => (x.WaypointFrom, x.WaypointTo));
+
 			var legs = new List<Leg>(rideDto.Legs.Count);
 			foreach (var legDto in rideDto.Legs)
 			{
@@ -171,10 +189,66 @@ namespace WebApi.Services.Core
 				leg.Id = Guid.NewGuid();
 				leg.RideId = ride.Id;
 				leg.PriceInRub = legDto.PriceInRub;
-				leg.WaypointFromId = waypointsDict[legDto.WaypointFrom].Id;
-				leg.WaypointToId = waypointsDict[legDto.WaypointTo].Id;
+				leg.WaypointFromId = waypointsDictByCoordinates[legDto.WaypointFrom].Id;
+				leg.WaypointToId = waypointsDictByCoordinates[legDto.WaypointTo].Id;
+				leg.IsManual = true;
+				var pointFrom = waypointsDictById[leg.WaypointFromId];
+				leg.IsMinimal = pointFrom.NextWaypointId == leg.WaypointToId;
 
 				legs.Add(leg);
+			}
+
+			for (int i = 0; i < waypoints.Length; i++)
+			{
+				for (int j = i + 1; j < waypoints.Length; j++)
+				{
+					var startPoint = waypoints[i];
+					var endPoint = waypoints[j];
+
+					var startFormatted = FormattedPoint.FromPoint(startPoint.Point);
+					var endFormatted = FormattedPoint.FromPoint(endPoint.Point);
+
+					if (legsDtoDictByCoordinates.ContainsKey((startFormatted, endFormatted)))
+						continue;
+
+					var currentIndex = i;
+					var currentPoint = startPoint;
+					var currentFormatted = startFormatted;
+					var nextPoint = waypoints[currentIndex + 1];
+					var nextFormatted = FormattedPoint.FromPoint(nextPoint.Point);
+
+					// Наличие такого leg'а гарантируется валидатором.
+					var price = legsDtoDictByCoordinates[(currentFormatted, nextFormatted)].PriceInRub;
+
+					while (true)
+					{
+						currentIndex++;
+
+						if (currentIndex == j)
+						{
+							// add leg
+							var leg = new Leg
+							{
+								Id = Guid.NewGuid(),
+								IsManual = false,
+								IsMinimal = false,
+								PriceInRub = price,
+								RideId = ride.Id,
+								WaypointFromId = startPoint.Id,
+								WaypointToId = endPoint.Id,
+							};
+							legs.Add(leg);
+							break;
+						}
+
+						currentPoint = nextPoint;
+						currentFormatted = nextFormatted;
+						nextPoint = waypoints[currentIndex + 1];
+						nextFormatted = FormattedPoint.FromPoint(nextPoint.Point);
+
+						price += legsDtoDictByCoordinates[(currentFormatted, nextFormatted)].PriceInRub;
+					}
+				}
 			}
 
 			await _rideRepository.Insert(session, ride, ct);
@@ -191,82 +265,20 @@ namespace WebApi.Services.Core
 			return null;
 		}
 
-		public async ValueTask<RideDto_Obsolete> CreateRide(RideDto_Obsolete rideDto, CancellationToken ct)
+		public async Task<IReadOnlyList<SearchRideDbResponse>> SearchRides(RideFilter filter, CancellationToken ct)
 		{
-			using var scope = BuildScope();
-			using var context = GetDbContext(scope);
-			return await CreateRide(context, rideDto, ct);
-		}
-
-		public async ValueTask<RideDto_Obsolete> CreateRide(ApplicationContext context, RidePreparationDto_Obsolete rideDto, CancellationToken ct)
-		{
-			rideDto.Id = Guid.NewGuid();
-
-			var legDtos = rideDto.Legs ?? Array.Empty<LegDto_Obsolete>();
-
-			for (var i = 0; i < legDtos.Count; i++)
+			var dbFilter = new RideDbFilter
 			{
-				var legDto = legDtos[i];
+				SortType = RideSortType.ByStartPointDistance,
+				SortDirection = SortDirection.Asc,
+				Limit = 1000,
+				Offset = 0,
+			};
+			using var session = _sessionFactory.OpenPostgresConnection().StartTrace();
 
-				legDto.Ride = rideDto;
-				legDto.RideId = rideDto.Id;
-			}
+			var result = await _rideRepository.GetByFilter(session, dbFilter, ct);
 
-			rideDto.NormalizeLegs();
-
-			_ridePreparationValidator.ValidateAndThrowFriendly(rideDto);
-
-			await Parallel.ForEachAsync(legDtos, ct, FillLegDescription);
-
-			var mappedObjects = new Dictionary<object, object>();
-
-			var ride = _ridePreparationDtoMapper.FromDto(rideDto, mappedObjects);
-			var legs = _legDtoMapper.FromDtoList(legDtos, mappedObjects);
-
-			ride.Status = RideStatus.Draft;
-
-
-			throw new NotImplementedException();
-
-			//var legsDict = legDtos.Count == 0
-			//	? _emptyLegsDict
-			//	: legDtos.ToDictionary(x => x.Id);
-
-			//var priceDtos = rideDto.Prices ?? Array.Empty<PriceDto>();
-
-			//for (int i = 0; i < priceDtos.Count; i++)
-			//{
-			//	var price = priceDtos[i];
-
-			//	price.StartLeg = legsDict.TryGetValue(price.StartLegId, out var leg) ? leg : null!;
-			//	price.EndLeg = legsDict.TryGetValue(price.EndLegId, out leg) ? leg : null!;
-			//}
-
-			//rideDto.NormalizeLegs();
-
-			//_rideValidator.ValidateAndThrowFriendly(rideDto);
-
-			//await Parallel.ForEachAsync(legDtos, ct, FillLegDescription);
-
-			//var mappedObjects = new Dictionary<object, object>((legDtos.Count + priceDtos.Count + 1) * 2);
-
-			//var ride = _rideDtoMapper.FromDto(rideDto, mappedObjects);
-
-			//var legs = _legDtoMapper.FromDtoList(legDtos, mappedObjects);
-			//var prices = _priceDtoMapper.FromDtoList(priceDtos, mappedObjects);
-
-			//context.Rides.Add(ride);
-			//context.Legs.AddRange(legs);
-			//context.Prices.AddRange(prices);
-
-			//await context.SaveChangesAsync(ct);
-
-			//mappedObjects.Clear();
-			//var result = _rideDtoMapper.ToDto(ride, mappedObjects);
-			//result.Legs = _legDtoMapper.ToDtoList(legs, mappedObjects);
-			//result.Prices = _priceDtoMapper.ToDtoList(prices, mappedObjects);
-
-			//return result;
+			return result;
 		}
 
 		private async ValueTask FillLegDescription(LegDto_Obsolete leg, CancellationToken ct)
@@ -282,46 +294,6 @@ namespace WebApi.Services.Core
 			var toStr = to!.Geoobjects[0].FormattedAddress;
 
 			leg.Description = $"{fromStr}{_addressesDelimiter}{toStr}";
-		}
-
-		public async ValueTask<ReservationDto> Reserve(ReservationDto reserveDto, CancellationToken ct)
-		{
-			using var scope = BuildScope();
-			using var context = GetDbContext(scope);
-			return await Reserve(reserveDto, ct);
-		}
-
-		public async ValueTask<ReservationDto> Reserve(ApplicationContext context, ReservationDto reserveDto, CancellationToken ct)
-		{
-			throw new NotImplementedException();
-
-			//if (reserveDto.LegId == default)
-			//	throw new UserFriendlyException("InvalidLegId", $"Leg with id {reserveDto.LegId} does not exist");
-
-			//var leg = context.Legs.FirstOrDefault(x => x.Id == reserveDto.LegId);
-
-			//if (leg is null)
-			//	throw new UserFriendlyException("InvalidLegId", $"Leg with id {reserveDto.LegId} does not exist");
-
-			//reserveDto.Id = Guid.NewGuid();
-			//reserveDto.IsActive = true;
-			//reserveDto.CreateDateTime = _clock.Now;
-
-			//var reserve = _reservationDtoMapper.FromDtoLight(reserveDto);
-
-			//// Можем упасть из-за триггера. Надо try-catch расставить, причём с возможностью по триггеру особое действие делать.
-			//context.Reservations.Add(reserve);
-			//await context.SaveChangesAsync(ct);
-
-			//var lol = context.Reservations
-			//	.Include(x => x.StartLeg)
-			//		.ThenInclude(x => x.Ride)
-			//	.ToList();
-
-			//var kek = _reservationDtoMapper.ToDtoList(lol);
-
-			//var result = _reservationDtoMapper.ToDtoLight(reserve);
-			//return result;
 		}
 
 		//		public async ValueTask<(decimal low, decimal high)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct)
@@ -386,77 +358,9 @@ namespace WebApi.Services.Core
 		//			throw new NotImplementedException();
 		//		}
 
-		public async ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(ApplicationContext context, Point pointFrom, Point pointTo, CancellationToken ct)
-		{
-			const string suitedPrices = "suited_prices"
-				, startLegRow = "start_leg_row"
-				, endLegRow = "end_leg_row"
-				, priceRow = "price_row"
-				, rideRow = "ride_row"
-				;
-
-			var connection = context.Database.GetDbConnection();
-
-			var maxDistanceInMeters = _config.PriceStatisticsRadiusMeters;
-			var lowPercentile = 0 + (1 - _config.PriceStatisticsPercentile) / 2f;
-			var highPercentile = 1 - (1 - _config.PriceStatisticsPercentile) / 2f;
-			var now = _clock.Now;
-			var minEndTime = now - _config.PriceStatisticsMaxPastPeriod;
-
-			var query = @$"
-WITH {suitedPrices} AS (
-	SELECT {priceRow}.""{nameof(Price.PriceInRub)}""
-	FROM ""{nameof(ApplicationContext.Prices)}"" {priceRow}
-	LEFT JOIN ""{nameof(ApplicationContext.Legs)}"" {startLegRow} ON {startLegRow}.""{nameof(Leg_Obsolete.Id)}"" = {priceRow}.""{nameof(Price.StartLegId)}""
-	LEFT JOIN ""{nameof(ApplicationContext.Legs)}"" {endLegRow} ON {endLegRow}.""{nameof(Leg_Obsolete.Id)}"" = {priceRow}.""{nameof(Price.EndLegId)}""
-	LEFT JOIN ""{nameof(ApplicationContext.Rides)}"" {rideRow} ON {rideRow}.""{nameof(Ride_Obsolete.Id)}"" = {startLegRow}.""{nameof(Leg_Obsolete.RideId)}"" AND {rideRow}.""{nameof(Ride_Obsolete.Id)}"" = {endLegRow}.""{nameof(Leg_Obsolete.RideId)}""
-	WHERE
-		{rideRow}.""{nameof(Ride_Obsolete.Status)}"" = {(int)RideStatus.StartedOrDone}
-		AND ST_Distance({startLegRow}.""{nameof(Leg_Obsolete.From)}"", @{nameof(pointFrom)}) <= {maxDistanceInMeters}
-		AND ST_Distance({endLegRow}.""{nameof(Leg_Obsolete.To)}"", @{nameof(pointTo)}) <= {maxDistanceInMeters}
-		AND {endLegRow}.""{nameof(Leg_Obsolete.EndTime)}"" < @{nameof(now)}
-		AND {endLegRow}.""{nameof(Leg_Obsolete.EndTime)}"" >= @{nameof(minEndTime)}
-	ORDER BY {priceRow}.""{nameof(Price.PriceInRub)}""
-)
-SELECT
-	CASE WHEN (SELECT COUNT(*) FROM {suitedPrices}) >= {_config.PriceStatisticsMinRowsCount}
-		THEN PERCENTILE_CONT({lowPercentile:F2}) WITHIN GROUP (ORDER BY {suitedPrices}.""{nameof(Price.PriceInRub)}"")
-		ELSE -1
-		END AS {nameof(Tuple<double, double>.Item1)},
-	CASE WHEN (SELECT COUNT(*) FROM {suitedPrices}) > {_config.PriceStatisticsMinRowsCount}
-		THEN PERCENTILE_CONT({highPercentile:F2}) WITHIN GROUP (ORDER BY {suitedPrices}.""{nameof(Price.PriceInRub)}"")
-		ELSE -1
-		END AS {nameof(Tuple<double, double>.Item2)}
-FROM {suitedPrices}
-LIMIT 1;
-";
-
-			var command = new CommandDefinition(
-				commandText: query,
-				parameters: new
-				{
-					pointFrom,
-					pointTo,
-					now,
-					minEndTime,
-				},
-				cancellationToken: ct);
-			var result = await connection.QueryFirstAsync<Tuple<double, double>>(command);
-
-			return ((decimal)result.Item1, (decimal)result.Item2);
-		}
-
 		public async ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct)
 		{
-			using var scope = BuildScope();
-			using var context = GetDbContext(scope);
-			return await GetRecommendedPriceAsync(context, from, to, ct);
+			throw new NotImplementedException();
 		}
-
-		private AsyncServiceScope BuildScope()
-			=> _serviceScopeFactory.CreateAsyncScope();
-		private ApplicationContext GetDbContext(AsyncServiceScope scope)
-			=> scope.ServiceProvider.GetRequiredService<ApplicationContext>();
-
 	}
 }

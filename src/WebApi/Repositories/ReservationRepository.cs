@@ -5,25 +5,26 @@ namespace WebApi.Repositories;
 
 public interface IReservationRepository : IRepository
 {
-	Task<int> Insert(IPostgresSession session, Reservation reservation, CancellationToken ct);
-	Task<IReadOnlyList<Reservation>> GetByFilter(IPostgresSession session, ReservationDbFilter filter, CancellationToken ct);
+	Task<int> InsertLeg(IPostgresSession session, Reservation reservation, CancellationToken ct);
+	Task<IReadOnlyList<Reservation>> GetLegsByFilter(IPostgresSession session, ReservationDbFilter filter, CancellationToken ct);
+	Task<ulong> BulkInsertAffectedLegs(IPostgresSession session, Guid reservationId, IReadOnlyList<Guid> legIds, CancellationToken ct);
 }
 
 public class ReservationRepository : IReservationRepository
 {
-	private const string _tableName = "\"Reservations\"";
+	private const string _reservationTableName = "\"Reservations\"";
+	private const string _affectedLegsTableName = "\"AffectedByReservationsLegs\"";
 
-	public async Task<int> Insert(IPostgresSession session, Reservation reservation, CancellationToken ct)
+	public async Task<int> InsertLeg(IPostgresSession session, Reservation reservation, CancellationToken ct)
 	{
 		const string sql = $@"
-			INSERT INTO {_tableName} ({_fullColumnsList})
+			INSERT INTO {_reservationTableName} ({_fullColumnsList})
 			VALUES (
 				@{nameof(reservation.Id)}
 				, @{nameof(reservation.RideId)}
 				, @{nameof(reservation.PassengerId)}
 				, @{nameof(reservation.PeopleCount)}
-				, @{nameof(reservation.WaypointFromId)}
-				, @{nameof(reservation.WaypointToId)}
+				, @{nameof(reservation.LegId)}
 				, @{nameof(reservation.IsDeleted)}
 				, @{nameof(reservation.Created)}
 			);
@@ -33,10 +34,10 @@ public class ReservationRepository : IReservationRepository
 		return result;
 	}
 
-	public async Task<IReadOnlyList<Reservation>> GetByFilter(IPostgresSession session, ReservationDbFilter filter, CancellationToken ct)
+	public async Task<IReadOnlyList<Reservation>> GetLegsByFilter(IPostgresSession session, ReservationDbFilter filter, CancellationToken ct)
 	{
 		var sql = $@"
-			SELECT {_fullColumnsList} FROM {_tableName}
+			SELECT {_fullColumnsList} FROM {_reservationTableName}
 			{BuildWhereSection(filter)}
 			ORDER BY ""{nameof(Reservation.Created)}"" DESC
 			OFFSET @{nameof(filter.Offset)}
@@ -44,6 +45,31 @@ public class ReservationRepository : IReservationRepository
 		";
 
 		var result = await session.QueryAsync<Reservation>(sql, filter, ct);
+		return result;
+	}
+
+	public async Task<ulong> BulkInsertAffectedLegs(IPostgresSession session, Guid reservationId, IReadOnlyList<Guid> legIds, CancellationToken ct)
+	{
+		const string sql = $@"
+			COPY {_affectedLegsTableName} (
+				""{nameof(AffectedByReservationLeg.ReservationId)}""
+				, ""{nameof(AffectedByReservationLeg.LegId)}""
+			)
+			FROM STDIN (FORMAT BINARY);
+		";
+
+		using var importer = await session.BeginBinaryImport(sql, ct);
+		for (int i = 0; i < legIds.Count; i++)
+		{
+			var legId = legIds[i];
+
+			await importer.StartRow(ct);
+
+			await importer.Write(reservationId, ct);
+			await importer.Write(legId, ct);
+		}
+
+		var result = await importer.Complete(ct);
 		return result;
 	}
 
@@ -83,8 +109,7 @@ public class ReservationRepository : IReservationRepository
 		, ""{nameof(Reservation.RideId)}""
 		, ""{nameof(Reservation.PassengerId)}""
 		, ""{nameof(Reservation.PeopleCount)}""
-		, ""{nameof(Reservation.WaypointFromId)}""
-		, ""{nameof(Reservation.WaypointToId)}""
+		, ""{nameof(Reservation.LegId)}""
 		, ""{nameof(Reservation.IsDeleted)}""
 		, ""{nameof(Reservation.Created)}""
 	";

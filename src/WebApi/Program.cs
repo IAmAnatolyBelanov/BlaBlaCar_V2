@@ -1,7 +1,6 @@
 using Dapper;
 using FluentValidation;
 
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using NetTopologySuite.Geometries;
@@ -65,12 +64,6 @@ public class Program
 		builder.Services.AddValidatorsFromAssemblyContaining<LegDtoValidator>(lifetime: ServiceLifetime.Singleton);
 
 		builder.Services.AddPostgresMigrator();
-
-		builder.Services.AddDbContext<ApplicationContext>((serviceProvider, options) =>
-			options.UseNpgsql(
-				serviceProvider.GetRequiredService<IPostgresConfig>().ConnectionString,
-				x => x.UseNetTopologySuite())
-			.UseQueryTrackingBehavior(QueryTrackingBehavior.NoTracking));
 
 		builder.Services.TryAddSingleton<IClock, Clock>();
 

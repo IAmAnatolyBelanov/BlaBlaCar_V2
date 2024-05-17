@@ -9,8 +9,7 @@ public class Reservation
 	public Guid RideId { get; set; }
 	public Guid PassengerId { get; set; }
 	public int PeopleCount { get; set; }
-	public Guid WaypointFromId { get; set; }
-	public Guid WaypointToId { get; set; }
+	public Guid LegId { get; set; }
 	public bool IsDeleted { get; set; }
 	public DateTimeOffset Created { get => created; set => created = value.ToUniversalTime(); }
 }

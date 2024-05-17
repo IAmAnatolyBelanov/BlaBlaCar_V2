@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
 using WebApi.Models;
+using WebApi.Models.ControllersModels.RideControllerModels;
 using WebApi.Services.Core;
 
 namespace WebApi.Controllers
@@ -17,20 +18,6 @@ namespace WebApi.Controllers
 		}
 
 		[HttpPost]
-		public async ValueTask<BaseResponse<RideDto_Obsolete>> CreateRide_Obsolete(RideDto_Obsolete ride, CancellationToken ct)
-		{
-			var result = await _rideService.CreateRide(ride, ct);
-			return result;
-		}
-
-		[HttpPost]
-		public async ValueTask<BaseResponse<ReservationDto>> Reserv(ReservationDto reserv, CancellationToken ct)
-		{
-			var result = await _rideService.Reserve(reserv, ct);
-			return result;
-		}
-
-		[HttpPost]
 		public async ValueTask<BaseResponse<Tuple<decimal, decimal>>> GetRecommendedPrice(Tuple<FormattedPoint, FormattedPoint> coordinates, CancellationToken ct)
 		{
 			(var from, var to) = coordinates;
@@ -43,6 +30,21 @@ namespace WebApi.Controllers
 		public async Task<BaseResponse<RideDto>> CreateRide(RideDto ride, CancellationToken ct)
 		{
 			var result = await _rideService.CreateRide(ride, ct);
+			return result;
+		}
+
+		[HttpPost]
+		public async Task<BaseResponse<RideDto>> GetRideById([FromBody] GetRideByIdRequest request, CancellationToken ct)
+		{
+			throw new NotImplementedException();
+			var result = await _rideService.CreateRide((RideDto)null, ct);
+			return result;
+		}
+
+		[HttpPost]
+		public async Task<IReadOnlyList<SearchRideDbResponse>> SearchRides([FromBody] RideFilter filter, CancellationToken ct)
+		{
+			var result = await _rideService.SearchRides(filter, ct);
 			return result;
 		}
 	}

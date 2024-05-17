@@ -242,8 +242,7 @@ public class InitialMigration : PostgresMigrator
 			.WithColumn("RideId").AsGuid()
 			.WithColumn("PassengerId").AsGuid()
 			.WithColumn("PeopleCount").AsInt32()
-			.WithColumn("WaypointFromId").AsGuid()
-			.WithColumn("WaypointToId").AsGuid()
+			.WithColumn("LegId").AsGuid()
 			.WithColumn("IsDeleted").AsBoolean()
 			.WithColumn("Created").AsDateTimeOffset()
 			.WithTechnicalCommentColumn();
@@ -263,17 +262,26 @@ public class InitialMigration : PostgresMigrator
 			.OnColumn("PassengerId");
 
 		Create.ForeignKey()
-			.FromTable("Reservations").ForeignColumn("WaypointFromId")
-			.ToTable("Waypoints").PrimaryColumn("Id");
+			.FromTable("Reservations").ForeignColumn("LegId")
+			.ToTable("Legs").PrimaryColumn("Id");
 		Create.Index()
 			.OnTable("Reservations")
-			.OnColumn("WaypointFromId");
+			.OnColumn("LegId");
+
+		Create.Table("AffectedByReservationsLegs")
+			.WithColumn("ReservationId").AsGuid()
+			.WithColumn("LegId").AsGuid();
+
+		Create.PrimaryKey()
+			.OnTable("AffectedByReservationsLegs")
+			.Columns("ReservationId", "LegId");
 
 		Create.ForeignKey()
-			.FromTable("Reservations").ForeignColumn("WaypointToId")
-			.ToTable("Waypoints").PrimaryColumn("Id");
-		Create.Index()
-			.OnTable("Reservations")
-			.OnColumn("WaypointToId");
+			.FromTable("AffectedByReservationsLegs").ForeignColumn("ReservationId")
+			.ToTable("Reservations").PrimaryColumn("Id");
+
+		Create.ForeignKey()
+			.FromTable("AffectedByReservationsLegs").ForeignColumn("LegId")
+			.ToTable("Legs").PrimaryColumn("Id");
 	}
 }
