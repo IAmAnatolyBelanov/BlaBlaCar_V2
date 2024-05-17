@@ -100,19 +100,7 @@ namespace WebApi.Services.Core
 		{
 			var start = _clock.Now;
 
-			if (rideDto.Status != RideStatus.Draft && rideDto.Status != RideStatus.ActiveNotStarted)
-				throw new UserFriendlyException(RideValidationCodes.InvalidCreationStatus, $"При создании поездки доступны лишь статусы {nameof(RideStatus.Draft)} и {nameof(RideStatus.ActiveNotStarted)}");
-
-			// TODO - для менеджеров условие не должно выполняться.
-			if (rideDto.Status == RideStatus.ActiveNotStarted)
-			{
-				if (rideDto.DriverId is null)
-					throw new UserFriendlyException(RideServiceValidationCodes.DriverIdIsEmpty, "Водитель может быть не указан только для черновика");
-				if (rideDto.CarId is null)
-					throw new UserFriendlyException(RideServiceValidationCodes.CarIdIsEmpty, "Автомобиль может быть не указан только для черновика");
-			}
-
-			_rideDtoValidator.ValidateAndThrowFriendly(rideDto);
+			ValidateRideOnCreation(rideDto);
 
 			using var session = _sessionFactory.OpenPostgresConnection().BeginTransaction().StartTrace();
 
@@ -150,10 +138,42 @@ namespace WebApi.Services.Core
 			rideDto.Created = start;
 			var ride = _rideDtoMapper.ToRide(rideDto);
 
+			var waypoints = FillWaypointsOnRideCreation(rideDto);
+			var legs = FillLegsOnRideCreation(rideDto, waypoints);
+
+			await _rideRepository.Insert(session, ride, ct);
+			await _waypointRepository.BulkInsert(session, waypoints, ct);
+			await _legRepository.BulkInsert(session, legs, ct);
+
+			await session.CommitAsync(ct);
+
+			return rideDto;
+		}
+
+		private void ValidateRideOnCreation(RideDto rideDto)
+		{
+			if (rideDto.Status != RideStatus.Draft && rideDto.Status != RideStatus.ActiveNotStarted)
+				throw new UserFriendlyException(RideValidationCodes.InvalidCreationStatus, $"При создании поездки доступны лишь статусы {nameof(RideStatus.Draft)} и {nameof(RideStatus.ActiveNotStarted)}");
+
+			// TODO - для менеджеров условие не должно выполняться.
+			if (rideDto.Status == RideStatus.ActiveNotStarted)
+			{
+				if (rideDto.DriverId is null)
+					throw new UserFriendlyException(RideServiceValidationCodes.DriverIdIsEmpty, "Водитель может быть не указан только для черновика");
+				if (rideDto.CarId is null)
+					throw new UserFriendlyException(RideServiceValidationCodes.CarIdIsEmpty, "Автомобиль может быть не указан только для черновика");
+			}
+
+			_rideDtoValidator.ValidateAndThrowFriendly(rideDto);
+		}
+
+		private IReadOnlyList<Waypoint> FillWaypointsOnRideCreation(RideDto rideDto)
+		{
 			var waypoints = _waypointMapper.ToWaypoints(rideDto)
 				.OrderBy(x => x.Arrival)
 				.ThenBy(x => x.Departure ?? DateTimeOffset.MaxValue)
 				.ToArray();
+
 			waypoints[0].Id = Guid.NewGuid();
 			waypoints[1].Id = Guid.NewGuid();
 			waypoints[^1].Id = Guid.NewGuid();
@@ -172,6 +192,11 @@ namespace WebApi.Services.Core
 				waypoints[i + 1].PreviousWaypointId = waypoints[i].Id;
 			}
 
+			return waypoints;
+		}
+
+		private IReadOnlyList<Leg> FillLegsOnRideCreation(RideDto rideDto, IReadOnlyList<Waypoint> waypoints)
+		{
 			var waypointsDictByCoordinates = waypoints.ToDictionary(x => FormattedPoint.FromPoint(x.Point));
 			var waypointsDictById = waypoints.ToDictionary(x => x.Id);
 			var legsDtoDictByCoordinates = rideDto.Legs
@@ -182,7 +207,7 @@ namespace WebApi.Services.Core
 			{
 				var leg = new Leg();
 				leg.Id = Guid.NewGuid();
-				leg.RideId = ride.Id;
+				leg.RideId = rideDto.Id;
 				leg.PriceInRub = legDto.PriceInRub;
 				leg.WaypointFromId = waypointsDictByCoordinates[legDto.WaypointFrom].Id;
 				leg.WaypointToId = waypointsDictByCoordinates[legDto.WaypointTo].Id;
@@ -193,9 +218,9 @@ namespace WebApi.Services.Core
 				legs.Add(leg);
 			}
 
-			for (int i = 0; i < waypoints.Length; i++)
+			for (int i = 0; i < waypoints.Count; i++)
 			{
-				for (int j = i + 1; j < waypoints.Length; j++)
+				for (int j = i + 1; j < waypoints.Count; j++)
 				{
 					var startPoint = waypoints[i];
 					var endPoint = waypoints[j];
@@ -219,18 +244,19 @@ namespace WebApi.Services.Core
 					{
 						currentIndex++;
 
-						if (currentIndex == j)
+						if (currentIndex >= j)
 						{
-							// add leg
 							var leg = new Leg
 							{
 								Id = Guid.NewGuid(),
 								IsManual = false,
-								IsBetweenNeighborPoints = false,
+								RideId = rideDto.Id,
 								PriceInRub = price,
-								RideId = ride.Id,
 								WaypointFromId = startPoint.Id,
 								WaypointToId = endPoint.Id,
+
+								// Все Leg'и соседей обязательны для ручного заполнения.
+								IsBetweenNeighborPoints = false,
 							};
 							legs.Add(leg);
 							break;
@@ -246,14 +272,9 @@ namespace WebApi.Services.Core
 				}
 			}
 
-			await _rideRepository.Insert(session, ride, ct);
-			await _waypointRepository.BulkInsert(session, waypoints, ct);
-			await _legRepository.BulkInsert(session, legs, ct);
-
-			await session.CommitAsync(ct);
-
-			return rideDto;
+			return legs;
 		}
+
 
 		public async Task<GetRideResponse?> GetRideById(Guid rideId, CancellationToken ct)
 		{
