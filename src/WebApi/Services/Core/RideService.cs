@@ -101,7 +101,7 @@ namespace WebApi.Services.Core
 			var start = _clock.Now;
 
 			if (rideDto.Status != RideStatus.Draft && rideDto.Status != RideStatus.ActiveNotStarted)
-				throw new UserFriendlyException(RideValidationCodes.InvalidCreationStatus, $"При создании поездки доступны лишь статусы {nameof(RideStatus.Draft)} и {nameof(RideStatus.StartedOrDone)}");
+				throw new UserFriendlyException(RideValidationCodes.InvalidCreationStatus, $"При создании поездки доступны лишь статусы {nameof(RideStatus.Draft)} и {nameof(RideStatus.ActiveNotStarted)}");
 
 			// TODO - для менеджеров условие не должно выполняться.
 			if (rideDto.Status == RideStatus.ActiveNotStarted)
