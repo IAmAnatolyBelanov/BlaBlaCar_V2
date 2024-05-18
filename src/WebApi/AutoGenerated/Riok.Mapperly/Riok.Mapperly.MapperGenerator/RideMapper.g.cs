@@ -9,7 +9,6 @@ namespace WebApi.Models
             target.Id = src.Id;
             target.AuthorId = src.AuthorId;
             target.DriverId = src.DriverId;
-            target.CarId = src.CarId;
             target.Created = src.Created;
             target.Status = src.Status;
             target.AvailablePlacesCount = src.AvailablePlacesCount;
@@ -24,7 +23,6 @@ namespace WebApi.Models
             target.Id = src.Id;
             target.AuthorId = src.AuthorId;
             target.DriverId = src.DriverId;
-            target.CarId = src.CarId;
             target.Created = src.Created;
             target.Status = src.Status;
             target.AvailablePlacesCount = src.AvailablePlacesCount;

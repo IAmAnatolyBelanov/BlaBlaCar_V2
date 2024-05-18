@@ -8,7 +8,6 @@ public class Ride
 	public Guid Id { get; set; }
 	public Guid AuthorId { get; set; }
 	public Guid? DriverId { get; set; }
-	public Guid? CarId { get; set; }
 	public DateTimeOffset Created { get => created; set => created = value.ToUniversalTime(); }
 	public RideStatus Status { get; set; }
 	public int AvailablePlacesCount { get; set; }

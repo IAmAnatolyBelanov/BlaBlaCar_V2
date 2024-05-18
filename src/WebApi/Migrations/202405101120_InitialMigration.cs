@@ -119,7 +119,6 @@ public class InitialMigration : PostgresMigrator
 			.WithColumn("Id").AsGuid().PrimaryKey()
 			.WithColumn("AuthorId").AsGuid()
 			.WithColumn("DriverId").AsGuid().Nullable()
-			.WithColumn("CarId").AsGuid().Nullable()
 			.WithColumn("Created").AsDateTimeOffset()
 			.WithColumn("Status").AsInt32()
 			.WithColumn("AvailablePlacesCount").AsInt32()
@@ -144,13 +143,6 @@ public class InitialMigration : PostgresMigrator
 		Create.Index()
 			.OnTable("Rides")
 			.OnColumn("DriverId");
-
-		Create.ForeignKey()
-			.FromTable("Rides").ForeignColumn("CarId")
-			.ToTable("Cars").PrimaryColumn("Id");
-		Create.Index()
-			.OnTable("Rides")
-			.OnColumn("CarId");
 
 		Create.Index()
 			.OnTable("Rides")

@@ -45,7 +45,6 @@ public class RideRepository : IRideRepository
 		await importer.Write(ride.Id, ct);
 		await importer.Write(ride.AuthorId, ct);
 		await importer.WriteValueOrNull(ride.DriverId, ct);
-		await importer.WriteValueOrNull(ride.CarId, ct);
 		await importer.Write(ride.Created, ct);
 		await importer.Write((int)ride.Status, ct);
 		await importer.Write(ride.AvailablePlacesCount, ct);
@@ -105,7 +104,6 @@ public class RideRepository : IRideRepository
 				{_defaultRideAlias}.""{nameof(Ride.Id)}"" AS ""{nameof(SearchRideDbResponse.RideId)}""
 				, {_defaultRideAlias}.""{nameof(Ride.AuthorId)}"" AS ""{nameof(SearchRideDbResponse.AuthorId)}""
 				, {_defaultRideAlias}.""{nameof(Ride.DriverId)}"" AS ""{nameof(SearchRideDbResponse.DriverId)}""
-				, {_defaultRideAlias}.""{nameof(Ride.CarId)}"" AS ""{nameof(SearchRideDbResponse.CarId)}""
 				, {_defaultRideAlias}.""{nameof(Ride.Created)}"" AS ""{nameof(SearchRideDbResponse.Created)}""
 				, {_defaultRideAlias}.""{nameof(Ride.Status)}"" AS ""{nameof(SearchRideDbResponse.Status)}""
 				, {_defaultRideAlias}.""{nameof(Ride.AvailablePlacesCount)}"" AS ""{nameof(SearchRideDbResponse.TotalAvailablePlacesCount)}""
@@ -302,7 +300,6 @@ public class RideRepository : IRideRepository
 		""{nameof(Ride.Id)}""
 		, ""{nameof(Ride.AuthorId)}""
 		, ""{nameof(Ride.DriverId)}""
-		, ""{nameof(Ride.CarId)}""
 		, ""{nameof(Ride.Created)}""
 		, ""{nameof(Ride.Status)}""
 		, ""{nameof(Ride.AvailablePlacesCount)}""

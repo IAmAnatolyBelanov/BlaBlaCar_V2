@@ -26,7 +26,7 @@ namespace WebApi.Services.Core
 		Task<RideDto> CreateRide(RideDto dto, CancellationToken ct);
 		ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct);
 		Task<IReadOnlyList<SearchRideResponse>> SearchRides(RideFilter filter, CancellationToken ct);
-		Task<GetRideResponse?> GetRideById(Guid rideId, CancellationToken ct);
+		Task<RideDto?> GetRideById(Guid rideId, CancellationToken ct);
 		Task<ReservationDto> MakeReservation(MakeReservationRequest request, CancellationToken ct);
 	}
 
@@ -119,9 +119,6 @@ namespace WebApi.Services.Core
 				: rideDto.DriverId.Value == rideDto.AuthorId
 					? getAuthorTask
 					: _userRepository.GetById(session, rideDto.DriverId.Value, ct);
-			var getCarTask = rideDto.CarId is null
-				? null
-				: _carRepository.GetById(session, rideDto.CarId.Value, ct);
 
 			var author = await getAuthorTask;
 			if (author is null)
@@ -129,9 +126,6 @@ namespace WebApi.Services.Core
 			var driver = getAuthorTask is null ? null : await getAuthorTask;
 			if (rideDto.DriverId is not null && driver is null)
 				throw new UserFriendlyException(CommonValidationCodes.UserNotFound, $"Пользователь {rideDto.DriverId} не найден");
-			var car = getCarTask is null ? null : await getCarTask;
-			if (rideDto.CarId is not null && car is null)
-				throw new UserFriendlyException(CommonValidationCodes.CarNotFound, $"Автомобиль {rideDto.CarId} не найден");
 
 			if (driver is not null && rideDto.Status == RideStatus.ActiveNotStarted)
 			{
@@ -139,9 +133,6 @@ namespace WebApi.Services.Core
 				if (driverData is null)
 					throw new UserFriendlyException(RideServiceValidationCodes.DriverDataDoesNotExist, "У пользователя, указанного как водитель, нет водительского удостоверения");
 			}
-
-			if (car is not null && car.PassengerSeatsCount < rideDto.AvailablePlacesCount)
-				throw new UserFriendlyException(RideServiceValidationCodes.CarHasLessSeatsThanRideAvailablePlaces, "У автомобиля не может быть пассажирских сидений меньше, чем свободных мест в поездке");
 
 			rideDto.Id = Guid.NewGuid();
 			rideDto.Created = start;
@@ -169,8 +160,6 @@ namespace WebApi.Services.Core
 			{
 				if (rideDto.DriverId is null)
 					throw new UserFriendlyException(RideServiceValidationCodes.DriverIdIsEmpty, "Водитель может быть не указан только для черновика");
-				if (rideDto.CarId is null)
-					throw new UserFriendlyException(RideServiceValidationCodes.CarIdIsEmpty, "Автомобиль может быть не указан только для черновика");
 			}
 
 			_rideDtoValidator.ValidateAndThrowFriendly(rideDto);
@@ -285,7 +274,7 @@ namespace WebApi.Services.Core
 		}
 
 
-		public async Task<GetRideResponse?> GetRideById(Guid rideId, CancellationToken ct)
+		public async Task<RideDto?> GetRideById(Guid rideId, CancellationToken ct)
 		{
 			using var session = _sessionFactory.OpenPostgresConnection();
 			var ride = await _rideRepository.GetById(session, rideId, ct);
@@ -293,17 +282,10 @@ namespace WebApi.Services.Core
 			if (ride is null)
 				return null;
 
-			var carTask = ride.CarId.HasValue
-				? _carRepository.GetById(session, ride.CarId.Value, ct)
-				: null;
-
 			var waypointsTask = _waypointRepository.GetByRideId(session, ride.Id, ct);
 			var legsTask = _legRepository.GetByRideId(session, ride.Id, ct, onlyManual: true);
 
 			var rideDto = _rideDtoMapper.ToRideDto(ride);
-
-			var car = carTask is null ? null : await carTask;
-			var carDto = car is null ? null : _carMapper.ToCarDto(car);
 
 			var waypoints = await waypointsTask;
 			var waypointsDict = waypoints.ToDictionary(x => x.Id);
@@ -327,11 +309,7 @@ namespace WebApi.Services.Core
 			rideDto.Waypoints = waypointDtos;
 			rideDto.Legs = legDtos;
 
-			return new GetRideResponse
-			{
-				Car = carDto,
-				Ride = rideDto,
-			};
+			return rideDto;
 		}
 
 		public async Task<IReadOnlyList<SearchRideResponse>> SearchRides(RideFilter filter, CancellationToken ct)

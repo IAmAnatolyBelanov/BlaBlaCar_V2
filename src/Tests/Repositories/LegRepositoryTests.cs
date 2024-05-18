@@ -27,7 +27,6 @@ public class LegRepositoryTests : BaseRepositoryTest
 		var ride = _fixture.Build<Ride>()
 			.With(x => x.AuthorId, user.Id)
 			.Without(x => x.DriverId)
-			.Without(x => x.CarId)
 			.Create();
 
 		var waypoints = _fixture.Build<Waypoint>()
@@ -76,7 +75,6 @@ public class LegRepositoryTests : BaseRepositoryTest
 		var ride = _fixture.Build<Ride>()
 			.With(x => x.AuthorId, user.Id)
 			.Without(x => x.DriverId)
-			.Without(x => x.CarId)
 			.Create();
 
 		var waypoints = _fixture.Build<Waypoint>()

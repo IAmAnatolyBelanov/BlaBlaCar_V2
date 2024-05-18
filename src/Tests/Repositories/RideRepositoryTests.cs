@@ -31,7 +31,6 @@ public class RideRepositoryTests : BaseRepositoryTest
 		var ride = _fixture.Build<Ride>()
 			.With(x => x.AuthorId, user.Id)
 			.Without(x => x.DriverId)
-			.Without(x => x.CarId)
 			.Create();
 
 		using (var session = _sessionFactory.OpenPostgresConnection().BeginTransaction())
@@ -53,7 +52,6 @@ public class RideRepositoryTests : BaseRepositoryTest
 		var ride = _fixture.Build<Ride>()
 			.With(x => x.AuthorId, user.Id)
 			.Without(x => x.DriverId)
-			.Without(x => x.CarId)
 			.Create();
 
 		using (var session = _sessionFactory.OpenPostgresConnection().BeginTransaction())
@@ -80,7 +78,6 @@ public class RideRepositoryTests : BaseRepositoryTest
 		var ride = _fixture.Build<Ride>()
 			.With(x => x.AuthorId, user.Id)
 			.With(x => x.DriverId, user.Id)
-			.With(x => x.CarId, car.Id)
 			.Create();
 
 		using (var session = _sessionFactory.OpenPostgresConnection().BeginTransaction())
@@ -115,7 +112,6 @@ public class RideRepositoryTests : BaseRepositoryTest
 				var rides = _fixture.Build<Ride>()
 					.With(x => x.AuthorId, user.Id)
 					.Without(x => x.DriverId)
-					.Without(x => x.CarId)
 					.CreateMany(300);
 
 				using (var session = _sessionFactory.OpenPostgresConnection())

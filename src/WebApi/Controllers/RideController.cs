@@ -34,7 +34,7 @@ namespace WebApi.Controllers
 		}
 
 		[HttpPost]
-		public async Task<BaseResponse<GetRideResponse?>> GetRideById([FromBody] GetRideByIdRequest request, CancellationToken ct)
+		public async Task<BaseResponse<RideDto?>> GetRideById([FromBody] GetRideByIdRequest request, CancellationToken ct)
 		{
 			var result = await _rideService.GetRideById(request.RideId, ct);
 			return result;
@@ -48,7 +48,8 @@ namespace WebApi.Controllers
 		}
 
 		[HttpPost]
-		public async Task<BaseResponse<ReservationDto>> CreateReservation([FromBody] MakeReservationRequest request, CancellationToken ct){
+		public async Task<BaseResponse<ReservationDto>> CreateReservation([FromBody] MakeReservationRequest request, CancellationToken ct)
+		{
 			var result = await _rideService.MakeReservation(request, ct);
 			return result;
 		}

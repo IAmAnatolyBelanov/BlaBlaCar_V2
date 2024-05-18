@@ -8,7 +8,6 @@ public class RideDto
 	public Guid Id { get; set; }
 	public Guid AuthorId { get; set; }
 	public Guid? DriverId { get; set; }
-	public Guid? CarId { get; set; }
 
 	/// <summary>
 	/// Время создания поездки. Поле заполняется самим сервисом. Таким образом, даже если при создании или редактировании поездки передать поле в запросе, сервис никак не отреагирует на него.

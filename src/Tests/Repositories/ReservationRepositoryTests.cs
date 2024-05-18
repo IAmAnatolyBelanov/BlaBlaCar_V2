@@ -29,7 +29,6 @@ public class ReservationRepositoryTests : BaseRepositoryTest
 		var ride = _fixture.Build<Ride>()
 			.With(x => x.AuthorId, user.Id)
 			.Without(x => x.DriverId)
-			.Without(x => x.CarId)
 			.Create();
 
 		var waypoints = _fixture.Build<Waypoint>()
@@ -76,7 +75,7 @@ public class ReservationRepositoryTests : BaseRepositoryTest
 			await _rideRepository.Insert(session, ride, ct);
 			await _waypointRepository.BulkInsert(session, waypoints, ct);
 			await _legRepository.BulkInsert(session, legs, ct);
-			var result = await _reservationRepository.InsertLeg(session, reservation, ct);
+			var result = await _reservationRepository.InsertReservation(session, reservation, ct);
 			await session.CommitAsync(ct);
 
 			result.Should().Be(1);
@@ -92,7 +91,6 @@ public class ReservationRepositoryTests : BaseRepositoryTest
 		var ride = _fixture.Build<Ride>()
 			.With(x => x.AuthorId, user.Id)
 			.Without(x => x.DriverId)
-			.Without(x => x.CarId)
 			.Create();
 
 		var waypoints = _fixture.Build<Waypoint>()
@@ -139,7 +137,7 @@ public class ReservationRepositoryTests : BaseRepositoryTest
 			await _rideRepository.Insert(session, ride, ct);
 			await _waypointRepository.BulkInsert(session, waypoints, ct);
 			await _legRepository.BulkInsert(session, legs, ct);
-			await _reservationRepository.InsertLeg(session, reservation, ct);
+			await _reservationRepository.InsertReservation(session, reservation, ct);
 
 			await session.CommitAsync(ct);
 		}
@@ -151,7 +149,7 @@ public class ReservationRepositoryTests : BaseRepositoryTest
 				Offset = 0,
 				Limit = int.MaxValue,
 			};
-			var result = await _reservationRepository.GetLegsByFilter(session, filter, ct);
+			var result = await _reservationRepository.GetReservationsByFilter(session, filter, ct);
 			result.Should().ContainEquivalentOf(reservation);
 		}
 	}
@@ -167,7 +165,7 @@ public class ReservationRepositoryTests : BaseRepositoryTest
 				.With(x => x.Offset, 0)
 				.With(x => x.Limit, int.MaxValue)
 				.Create();
-			var result = await _reservationRepository.GetLegsByFilter(session, filter, ct);
+			var result = await _reservationRepository.GetReservationsByFilter(session, filter, ct);
 			result.Should().NotBeNull();
 		}
 	}
@@ -181,7 +179,6 @@ public class ReservationRepositoryTests : BaseRepositoryTest
 		var ride = _fixture.Build<Ride>()
 			.With(x => x.AuthorId, user.Id)
 			.Without(x => x.DriverId)
-			.Without(x => x.CarId)
 			.Create();
 
 		var waypoints = _fixture.Build<Waypoint>()
@@ -230,7 +227,7 @@ public class ReservationRepositoryTests : BaseRepositoryTest
 			await _rideRepository.Insert(session, ride, ct);
 			await _waypointRepository.BulkInsert(session, waypoints, ct);
 			await _legRepository.BulkInsert(session, legs, ct);
-			await _reservationRepository.InsertLeg(session, reservation, ct);
+			await _reservationRepository.InsertReservation(session, reservation, ct);
 			var result = await _reservationRepository.BulkInsertAffectedLegs(session, reservation.Id, affectedLegs, ct);
 			await session.CommitAsync(ct);
 

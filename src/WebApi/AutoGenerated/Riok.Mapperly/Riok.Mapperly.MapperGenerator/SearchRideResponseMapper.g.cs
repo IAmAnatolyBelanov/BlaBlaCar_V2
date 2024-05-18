@@ -9,7 +9,6 @@ namespace WebApi.Models
             target.Id = source.RideId;
             target.AuthorId = source.AuthorId;
             target.DriverId = source.DriverId;
-            target.CarId = source.CarId;
             target.Created = source.Created;
             target.Status = source.Status;
             target.AvailablePlacesCount = source.TotalAvailablePlacesCount;
