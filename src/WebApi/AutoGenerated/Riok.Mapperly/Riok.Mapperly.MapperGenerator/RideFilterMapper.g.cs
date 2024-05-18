@@ -34,8 +34,8 @@ namespace WebApi.Models
             target.Limit = src.Limit;
             target.SortType = src.SortType;
             target.SortDirection = src.SortDirection;
-            target.DeparturePointSearchRadiusKilometers = src.DeparturePointSearchRadiusKilometers;
-            target.ArrivalPointSearchRadiusKilometers = src.ArrivalPointSearchRadiusKilometers;
+            target.DeparturePointSearchRadiusKilometers = (float)src.DeparturePointSearchRadiusKilometers;
+            target.ArrivalPointSearchRadiusKilometers = (float)src.ArrivalPointSearchRadiusKilometers;
             target.MinDepartureTime = src.MinDepartureTime;
             target.MaxDepartureTime = src.MaxDepartureTime;
             target.MinArrivalTime = src.MinArrivalTime;

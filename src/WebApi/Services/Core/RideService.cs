@@ -17,6 +17,8 @@ namespace WebApi.Services.Core
 		public const string CarIdIsEmpty = "RideService_CarIdIsEmpty";
 		public const string DriverDataDoesNotExist = "RideService_DriverDataDoesNotExist";
 		public const string CarHasLessSeatsThanRideAvailablePlaces = "RideService_CarHasLessSeatsThanRideAvailablePlaces";
+		public const string UnableToReserveRide = "RideService_UnableToReserveRide";
+		public const string UnknownCoordinates = "RideService_UnknownCoordinates";
 	}
 
 	public interface IRideService
@@ -25,6 +27,7 @@ namespace WebApi.Services.Core
 		ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct);
 		Task<IReadOnlyList<SearchRideResponse>> SearchRides(RideFilter filter, CancellationToken ct);
 		Task<GetRideResponse?> GetRideById(Guid rideId, CancellationToken ct);
+		Task<ReservationDto> MakeReservation(MakeReservationRequest request, CancellationToken ct);
 	}
 
 	public class RideService : IRideService
@@ -36,7 +39,7 @@ namespace WebApi.Services.Core
 		private readonly ILegDtoMapper _legDtoMapper;
 		private readonly IGeocodeService _geocodeService;
 		private readonly IValidator<(FormattedPoint Point, YandexGeocodeResponseDto GeocodeResponse)> _yaGeocodeResponseValidator;
-		private readonly IReservationDtoMapper _reservationDtoMapper;
+		private readonly IReservationMapper _reservationMapper;
 		private readonly IClock _clock;
 		private readonly IValidator<RideDto> _rideDtoValidator;
 		private readonly IUserRepository _userRepository;
@@ -51,6 +54,8 @@ namespace WebApi.Services.Core
 		private readonly IValidator<RideFilter> _rideFilterValidator;
 		private readonly ISearchRideResponseMapper _searchRideResponseMapper;
 		private readonly ICarMapper _carMapper;
+		private readonly IValidator<MakeReservationRequest> _makeReservationRequestValidator;
+		private readonly IReservationRepository _reservationRepository;
 
 		public RideService(
 			IRideServiceConfig config,
@@ -58,7 +63,7 @@ namespace WebApi.Services.Core
 			ILegDtoMapper legDtoMapper,
 			IGeocodeService geocodeService,
 			IValidator<(FormattedPoint Point, YandexGeocodeResponseDto GeocodeResponse)> yaGeocodeResponseValidator,
-			IReservationDtoMapper reservationDtoMapper,
+			IReservationMapper reservationMapper,
 			IClock clock,
 			IValidator<RideDto> rideDtoValidator,
 			IUserRepository userRepository,
@@ -72,14 +77,16 @@ namespace WebApi.Services.Core
 			IRideFilterMapper rideFilterMapper,
 			IValidator<RideFilter> rideFilterValidator,
 			ISearchRideResponseMapper searchRideResponseMapper,
-			ICarMapper carMapper)
+			ICarMapper carMapper,
+			IValidator<MakeReservationRequest> makeReservationRequestValidator,
+			IReservationRepository reservationRepository)
 		{
 			_config = config;
 			_rideDtoMapper = rideDtoMapper;
 			_legDtoMapper = legDtoMapper;
 			_geocodeService = geocodeService;
 			_yaGeocodeResponseValidator = yaGeocodeResponseValidator;
-			_reservationDtoMapper = reservationDtoMapper;
+			_reservationMapper = reservationMapper;
 			_clock = clock;
 			_rideDtoValidator = rideDtoValidator;
 			_userRepository = userRepository;
@@ -94,6 +101,8 @@ namespace WebApi.Services.Core
 			_rideFilterValidator = rideFilterValidator;
 			_searchRideResponseMapper = searchRideResponseMapper;
 			_carMapper = carMapper;
+			_makeReservationRequestValidator = makeReservationRequestValidator;
+			_reservationRepository = reservationRepository;
 		}
 
 		public async Task<RideDto> CreateRide(RideDto rideDto, CancellationToken ct)
@@ -336,6 +345,121 @@ namespace WebApi.Services.Core
 			var dbResult = await _rideRepository.GetByFilter(session, dbFilter, ct);
 
 			var result = dbResult.Select(_searchRideResponseMapper.MapToResponse).ToArray();
+
+			return result;
+		}
+
+		public async Task<ReservationDto> MakeReservation(MakeReservationRequest request, CancellationToken ct)
+		{
+			// Сравнивать двоичные числа просто на равенство опасно. Поэтому приходится вычислять дистанцию.
+			// Конфигом указано минимально допустимое расстояние между точками. Это же число ещё меньше.
+			const float minDistanceInKilometers = 0.3f;
+
+			var start = _clock.Now;
+
+			_makeReservationRequestValidator.ValidateAndThrowFriendly(request);
+
+			var session = _sessionFactory.OpenPostgresConnection().StartTrace().BeginTransaction();
+
+			var rideFilter = new RideDbFilter
+			{
+				RideIds = [request.RideId!.Value],
+				ArrivalPoint = request.WaypointTo!.Value.ToPoint(),
+				ArrivalPointSearchRadiusKilometers = 0.3f,
+				DeparturePoint = request.WaypointFrom!.Value.ToPoint(),
+				DeparturePointSearchRadiusKilometers = 0.3f,
+				AvailableStatuses = [(int)RideStatus.ActiveNotStarted],
+				Limit = 1,
+				Offset = 0,
+			};
+			var rideTask = _rideRepository.GetByFilter(session, rideFilter, ct);
+			var passengerTask = _userRepository.GetById(session, request.PassengerId!.Value, ct);
+			var waypointsTask = _waypointRepository.GetByRideId(session, request.RideId.Value, ct);
+			var legsTask = _legRepository.GetByRideId(session, request.RideId.Value, ct, onlyManual: false);
+
+			var rides = await rideTask;
+
+			if (rides.Count == 0)
+				throw new UserFriendlyException(RideServiceValidationCodes.UnableToReserveRide, $"Невозможно забронировать поездку {request.RideId} - поездка удалена, не находится в статусе \"Подготовка\", или на указанный сегмент поездки нет свободных мест");
+
+			var passenger = await passengerTask;
+			if (passenger is null)
+				throw new UserFriendlyException(CommonValidationCodes.UserNotFound, $"Пользователь {request.PassengerId} не найден");
+
+			var waypoints = await waypointsTask;
+			var waypointsDict = waypoints.ToDictionary(x => x.Id);
+
+			var legs = await legsTask;
+			var reservingLeg = legs.FirstOrDefault(x =>
+			{
+				var pointFrom = FormattedPoint.FromPoint(waypointsDict[x.WaypointFromId].Point);
+				var distanceFrom = Haversine.CalculateDistanceInKilometers(pointFrom, request.WaypointFrom.Value);
+				if (distanceFrom > minDistanceInKilometers)
+					return false;
+
+				var pointTo = FormattedPoint.FromPoint(waypointsDict[x.WaypointToId].Point);
+
+				var distanceTo = Haversine.CalculateDistanceInKilometers(pointTo, request.WaypointTo.Value);
+				if (distanceTo > minDistanceInKilometers)
+					return false;
+
+				return true;
+			});
+
+			if (reservingLeg is null)
+				throw new UserFriendlyException(RideServiceValidationCodes.UnknownCoordinates, $"Не удалось найти сегмент пути по координатам {request.WaypointFrom} - {request.WaypointTo}");
+
+			var affectedLegs = GetAffectedLegs(legs, waypointsDict, reservingLeg);
+
+			var reservation = new Reservation
+			{
+				Id = Guid.NewGuid(),
+				RideId = request.RideId.Value,
+				Created = start,
+				LegId = reservingLeg.Id,
+				PassengerId = passenger.Id,
+				PeopleCount = request.PassengersCount!.Value,
+				IsDeleted = false,
+			};
+			var reservationTask = _reservationRepository.InsertReservation(session, reservation, ct);
+			var affectedLegsTask = _reservationRepository.BulkInsertAffectedLegs(
+				session: session,
+				reservationId: reservation.Id,
+				legIds: affectedLegs.Select(x => x.Id).ToArray(),
+				ct: ct);
+
+			await reservationTask;
+			await affectedLegsTask;
+
+			await session.CommitAsync(ct);
+
+			var result = _reservationMapper.ToDto(reservation);
+			result.Leg = _legDtoMapper.ToDto(reservingLeg);
+
+			return result;
+		}
+
+		private IReadOnlyList<Leg> GetAffectedLegs(IReadOnlyList<Leg> allLegs, IReadOnlyDictionary<Guid, Waypoint> waypoints, Leg checkingLeg)
+		{
+			var result = new List<Leg>();
+			result.Add(checkingLeg);
+
+			// https://stackoverflow.com/a/7325268 - How check intersection of DateTime periods
+
+			var a1 = waypoints[checkingLeg.WaypointFromId].Departure;
+			var a2 = waypoints[checkingLeg.WaypointToId].Arrival;
+
+			foreach (var leg in allLegs)
+			{
+				if (leg.Id == checkingLeg.Id)
+					continue;
+
+				var b1 = waypoints[leg.WaypointFromId].Departure;
+				var b2 = waypoints[leg.WaypointToId].Arrival;
+
+				if (a1 < b2 && b1 < a2)
+					result.Add(leg);
+			}
 
 			return result;
 		}

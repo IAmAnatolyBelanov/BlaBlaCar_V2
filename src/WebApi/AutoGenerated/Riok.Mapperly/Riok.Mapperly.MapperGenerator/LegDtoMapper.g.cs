@@ -11,5 +11,13 @@ namespace WebApi.Models
             target.IsBetweenNeighborPoints = dto.IsBetweenNeighborPoints;
             return target;
         }
+
+        public partial global::WebApi.Models.LegDto ToDto(global::WebApi.Models.Leg leg)
+        {
+            var target = new global::WebApi.Models.LegDto();
+            target.PriceInRub = leg.PriceInRub;
+            target.IsBetweenNeighborPoints = leg.IsBetweenNeighborPoints;
+            return target;
+        }
     }
 }

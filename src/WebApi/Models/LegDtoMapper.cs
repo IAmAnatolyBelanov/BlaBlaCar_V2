@@ -5,6 +5,7 @@ namespace WebApi.Models;
 public interface ILegDtoMapper
 {
 	IReadOnlyList<Leg> ToLegs(RideDto rideDto);
+	LegDto ToDto(Leg leg);
 }
 
 [Mapper]
@@ -23,4 +24,6 @@ public partial class LegDtoMapper : ILegDtoMapper
 	}
 
 	private partial Leg ToLeg(LegDto dto);
+
+	public partial LegDto ToDto(Leg leg);
 }

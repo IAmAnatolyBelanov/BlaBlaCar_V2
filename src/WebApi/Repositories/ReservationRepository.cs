@@ -5,8 +5,8 @@ namespace WebApi.Repositories;
 
 public interface IReservationRepository : IRepository
 {
-	Task<int> InsertLeg(IPostgresSession session, Reservation reservation, CancellationToken ct);
-	Task<IReadOnlyList<Reservation>> GetLegsByFilter(IPostgresSession session, ReservationDbFilter filter, CancellationToken ct);
+	Task<int> InsertReservation(IPostgresSession session, Reservation reservation, CancellationToken ct);
+	Task<IReadOnlyList<Reservation>> GetReservationsByFilter(IPostgresSession session, ReservationDbFilter filter, CancellationToken ct);
 	Task<ulong> BulkInsertAffectedLegs(IPostgresSession session, Guid reservationId, IReadOnlyList<Guid> legIds, CancellationToken ct);
 }
 
@@ -15,7 +15,7 @@ public class ReservationRepository : IReservationRepository
 	private const string _reservationTableName = "\"Reservations\"";
 	private const string _affectedLegsTableName = "\"AffectedByReservationsLegs\"";
 
-	public async Task<int> InsertLeg(IPostgresSession session, Reservation reservation, CancellationToken ct)
+	public async Task<int> InsertReservation(IPostgresSession session, Reservation reservation, CancellationToken ct)
 	{
 		const string sql = $@"
 			INSERT INTO {_reservationTableName} ({_fullColumnsList})
@@ -34,7 +34,7 @@ public class ReservationRepository : IReservationRepository
 		return result;
 	}
 
-	public async Task<IReadOnlyList<Reservation>> GetLegsByFilter(IPostgresSession session, ReservationDbFilter filter, CancellationToken ct)
+	public async Task<IReadOnlyList<Reservation>> GetReservationsByFilter(IPostgresSession session, ReservationDbFilter filter, CancellationToken ct)
 	{
 		var sql = $@"
 			SELECT {_fullColumnsList} FROM {_reservationTableName}

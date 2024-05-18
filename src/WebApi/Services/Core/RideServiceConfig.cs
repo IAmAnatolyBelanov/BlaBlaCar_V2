@@ -33,6 +33,8 @@
 		public TimeSpan MaxSearchPeriod { get; }
 
 		public int MaxSqlLimit { get; }
+
+		public int MinDistanceBetweenPointsInKilometers { get; }
 	}
 
 	public class RideServiceConfig : IBaseConfig, IRideServiceConfig
@@ -65,6 +67,8 @@
 		public TimeSpan MaxSearchPeriod { get; set; } = TimeSpan.FromDays(14);
 
 		public int MaxSqlLimit { get; set; } = 5_000;
+
+		public int MinDistanceBetweenPointsInKilometers { get; set; } = 1;
 
 		public IEnumerable<string> GetValidationErrors()
 		{
@@ -107,6 +111,9 @@
 
 			if (MaxSqlLimit <= 0)
 				yield return $"{nameof(MaxSqlLimit)} must be > 0";
+
+			if (MinDistanceBetweenPointsInKilometers <= 0)
+				yield return $"{nameof(MinDistanceBetweenPointsInKilometers)} must be > 0";
 		}
 	}
 }

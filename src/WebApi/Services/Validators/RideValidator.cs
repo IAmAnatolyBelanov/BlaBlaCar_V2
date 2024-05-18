@@ -49,6 +49,8 @@ public class RideValidationCodes : ValidationCodes
 	public const string LegWithoutPrice = "RideValidator_LegWithoutPrice";
 
 	public const string WrongCountOfWaypoints = "RideValidator_WrongCountOfWaypoints";
+
+	public const string PointsAreTooClose = "RideValidator_PointsAreTooClose";
 }
 
 public class RideDtoValidator : AbstractValidator<RideDto>
@@ -200,7 +202,14 @@ public class RideDtoValidator : AbstractValidator<RideDto>
 			RuleFor(x => x.Waypoints)
 				.Must(x => x.Count <= _rideServiceConfig.MaxWaypoints)
 				.WithErrorCode(RideValidationCodes.WrongCountOfWaypoints)
-				.WithMessage("Количество точек в поездке (включая начальную и конечную) не может быть больше максимального");
+				.WithMessage("Количество точек в поездке (включая начальную и конечную) не может быть больше максимального")
+				.DependentRules(() =>
+				{
+					RuleFor(x => x.Waypoints)
+						.Must(AreAllWaypointsHasMinimalDistanceBetweenEachOther)
+						.WithErrorCode(RideValidationCodes.PointsAreTooClose)
+						.WithMessage("Точки поездки находятся слишком близко между собой");
+				});
 		});
 	}
 
@@ -302,6 +311,25 @@ public class RideDtoValidator : AbstractValidator<RideDto>
 				return false;
 		}
 
+		return true;
+	}
+
+	private bool AreAllWaypointsHasMinimalDistanceBetweenEachOther(IReadOnlyList<WaypointDto> waypoints)
+	{
+		for (int i = 0; i < waypoints.Count; i++)
+		{
+			var pointFrom = waypoints[i];
+
+			for (int j = i + 1; j < waypoints.Count; j++)
+			{
+				var pointTo = waypoints[j];
+
+				var distance = Haversine.CalculateDistanceInKilometers(pointFrom.Point, pointTo.Point);
+
+				if (distance < _rideServiceConfig.MinDistanceBetweenPointsInKilometers)
+					return false;
+			}
+		}
 		return true;
 	}
 }

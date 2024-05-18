@@ -15,14 +15,14 @@ public class RideDbFilter
 	public int Offset { get; set; }
 	public int Limit { get; set; }
 
-	public RideSortType SortType { get; set; }
-	public SortDirection SortDirection { get; set; }
+	public RideSortType SortType { get; set; } = RideSortType.ByEndTime;
+	public SortDirection SortDirection { get; set; } = SortDirection.Desc;
 
 	public Point? DeparturePoint { get; set; }
-	public int DeparturePointSearchRadiusKilometers { get; set; }
+	public float DeparturePointSearchRadiusKilometers { get; set; }
 
 	public Point? ArrivalPoint { get; set; }
-	public int ArrivalPointSearchRadiusKilometers { get; set; }
+	public float ArrivalPointSearchRadiusKilometers { get; set; }
 
 
 	public DateTimeOffset? MinDepartureTime { get => minDepartureTime; set => minDepartureTime = value?.ToUniversalTime(); }

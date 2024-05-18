@@ -41,9 +41,15 @@ namespace WebApi.Controllers
 		}
 
 		[HttpPost]
-		public async Task<IReadOnlyList<SearchRideResponse>> SearchRides([FromBody] RideFilter filter, CancellationToken ct)
+		public async Task<BaseResponse<IReadOnlyList<SearchRideResponse>>> SearchRides([FromBody] RideFilter filter, CancellationToken ct)
 		{
 			var result = await _rideService.SearchRides(filter, ct);
+			return BaseResponse.From(result);
+		}
+
+		[HttpPost]
+		public async Task<BaseResponse<ReservationDto>> CreateReservation([FromBody] MakeReservationRequest request, CancellationToken ct){
+			var result = await _rideService.MakeReservation(request, ct);
 			return result;
 		}
 	}
