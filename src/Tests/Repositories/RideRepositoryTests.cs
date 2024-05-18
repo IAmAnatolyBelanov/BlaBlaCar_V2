@@ -1,3 +1,4 @@
+using NetTopologySuite.Geometries;
 using System.Diagnostics;
 using WebApi.Models;
 using WebApi.Models.ControllersModels.RideControllerModels;
@@ -12,6 +13,7 @@ public class RideRepositoryTests : BaseRepositoryTest
 	private readonly ICarRepository _carRepository;
 	private readonly IWaypointRepository _waypointRepository;
 	private readonly ILegRepository _legRepository;
+	private readonly IReservationRepository _reservationRepository;
 
 	public RideRepositoryTests(TestAppFactoryWithDb fixture) : base(fixture)
 	{
@@ -20,6 +22,7 @@ public class RideRepositoryTests : BaseRepositoryTest
 		_carRepository = _provider.GetRequiredService<ICarRepository>();
 		_waypointRepository = _provider.GetRequiredService<IWaypointRepository>();
 		_legRepository = _provider.GetRequiredService<ILegRepository>();
+		_reservationRepository = _provider.GetRequiredService<IReservationRepository>();
 	}
 
 	[Fact]
@@ -226,5 +229,113 @@ public class RideRepositoryTests : BaseRepositoryTest
 
 		var result = _rideRepository.GetByFilter(session, filter, ct);
 		result.Should().NotBeNull();
+	}
+
+	[Fact]
+	public async Task PricesTest()
+	{
+		var ct = CancellationToken.None;
+
+		var pointFrom = _fixture.Create<FormattedPoint>();
+		var pointTo = _fixture.Create<FormattedPoint>();
+
+		var yesterday = DateTimeOffset.UtcNow.AddDays(-1);
+
+		const int usersCount = 15;
+		const int ridesCount = 10;
+		const int reservationsCount = 4;
+
+		await Parallel.ForAsync(0, usersCount, async (_, _) =>
+		{
+			using var session = _sessionFactory.OpenPostgresConnection();
+			var user = _fixture.Create<User>();
+			await _userRepository.Insert(session, user, ct);
+			for (int i = 0; i < ridesCount; i++)
+			{
+				var ride = _fixture.Build<Ride>()
+					.With(x => x.DriverId, user.Id)
+					.With(x => x.AuthorId, user.Id)
+					.With(x => x.Status, RideStatus.StartedOrDone)
+					.With(x => x.Created, yesterday.AddHours(-8))
+					.Create();
+
+				await _rideRepository.Insert(session, ride, ct);
+
+				var from = new Waypoint
+				{
+					Id = Guid.NewGuid(),
+					Arrival = yesterday.AddHours(-1),
+					Departure = yesterday.AddHours(-2),
+					FullName = "test",
+					NameToCity = "test",
+					Point = pointFrom.ToPoint(),
+					RideId = ride.Id,
+				};
+				var to = new Waypoint
+				{
+					Id = Guid.NewGuid(),
+					Arrival = yesterday.AddHours(1),
+					Departure = null,
+					FullName = "test",
+					NameToCity = "test",
+					Point = pointTo.ToPoint(),
+					RideId = ride.Id,
+				};
+
+				from.NextWaypointId = to.Id;
+				to.PreviousWaypointId = from.Id;
+
+				await _waypointRepository.BulkInsert(session, [from, to], ct);
+
+				var leg = new Leg
+				{
+					Id = Guid.NewGuid(),
+					IsBetweenNeighborPoints = true,
+					IsManual = true,
+					PriceInRub = Random.Shared.Next(1000, 15_000),
+					RideId = ride.Id,
+					WaypointFromId = from.Id,
+					WaypointToId = to.Id,
+				};
+
+				await _legRepository.BulkInsert(session, [leg], ct);
+
+				for (int j = 0; j < reservationsCount; j++)
+				{
+					var reservation = new Reservation
+					{
+						Id = Guid.NewGuid(),
+						Created = yesterday.AddHours(-7),
+						IsDeleted = false,
+						LegId = leg.Id,
+						PassengerId = user.Id,
+						PeopleCount = 1,
+						RideId = ride.Id,
+					};
+					await _reservationRepository.InsertReservation(session, reservation, ct);
+					await _reservationRepository.BulkInsertAffectedLegs(session, reservation.Id, [leg.Id], ct);
+				}
+			}
+		});
+
+		var request = new PriceRecommendationRequest
+		{
+			ArrivalDateFrom = yesterday.AddDays(-3),
+			ArrivalDateTo = yesterday.AddDays(3),
+			HigherPercentile = 0.9f,
+			MiddlePercentile = 0.8f,
+			LowerPercentile = 0.7f,
+			PointFrom = pointFrom.ToPoint(),
+			PointTo = pointTo.ToPoint(),
+			RadiusInKilometers = 1,
+		};
+
+		using var session = _sessionFactory.OpenPostgresConnection();
+
+		var priceRecommendation = await _rideRepository.GetPriceRecommendation(session, request, ct);
+
+		priceRecommendation.Should().NotBeNull();
+		priceRecommendation!.RowsCount.Should().Be(usersCount * ridesCount * reservationsCount);
+		priceRecommendation.HigherRecommendedPrice.Should().BeGreaterThanOrEqualTo(priceRecommendation.LowerRecommendedPrice);
 	}
 }

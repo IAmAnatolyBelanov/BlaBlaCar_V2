@@ -1,7 +1,6 @@
 using NpgsqlTypes;
 using WebApi.DataAccess;
 using WebApi.Models;
-using WebApi.Models.ControllersModels.RideControllerModels;
 
 namespace WebApi.Repositories;
 
@@ -11,6 +10,7 @@ public interface IRideRepository : IRepository
 	Task<Ride?> GetById(IPostgresSession session, Guid rideId, CancellationToken ct);
 	Task<IReadOnlyList<SearchRideDbResponse>> GetByFilter(IPostgresSession session, RideDbFilter filter, CancellationToken ct);
 	Task<string> GetCounts(IPostgresSession session, CancellationToken ct);
+	Task<PriceRecommendation?> GetPriceRecommendation(IPostgresSession session, PriceRecommendationRequest request, CancellationToken ct);
 }
 
 public class RideRepository : IRideRepository
@@ -28,7 +28,6 @@ public class RideRepository : IRideRepository
 	private const string _defaultLegAlias = "leg";
 	private const string _defaultReservationAlias = "reservation";
 	private const string _defaultAffectedLegAlias = "affected_leg";
-
 
 	public async Task<int> Insert(IPostgresSession session, Ride ride, CancellationToken ct)
 	{
@@ -156,6 +155,39 @@ public class RideRepository : IRideRepository
 		";
 
 		var result = await session.QueryAsync<SearchRideDbResponse>(sql, filter, ct);
+		return result;
+	}
+
+	public async Task<PriceRecommendation?> GetPriceRecommendation(IPostgresSession session, PriceRecommendationRequest request, CancellationToken ct)
+	{
+		var sql = $@"
+			SELECT
+				PERCENTILE_CONT(@{nameof(request.LowerPercentile)}) WITHIN GROUP (ORDER BY {_defaultLegAlias}.""{nameof(Leg.PriceInRub)}"" ASC) AS {nameof(PriceRecommendation.LowerRecommendedPrice)}
+				, PERCENTILE_CONT(@{nameof(request.MiddlePercentile)}) WITHIN GROUP (ORDER BY {_defaultLegAlias}.""{nameof(Leg.PriceInRub)}"" ASC) AS {nameof(PriceRecommendation.MiddleRecommendedPrice)}
+				, PERCENTILE_CONT(@{nameof(request.HigherPercentile)}) WITHIN GROUP (ORDER BY {_defaultLegAlias}.""{nameof(Leg.PriceInRub)}"" ASC) AS {nameof(PriceRecommendation.HigherRecommendedPrice)}
+				, COUNT(*) AS {nameof(PriceRecommendation.RowsCount)}
+			FROM
+				{_affectedByReservationsLegsTableName} {_defaultAffectedLegAlias}
+			INNER JOIN {_reservationsTableName} {_defaultReservationAlias}
+				ON {_defaultReservationAlias}.""{nameof(Reservation.Id)}"" = {_defaultAffectedLegAlias}.""{nameof(AffectedByReservationLeg.ReservationId)}""
+			INNER JOIN {_legsTableName} {_defaultLegAlias}
+				ON {_defaultLegAlias}.""{nameof(Leg.Id)}"" = {_defaultAffectedLegAlias}.""{nameof(AffectedByReservationLeg.LegId)}""
+			INNER JOIN {_rideTableName} {_defaultRideAlias}
+				ON {_defaultRideAlias}.""{nameof(Ride.Id)}"" = {_defaultLegAlias}.""{nameof(Leg.RideId)}""
+			INNER JOIN {_waypointsTableName} {_defaultWaypointDepartureAlias}
+				ON {_defaultWaypointDepartureAlias}.""{nameof(Waypoint.Id)}"" = {_defaultLegAlias}.""{nameof(Leg.WaypointFromId)}""
+			INNER JOIN {_waypointsTableName} {_defaultWaypointArrivalAlias}
+				ON {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Id)}"" = {_defaultLegAlias}.""{nameof(Leg.WaypointToId)}""
+			WHERE
+				{_defaultRideAlias}.""{nameof(Ride.Status)}"" = {(int)RideStatus.StartedOrDone}
+				AND {_defaultReservationAlias}.""{nameof(Reservation.IsDeleted)}"" = FALSE
+				AND {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Arrival)}"" <= @{nameof(request.ArrivalDateTo)}
+				AND {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Arrival)}"" >= @{nameof(request.ArrivalDateFrom)}
+				AND (ST_DISTANCE({_defaultWaypointDepartureAlias}.""{nameof(Waypoint.Point)}"", @{nameof(request.PointFrom)}) / 1000) <= @{nameof(request.RadiusInKilometers)}
+				AND (ST_DISTANCE({_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Point)}"", @{nameof(request.PointTo)}) / 1000) <= @{nameof(request.RadiusInKilometers)}
+		";
+
+		var result = await session.QueryFirstOrDefaultAsync<PriceRecommendation>(sql, request, ct);
 		return result;
 	}
 
