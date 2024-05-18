@@ -87,11 +87,12 @@ public class InitialMigration : PostgresMigrator
 			.WithColumn("Id").AsGuid().PrimaryKey()
 			.WithColumn("Created").AsDateTimeOffset()
 			.WithColumn("Vin").AsString()
-			.WithColumn("RegistrationNumber").AsString()
+			.WithColumn("RegistrationNumber").AsString().Nullable()
 			.WithColumn("DoesVinAndRegistrationNumberMatches").AsBoolean()
-			.WithColumn("Name").AsString()
+			.WithColumn("Name").AsString().Nullable()
 			.WithColumn("SeatsCount").AsInt32().WithColumnDescription("Count of seats in the car including driver's one")
 			.WithColumn("IsDeleted").AsBoolean()
+			.WithColumn("IsVinValid").AsBoolean()
 			.WithTechnicalCommentColumn();
 
 		Create.Index()

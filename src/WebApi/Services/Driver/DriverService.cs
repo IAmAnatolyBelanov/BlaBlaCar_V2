@@ -11,10 +11,16 @@ using WebApi.Services.Validators;
 
 namespace WebApi.Services.Driver;
 
+public class DriverServiceValidationCodes : ValidationCodes
+{
+	public const string VinContainsBannedSymbols = "DriverService_VinContainsBannedSymbols";
+}
+
 public interface IDriverService
 {
-	Task<DriverData> ValidateDriverLicense(IPostgresSession session, Guid userId, Models.DriverServiceModels.Driver driver, CancellationToken ct);
+	Task<DriverData> ValidateDriverLicense(Guid userId, Models.DriverServiceModels.Driver driver, CancellationToken ct);
 	Task<PersonData> ValidatePerson(IPostgresSession session, Person person, CancellationToken ct);
+	Task<CarDto> SearchCar(string vinCode, CancellationToken ct);
 }
 
 public class DriverService : IDriverService
@@ -36,11 +42,16 @@ public class DriverService : IDriverService
 	private readonly string _taxServiceBaseUrl;
 	private readonly string _mvdServiceBaseUrl;
 	private readonly string _gibddServiceBaseUrl;
+	private readonly string _vinConverterServiceBaseUrl;
+	private readonly string _vinDecoderServiceBaseUrl;
 	private readonly IAsyncPolicy _asyncPolicy;
 	private readonly ISessionFactory _sessionFactory;
 	private readonly ICloudApiResponseInfoRepository _cloudApiResponseInfoRepository;
 	private readonly IPersonDataRepository _personDataRepository;
 	private readonly IDriverDataRepository _driverDataRepository;
+	private readonly ICarRepository _carRepository;
+	private readonly ICarMapper _carMapper;
+	private readonly IVinValidator _vinValidator;
 
 	private readonly ConcurrentQueue<CloudApiResponseInfo> _cloudApiResponsesForSave = new();
 	private readonly Task _cloudApiResponsesSaver;
@@ -55,7 +66,10 @@ public class DriverService : IDriverService
 		ISessionFactory sessionFactory,
 		ICloudApiResponseInfoRepository cloudApiResponseInfoRepository,
 		IPersonDataRepository personDataRepository,
-		IDriverDataRepository driverDataRepository)
+		IDriverDataRepository driverDataRepository,
+		ICarRepository carRepository,
+		ICarMapper carMapper,
+		IVinValidator vinValidator)
 	{
 		_config = driverServiceConfig;
 		_personValidator = personValidator;
@@ -67,12 +81,17 @@ public class DriverService : IDriverService
 		_cloudApiResponseInfoRepository = cloudApiResponseInfoRepository;
 		_personDataRepository = personDataRepository;
 		_driverDataRepository = driverDataRepository;
+		_carRepository = carRepository;
+		_carMapper = carMapper;
+		_vinValidator = vinValidator;
 
 		var baseUrl = new Uri(_config.ApiCloudBaseUrl);
 
 		_taxServiceBaseUrl = new Uri(baseUrl, "nalog.php").AbsoluteUri;
 		_mvdServiceBaseUrl = new Uri(baseUrl, "mvd.php").AbsoluteUri;
 		_gibddServiceBaseUrl = new Uri(baseUrl, "gibdd.php").AbsoluteUri;
+		_vinConverterServiceBaseUrl = new Uri(baseUrl, "converter.php").AbsoluteUri;
+		_vinDecoderServiceBaseUrl = new Uri(baseUrl, "vindecoder.php").AbsoluteUri;
 
 		_asyncPolicy = Policy
 			.Handle<HttpRequestException>()
@@ -85,12 +104,121 @@ public class DriverService : IDriverService
 			});
 
 		_cloudApiResponsesSaver = StartSaverCloudApiResponseBackgroundTask();
+
 	}
 
-	public async Task<DriverData> ValidateDriverLicense(IPostgresSession session, Guid userId, Models.DriverServiceModels.Driver driver, CancellationToken ct)
+	public async Task<CarDto> SearchCar(string vinCode, CancellationToken ct)
+	{
+		var start = _clock.Now;
+		vinCode = vinCode.ToUpper();
+		_vinValidator.ValidateAndThrowFriendly(vinCode);
+
+		using var session = _sessionFactory.OpenPostgresConnection().StartTrace().BeginTransaction();
+		var dbCar = await _carRepository.SearchByVinCode(session, vinCode, ct);
+		if (dbCar is not null)
+		{
+			if (dbCar.IsVinValid)
+				return _carMapper.ToCarDto(dbCar);
+			else
+				throw new UserFriendlyException(VinValidationCodes.InvalidVinCode, "VIN код невалиден");
+		}
+
+		var decoderVinRequestUrl = BuildVinDecodeRequest(vinCode);
+		var decoderVinResponse = await ExecuteCloudApiRequest<VinDecoderResponse>(decoderVinRequestUrl, ct);
+		if (decoderVinResponse.FinalException is not null)
+		{
+			_logger.Error(decoderVinResponse.FinalException, "Failed to decode VIN. Request {Request}", decoderVinRequestUrl);
+			throw decoderVinResponse.FinalException;
+		}
+		var decodedVin = decoderVinResponse.Result;
+		if (decodedVin.Found == false)
+		{
+			dbCar = new Car
+			{
+				Id = Guid.NewGuid(),
+				Vin = vinCode,
+				Created = start,
+				IsVinValid = false,
+			};
+			await _carRepository.Insert(session, dbCar, CancellationToken.None);
+			throw new UserFriendlyException(VinValidationCodes.InvalidVinCode, "VIN код невалиден");
+		}
+
+		var convertVinRequestUrl = BuildVinConvertRequest(vinCode);
+		var convertVinTask = ExecuteCloudApiRequest<VinConverterResponse>(convertVinRequestUrl, ct);
+
+		var gibddVinRequestUrl = BuildGibddVinRequest(vinCode);
+		var gibddVinTask = ExecuteCloudApiRequest<GibddServiceVinSearchResponse>(gibddVinRequestUrl, ct);
+
+		var convertVinResponse = await convertVinTask;
+		var gibddVin = await gibddVinTask;
+
+		string? modelName = null;
+		if (convertVinResponse.Result.Partner?.Result?.BrandModel?.IsNullOrWhiteSpace() == false)
+		{
+			if (gibddVin.Result?.Vehicle?.Color?.IsNullOrWhiteSpace() == false)
+			{
+				var color = gibddVin.Result.Vehicle.Color.ToLower();
+				color = char.ToUpper(color[0]) + color.Substring(1);
+				modelName = $"{color} {convertVinResponse.Result.Partner.Result.BrandModel}";
+			}
+			else
+			{
+				modelName = convertVinResponse.Result.Partner.Result.BrandModel;
+			}
+		}
+		else if (decodedVin.Make?.Value?.IsNullOrWhiteSpace() == false && decodedVin.Model?.Value?.IsNullOrWhiteSpace() == false)
+		{
+			if (gibddVin.Result?.Vehicle?.Color?.IsNullOrWhiteSpace() == false)
+			{
+				var color = gibddVin.Result.Vehicle.Color.ToLower();
+				color = char.ToUpper(color[0]) + color.Substring(1);
+				modelName = $"{color} {decodedVin.Make.Value} {decodedVin.Model.Value}";
+			}
+			else
+			{
+				modelName = $"{decodedVin.Make.Value} {decodedVin.Model.Value}";
+
+			}
+		}
+		else if (gibddVin.Result?.Vehicle?.Model?.IsNullOrWhiteSpace() == false)
+		{
+			string color = "";
+			if (gibddVin.Result.Vehicle.Color?.IsNullOrWhiteSpace() == false)
+			{
+				color = gibddVin.Result.Vehicle.Color.ToLower();
+				color = char.ToUpper(color[0]) + color.Substring(1) + ' ';
+			}
+
+			modelName = $"{color}{gibddVin.Result?.Vehicle?.Model}";
+		}
+
+		int.TryParse(decodedVin.NumberSeats?.Value ?? "0", out var seatsCount);
+
+		dbCar = new Car
+		{
+			Id = Guid.NewGuid(),
+			Created = start,
+			DoesVinAndRegistrationNumberMatches = convertVinResponse.Result.Partner?.Found == true,
+			IsDeleted = false,
+			IsVinValid = convertVinResponse.Result.Partner?.Found == true,
+			Name = modelName,
+			RegistrationNumber = convertVinResponse.Result?.Partner?.Result?.RegNumber,
+			SeatsCount = seatsCount,
+			Vin = vinCode,
+		};
+		await _carRepository.Insert(session, dbCar, CancellationToken.None);
+
+		var result = _carMapper.ToCarDto(dbCar);
+		return result;
+	}
+
+	public async Task<DriverData> ValidateDriverLicense(Guid userId, Models.DriverServiceModels.Driver driver, CancellationToken ct)
 	{
 		var start = _clock.Now;
 		_driverValidator.ValidateAndThrowFriendly(driver);
+
+		using var session = _sessionFactory.OpenPostgresConnection().BeginTransaction().StartTrace();
 
 		var actualPersonData = await _personDataRepository.GetByUserId(session, userId, ct);
 
@@ -159,6 +287,7 @@ public class DriverService : IDriverService
 			driverData.UserId = null;
 
 		await _driverDataRepository.Insert(session, driverData, CancellationToken.None);
+		await session.CommitAsync(CancellationToken.None);
 
 		if (driverData.BirthDate != actualPersonData.BirthDate)
 			throw new UserFriendlyException(DriverValidatorCodes.IncorrectDriverLicenseData, "Неверные данные водительского удостоверения");
@@ -332,7 +461,25 @@ public class DriverService : IDriverService
 		return sb.ToString();
 	}
 
-	private async ValueTask<PolicyResult<T>> ExecuteCloudApiRequest<T>(string requestUrl, CancellationToken ct)
+	private string BuildVinConvertRequest(string vin)
+	{
+		var result = $"{_vinConverterServiceBaseUrl}?type=search&string={vin}&token={_config.ApiCloudApiKey}";
+		return result;
+	}
+
+	private string BuildVinDecodeRequest(string vin)
+	{
+		var result = $"{_vinDecoderServiceBaseUrl}?type=vin&vin={vin}&token={_config.ApiCloudApiKey}";
+		return result;
+	}
+
+	private string BuildGibddVinRequest(string vin)
+	{
+		var result = $"{_gibddServiceBaseUrl}?type=gibdd&vin={vin}&token={_config.ApiCloudApiKey}";
+		return result;
+	}
+
+	private async Task<PolicyResult<T>> ExecuteCloudApiRequest<T>(string requestUrl, CancellationToken ct)
 	{
 		var cloudApiResponse = await _asyncPolicy.ExecuteAndCaptureAsync(async internalCt =>
 		{

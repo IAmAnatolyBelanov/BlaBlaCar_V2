@@ -7,12 +7,18 @@ namespace WebApi.Models
         public partial global::WebApi.Models.CarDto ToCarDto(global::WebApi.Models.Car car)
         {
             var target = new global::WebApi.Models.CarDto();
+            if (car.RegistrationNumber != null)
+            {
+                target.RegistrationNumber = car.RegistrationNumber;
+            }
+            if (car.Name != null)
+            {
+                target.Name = car.Name;
+            }
             target.Id = car.Id;
             target.Created = car.Created;
             target.Vin = car.Vin;
-            target.RegistrationNumber = car.RegistrationNumber;
             target.DoesVinAndRegistrationNumberMatches = car.DoesVinAndRegistrationNumberMatches;
-            target.Name = car.Name;
             target.SeatsCount = car.SeatsCount;
             return target;
         }

@@ -31,34 +31,5 @@ namespace WebApi.Controllers
 		{
 			await _redisCacheService.SetStringAsync(key, value, TimeSpan.FromMinutes(1), ct);
 		}
-
-		[HttpGet]
-		public async ValueTask TestMultiThread(int iterationsCount = 50_000, CancellationToken ct = default)
-		{
-			//await Task.Delay(TimeSpan.FromMinutes(2));
-
-			await _redisCacheService.TryGetStringAsync("-1", CancellationToken.None);
-
-			ulong errors = 0;
-
-			await Parallel.ForAsync(0, iterationsCount, async (i, ct_2) =>
-			{
-				await Task.Run(async () =>
-				{
-					try
-					{
-						await _redisCacheService.TryGetStringAsync("чехов", CancellationToken.None);
-					}
-					catch(Exception ex)
-					{
-						Interlocked.Increment(ref errors);
-						_logger.Error(ex, "_suggestService =(");
-					}
-				});
-			});
-
-			if (errors != 0)
-				throw new Exception($"_suggestService throwed {errors} exceptions");
-		}
 	}
 }

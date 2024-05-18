@@ -43,7 +43,7 @@ namespace WebApi.Models
             target.MinPriceInRub = src.MinPriceInRub;
             target.MaxPriceInRub = src.MaxPriceInRub;
             target.FreeSeatsCount = src.FreeSeatsCount;
-            target.PaymentMethods = src.PaymentMethods;
+            target.PaymentMethods = global::System.Linq.Enumerable.ToArray(src.PaymentMethods);
             target.ValidationMethods = MapToInt32Array(src.ValidationMethods);
         }
 

@@ -2,6 +2,7 @@
 using WebApi.Models;
 using WebApi.Models.ControllersModels.UserControllerModels;
 using WebApi.Models.DriverServiceModels;
+using WebApi.Services.Driver;
 using WebApi.Services.User;
 
 namespace WebApi.Controllers;
@@ -11,21 +12,33 @@ namespace WebApi.Controllers;
 public class UserController
 {
 	private readonly IUserService _userService;
+	private readonly IDriverService _driverService;
 
-	public UserController(IUserService userService)
+	public UserController(IUserService userService, IDriverService driverService)
 	{
 		_userService = userService;
+		_driverService = driverService;
+
 	}
 
 	[HttpPost]
-	public async Task RegisterUser(User user, CancellationToken ct)
+	public async Task<StringResponse> RegisterUser(User user, CancellationToken ct)
 	{
 		await _userService.RegisterUser(user, ct);
+		return StringResponse.Empty;
 	}
 
 	[HttpPost]
-	public async Task UpdatePersonData(UpdatePersonDataRequest request, CancellationToken ct)
+	public async Task<StringResponse> UpdatePersonData(UpdatePersonDataRequest request, CancellationToken ct)
 	{
 		await _userService.UpdatePersonData(request.UserId, request.Person, ct);
+		return StringResponse.Empty;
+	}
+
+	[HttpPost]
+	public async Task<BaseResponse<DriverData>> UpdateDriverInfo(UpdateDriverInfoRequest request, CancellationToken ct)
+	{
+		var result = await _driverService.ValidateDriverLicense(request.UserId, request.DriverData, ct);
+		return result;
 	}
 }

@@ -11,8 +11,8 @@ public class Inquiry
 	public double Balance { get; set; }
 
 	[JsonProperty("speed")]
-	public long Speed { get; set; }
+	public float Speed { get; set; }
 
 	[JsonProperty("attempts")]
-	public long Attempts { get; set; }
+	public int Attempts { get; set; }
 }

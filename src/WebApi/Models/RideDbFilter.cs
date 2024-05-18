@@ -35,7 +35,7 @@ public class RideDbFilter
 
 	public int? FreeSeatsCount { get; set; }
 
-	public IReadOnlyList<PaymentMethod>? PaymentMethods { get; set; }
+	public PaymentMethod[]? PaymentMethods { get; set; }
 	public int[]? ValidationMethods { get; set; }
 
 	public int[]? AvailableStatuses { get; set; }

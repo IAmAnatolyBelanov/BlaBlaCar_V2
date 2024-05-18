@@ -63,6 +63,7 @@ public class Program
 		builder.Services.RegisterConfigs(builder.Configuration.Bind);
 		builder.Services.RegisterMappers();
 		builder.Services.AddValidatorsFromAssemblyContaining<RideMapper>(lifetime: ServiceLifetime.Singleton);
+		builder.Services.TryAddSingleton<IVinValidator, VinValidator>();
 
 		builder.Services.AddPostgresMigrator();
 

@@ -75,7 +75,29 @@ public class CarRepositoryTest : BaseRepositoryTest
 
 		using (var session = _sessionFactory.OpenPostgresConnection())
 		{
-			var result = await _carRepository.GetById(session, car.Id, ct);
+			var result = await _carRepository.GetByIds(session, [car.Id], ct);
+			result.Should().ContainEquivalentOf(car);
+		}
+	}
+
+	[Fact]
+	public async Task SearchByVinTest()
+	{
+		var ct = CancellationToken.None;
+
+		var car = _fixture.Build<Car>()
+			.With(x => x.IsDeleted, false)
+			.Create();
+
+		using (var session = _sessionFactory.OpenPostgresConnection().BeginTransaction())
+		{
+			await _carRepository.Insert(session, car, ct);
+			await session.CommitAsync(ct);
+		}
+
+		using (var session = _sessionFactory.OpenPostgresConnection())
+		{
+			var result = await _carRepository.SearchByVinCode(session, car.Vin, ct);
 			result.Should().BeEquivalentTo(car);
 		}
 	}
