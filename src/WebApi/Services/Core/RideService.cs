@@ -409,7 +409,7 @@ namespace WebApi.Services.Core
 			if (reservingLeg is null)
 				throw new UserFriendlyException(RideServiceValidationCodes.UnknownCoordinates, $"Не удалось найти сегмент пути по координатам {request.WaypointFrom} - {request.WaypointTo}");
 
-			var affectedLegs = GetAffectedLegs(legs, waypointsDict, reservingLeg);
+			var affectedLegs = GetAffectedLegIds(legs, waypointsDict, reservingLeg);
 
 			var reservation = new Reservation
 			{
@@ -425,7 +425,7 @@ namespace WebApi.Services.Core
 			var affectedLegsTask = _reservationRepository.BulkInsertAffectedLegs(
 				session: session,
 				reservationId: reservation.Id,
-				legIds: affectedLegs.Select(x => x.Id).ToArray(),
+				legIds: affectedLegs,
 				ct: ct);
 
 			await reservationTask;
@@ -439,10 +439,10 @@ namespace WebApi.Services.Core
 			return result;
 		}
 
-		private IReadOnlyList<Leg> GetAffectedLegs(IReadOnlyList<Leg> allLegs, IReadOnlyDictionary<Guid, Waypoint> waypoints, Leg checkingLeg)
+		private IReadOnlyList<Guid> GetAffectedLegIds(IReadOnlyList<Leg> allLegs, IReadOnlyDictionary<Guid, Waypoint> waypoints, Leg checkingLeg)
 		{
-			var result = new List<Leg>();
-			result.Add(checkingLeg);
+			var result = new List<Guid>();
+			result.Add(checkingLeg.Id);
 
 			// https://stackoverflow.com/a/7325268 - How check intersection of DateTime periods
 
@@ -458,7 +458,7 @@ namespace WebApi.Services.Core
 				var b2 = waypoints[leg.WaypointToId].Arrival;
 
 				if (a1 < b2 && b1 < a2)
-					result.Add(leg);
+					result.Add(leg.Id);
 			}
 
 			return result;
