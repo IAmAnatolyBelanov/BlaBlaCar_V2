@@ -325,7 +325,7 @@ public class RideRepository : IRideRepository
 			yield return $"{rideAliasWithDot}\"{nameof(Ride.IsDeleted)}\" = FALSE";
 
 		if (filter.HideStarted)
-			yield return $"{waypointStartAliasWithDot}\"{nameof(Waypoint.Arrival)}\" < NOW() AT TIME ZONE 'UTC'";
+			yield return $"{waypointStartAliasWithDot}\"{nameof(Waypoint.Arrival)}\" > NOW() AT TIME ZONE 'UTC'";
 
 		if (filter.DeparturePoint is not null)
 			yield return $"(ST_DISTANCE({waypointDepartureAliasWithDot}\"{nameof(Waypoint.Point)}\", @{nameof(RideDbFilter.DeparturePoint)}) / 1000) <= @{nameof(RideDbFilter.DeparturePointSearchRadiusKilometers)}";

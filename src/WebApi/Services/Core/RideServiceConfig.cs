@@ -55,6 +55,8 @@
 		float CloseDistanceInKilometers { get; }
 		float MiddleDistanceInKilometers { get; }
 		float FarAwayDistanceInKilometers { get; }
+
+		TimeSpan MinDelayToCurrentTimeForRideCreating { get; }
 	}
 
 	public class RideServiceConfig : IBaseConfig, IRideServiceConfig
@@ -101,6 +103,8 @@
 		public float CloseDistanceInKilometers { get; set; } = 5;
 		public float MiddleDistanceInKilometers { get; set; } = 15;
 		public float FarAwayDistanceInKilometers { get; set; } = 40;
+
+		public TimeSpan MinDelayToCurrentTimeForRideCreating { get; set; } = TimeSpan.FromHours(1);
 
 		public IEnumerable<string> GetValidationErrors()
 		{
@@ -160,6 +164,9 @@
 				yield return $"{nameof(MiddleDistanceInKilometers)} must be > 0";
 			if (FarAwayDistanceInKilometers <= 0)
 				yield return $"{nameof(FarAwayDistanceInKilometers)} must be > 0";
+
+			if (MinDelayToCurrentTimeForRideCreating <= TimeSpan.Zero)
+				yield return $"{nameof(MinDelayToCurrentTimeForRideCreating)} must be > 0";
 		}
 	}
 }

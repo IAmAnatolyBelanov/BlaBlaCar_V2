@@ -160,6 +160,10 @@ namespace WebApi.Services.Core
 		private void ValidateRideOnCreation(RideDto rideDto)
 		{
 			_rideDtoValidator.ValidateAndThrowFriendly(rideDto);
+
+			// Как бы ни хотелось эту проверку поместить в валидатор, но саму модель поездки это условие не нарушает. Это проверка только при создании.
+			if (rideDto.Waypoints.Min(x => x.Arrival) < _clock.Now.Add(_config.MinDelayToCurrentTimeForRideCreating))
+				throw new UserFriendlyException(RideValidationCodes.IncorrectTimeForCreatingRide, "При создании поездки время начала поездки не может быть меньше текущего времени плюс дельты");
 		}
 
 		private IReadOnlyList<Waypoint> FillWaypointsOnRideCreationOrderedByArrivalAsc(RideDto rideDto)
@@ -391,7 +395,8 @@ namespace WebApi.Services.Core
 				ArrivalPointSearchRadiusKilometers = 0.3f,
 				DeparturePoint = request.WaypointFrom!.Value.ToPoint(),
 				DeparturePointSearchRadiusKilometers = 0.3f,
-				MaxDepartureTime = start,
+				MinDepartureTime = start,
+				FreeSeatsCount = request.PassengersCount,
 				Limit = 1,
 				Offset = 0,
 			};
@@ -444,15 +449,12 @@ namespace WebApi.Services.Core
 				PeopleCount = request.PassengersCount!.Value,
 				IsDeleted = false,
 			};
-			var reservationTask = _reservationRepository.InsertReservation(session, reservation, ct);
-			var affectedLegsTask = _reservationRepository.BulkInsertAffectedLegs(
+			await _reservationRepository.InsertReservation(session, reservation, ct);
+			await _reservationRepository.BulkInsertAffectedLegs(
 				session: session,
 				reservationId: reservation.Id,
 				legIds: affectedLegs,
 				ct: ct);
-
-			await reservationTask;
-			await affectedLegsTask;
 
 			await session.CommitAsync(ct);
 

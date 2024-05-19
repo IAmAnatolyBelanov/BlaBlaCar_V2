@@ -52,6 +52,8 @@ public class RideValidationCodes : ValidationCodes
 	public const string WrongCountOfWaypoints = "RideValidator_WrongCountOfWaypoints";
 
 	public const string PointsAreTooClose = "RideValidator_PointsAreTooClose";
+
+	public const string IncorrectTimeForCreatingRide = "RideValidator_IncorrectTimeForCreatingRide";
 }
 
 public class RideDtoValidator : AbstractValidator<RideDto>
