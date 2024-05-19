@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 
 using WebApi.Models;
+using WebApi.Models.ControllersModels;
 using WebApi.Models.ControllersModels.RideControllerModels;
 using WebApi.Services.Core;
 
@@ -33,9 +34,9 @@ namespace WebApi.Controllers
 		}
 
 		[HttpPost]
-		public async Task<BaseResponse<RideDto?>> GetRideById([FromBody] GetRideByIdRequest request, CancellationToken ct)
+		public async Task<BaseResponse<RideDto?>> GetRideById([FromBody] RequestWithId request, CancellationToken ct)
 		{
-			var result = await _rideService.GetRideById(request.RideId, ct);
+			var result = await _rideService.GetRideById(request.Id, ct);
 			return result;
 		}
 
@@ -70,6 +71,13 @@ namespace WebApi.Controllers
 		public async Task<StringResponse> UpdateRideAvailablePlacesCount(UpdateRideAvailablePlacesCountRequest request, CancellationToken ct)
 		{
 			await _rideService.UpdateRideAvailablePlacesCount(request.RideId, request.Count, ct);
+			return StringResponse.Empty;
+		}
+
+		[HttpPost]
+		public async Task<StringResponse> CancelReservation([FromBody] RequestWithId request, CancellationToken ct)
+		{
+			await _rideService.CancelReservation(request.Id, ct);
 			return StringResponse.Empty;
 		}
 	}

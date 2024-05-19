@@ -234,4 +234,72 @@ public class ReservationRepositoryTests : BaseRepositoryTest
 			result.Should().Be(1);
 		}
 	}
+
+	[Fact]
+	public async Task CancelReservationTest()
+	{
+
+		var ct = CancellationToken.None;
+
+		var user = _fixture.Create<User>();
+		var ride = _fixture.Build<Ride>()
+			.With(x => x.AuthorId, user.Id)
+			.With(x => x.DriverId, user.Id)
+			.Create();
+
+		var waypoints = _fixture.Build<Waypoint>()
+			.With(x => x.RideId, ride.Id)
+			.Without(x => x.NextWaypointId)
+			.Without(x => x.PreviousWaypointId)
+			.CreateMany(3)
+			.ToArray();
+
+		var legs = new Leg[]
+		{
+			new Leg
+			{
+				Id = Guid.NewGuid(),
+				RideId = ride.Id,
+				WaypointFromId = waypoints[0].Id,
+				WaypointToId = waypoints[1].Id,
+				IsManual = false,
+				IsBetweenNeighborPoints = true,
+				PriceInRub = _fixture.Create<int>(),
+			},
+			new Leg
+			{
+				Id = Guid.NewGuid(),
+				RideId = ride.Id,
+				WaypointFromId = waypoints[1].Id,
+				WaypointToId = waypoints[2].Id,
+				IsManual = false,
+				IsBetweenNeighborPoints = true,
+				PriceInRub = _fixture.Create<int>(),
+			},
+		};
+
+		var reservation = _fixture.Build<Reservation>()
+			.With(x => x.RideId, ride.Id)
+			.With(x => x.PassengerId, user.Id)
+			.With(x => x.LegId, legs[0].Id)
+			.With(x => x.IsDeleted, false)
+			.Create();
+
+		using (var session = _sessionFactory.OpenPostgresConnection().BeginTransaction())
+		{
+			await _userRepository.Insert(session, user, ct);
+			await _rideRepository.Insert(session, ride, ct);
+			await _waypointRepository.BulkInsert(session, waypoints, ct);
+			await _legRepository.BulkInsert(session, legs, ct);
+			await _reservationRepository.InsertReservation(session, reservation, ct);
+			await session.CommitAsync(ct);
+		}
+
+		using (var session = _sessionFactory.OpenPostgresConnection().BeginTransaction())
+		{
+			var result = await _reservationRepository.CancelReservation(session, reservation.Id, ct);
+			await session.CommitAsync(ct);
+			result.Should().Be(1);
+		}
+	}
 }

@@ -32,6 +32,7 @@ namespace WebApi.Services.Core
 		Task<PriceRecommendation?> GetPriceRecommendation(GetPriceRecommendationRequest request, CancellationToken ct);
 		Task<RideCounts?> GetCounts(RideFilter filter, CancellationToken ct);
 		Task UpdateRideAvailablePlacesCount(Guid rideId, int count, CancellationToken ct);
+		Task CancelReservation(Guid reservationId, CancellationToken ct);
 	}
 
 	public class RideService : IRideService
@@ -462,6 +463,13 @@ namespace WebApi.Services.Core
 			result.Leg = _legDtoMapper.ToDto(reservingLeg);
 
 			return result;
+		}
+
+		public async Task CancelReservation(Guid reservationId, CancellationToken ct)
+		{
+			using var session = _sessionFactory.OpenPostgresConnection().StartTrace().BeginTransaction();
+			await _reservationRepository.CancelReservation(session, reservationId, ct);
+			await session.CommitAsync(ct);
 		}
 
 		private IReadOnlyList<Guid> GetAffectedLegIds(IReadOnlyList<Leg> allLegs, IReadOnlyDictionary<Guid, Waypoint> waypoints, Leg checkingLeg)

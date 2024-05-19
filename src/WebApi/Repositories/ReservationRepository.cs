@@ -8,6 +8,7 @@ public interface IReservationRepository : IRepository
 	Task<int> InsertReservation(IPostgresSession session, Reservation reservation, CancellationToken ct);
 	Task<IReadOnlyList<Reservation>> GetReservationsByFilter(IPostgresSession session, ReservationDbFilter filter, CancellationToken ct);
 	Task<ulong> BulkInsertAffectedLegs(IPostgresSession session, Guid reservationId, IReadOnlyList<Guid> legIds, CancellationToken ct);
+	Task<int> CancelReservation(IPostgresSession session, Guid reservationId, CancellationToken ct);
 }
 
 public class ReservationRepository : IReservationRepository
@@ -70,6 +71,18 @@ public class ReservationRepository : IReservationRepository
 		}
 
 		var result = await importer.Complete(ct);
+		return result;
+	}
+
+	public async Task<int> CancelReservation(IPostgresSession session, Guid reservationId, CancellationToken ct)
+	{
+		var sql = $@"
+			UPDATE {_reservationTableName}
+			SET ""{nameof(Reservation.IsDeleted)}"" = TRUE
+			WHERE ""{nameof(Reservation.Id)}"" = '{reservationId}';
+		";
+
+		var result = await session.ExecuteAsync(sql, ct);
 		return result;
 	}
 
