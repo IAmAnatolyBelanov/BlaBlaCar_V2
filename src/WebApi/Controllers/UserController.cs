@@ -36,9 +36,9 @@ public class UserController
 	}
 
 	[HttpPost]
-	public async Task<BaseResponse<DriverData>> UpdateDriverInfo(UpdateDriverInfoRequest request, CancellationToken ct)
+	public async Task<StringResponse> UpdateDriverInfo(UpdateDriverInfoRequest request, CancellationToken ct)
 	{
-		var result = await _driverService.ValidateDriverLicense(request.UserId, request.DriverData, ct);
-		return result;
+		await _driverService.ValidateDriverLicense(request.UserId, request.DriverData, ct);
+		return StringResponse.Empty;
 	}
 }

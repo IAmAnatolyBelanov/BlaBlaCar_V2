@@ -68,9 +68,16 @@ namespace WebApi.Controllers
 		}
 
 		[HttpPost]
-		public async Task<StringResponse> UpdateRideAvailablePlacesCount(UpdateRideAvailablePlacesCountRequest request, CancellationToken ct)
+		public async Task<StringResponse> UpdateRideAvailablePlacesCount([FromBody] UpdateRideAvailablePlacesCountRequest request, CancellationToken ct)
 		{
 			await _rideService.UpdateRideAvailablePlacesCount(request.RideId, request.Count, ct);
+			return StringResponse.Empty;
+		}
+
+		[HttpPost]
+		public async Task<StringResponse> DeleteRide([FromBody] RequestWithId request, CancellationToken ct)
+		{
+			await _rideService.DeleteRide(request.Id, ct);
 			return StringResponse.Empty;
 		}
 

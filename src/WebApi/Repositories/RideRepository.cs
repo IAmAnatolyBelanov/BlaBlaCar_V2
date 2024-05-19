@@ -13,6 +13,7 @@ public interface IRideRepository : IRepository
 	Task<PriceRecommendation?> GetPriceRecommendation(IPostgresSession session, PriceRecommendationDbRequest request, CancellationToken ct);
 	Task<RideDbCounts?> GetCounts(IPostgresSession session, RideDbCountsFilter filter, CancellationToken ct);
 	Task<int> UpdateAvailablePlacesCount(IPostgresSession session, Guid rideId, int count, CancellationToken ct);
+	Task<int> DeleteRide(IPostgresSession session, Guid rideId, CancellationToken ct);
 }
 
 public class RideRepository : IRideRepository
@@ -239,6 +240,21 @@ public class RideRepository : IRideRepository
 			WHERE
 				""{nameof(Ride.Id)}"" = '{rideId}';
 			";
+
+		var result = await session.ExecuteAsync(sql, ct);
+		return result;
+	}
+
+	public async Task<int> DeleteRide(IPostgresSession session, Guid rideId, CancellationToken ct)
+	{
+		var sql = $@"
+			UPDATE
+				{_rideTableName}
+			SET
+				""{nameof(Ride.IsDeleted)}"" = TRUE
+			WHERE
+				""{nameof(Ride.Id)}"" = '{rideId}';
+		";
 
 		var result = await session.ExecuteAsync(sql, ct);
 		return result;

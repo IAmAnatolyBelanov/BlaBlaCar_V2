@@ -389,4 +389,30 @@ public class RideRepositoryTests : BaseRepositoryTest
 			result.Should().Be(1);
 		}
 	}
+
+	[Fact]
+	public async Task DeleteRideTest()
+	{
+		var ct = CancellationToken.None;
+
+		var user = _fixture.Create<User>();
+		var ride = _fixture.Build<Ride>()
+			.With(x => x.AuthorId, user.Id)
+			.With(x => x.DriverId, user.Id)
+			.With(x => x.IsDeleted, false)
+			.Create();
+
+		using (var session = _sessionFactory.OpenPostgresConnection().BeginTransaction())
+		{
+			await _userRepository.Insert(session, user, ct);
+			await _rideRepository.Insert(session, ride, ct);
+			await session.CommitAsync(ct);
+		}
+
+		using (var session = _sessionFactory.OpenPostgresConnection().BeginTransaction())
+		{
+			var result = await _rideRepository.DeleteRide(session, ride.Id, ct);
+			result.Should().Be(1);
+		}
+	}
 }

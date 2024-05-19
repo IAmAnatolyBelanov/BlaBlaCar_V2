@@ -33,11 +33,14 @@ namespace WebApi.Services.Core
 		Task<RideCounts?> GetCounts(RideFilter filter, CancellationToken ct);
 		Task UpdateRideAvailablePlacesCount(Guid rideId, int count, CancellationToken ct);
 		Task CancelReservation(Guid reservationId, CancellationToken ct);
+		Task DeleteRide(Guid rideId, CancellationToken ct);
 	}
 
 	public class RideService : IRideService
 	{
 		private const char _addressesDelimiter = '@';
+
+		private readonly ILogger _logger = Log.ForContext<RideService>();
 
 		private readonly IRideServiceConfig _config;
 		private readonly IRideMapper _rideDtoMapper;
@@ -154,6 +157,12 @@ namespace WebApi.Services.Core
 			await _legRepository.BulkInsert(session, legs, ct);
 
 			await session.CommitAsync(ct);
+
+			_logger.Information("Ride {RideId} was created", ride.Id);
+
+			rideDto.Legs = legs.Where(x => x.IsManual)
+				.Select(_legDtoMapper.ToDto)
+				.ToArray();
 
 			return rideDto;
 		}
@@ -275,9 +284,9 @@ namespace WebApi.Services.Core
 			return legs;
 		}
 
-		public async Task UpdateRideAvailablePlacesCount(Guid rideId, int count, CancellationToken ct)
+		public async Task UpdateRideAvailablePlacesCount(Guid rideId, int newCount, CancellationToken ct)
 		{
-			if (count < 1)
+			if (newCount < 1)
 				throw new UserFriendlyException(RideValidationCodes.TooLittlePassengerSeats, "Количество мест для пассажиров должно быть минимум 1");
 
 			using var session = _sessionFactory.OpenPostgresConnection().BeginTransaction().StartTrace();
@@ -299,11 +308,14 @@ namespace WebApi.Services.Core
 				throw new UserFriendlyException(RideServiceValidationCodes.UnableToUpdateRideInPast, "Невозможно изменить данные об уже начавшейся либо закончившейся поездке");
 
 			var alreadyReserved = rides.Max(x => x.AlreadyReservedSeatsCount);
-			if (count < alreadyReserved)
+			if (newCount < alreadyReserved)
 				throw new UserFriendlyException(RideServiceValidationCodes.CarHasLessSeatsThanRideAvailablePlaces, "Невозможно выставить количество доступных мест меньше, чем уже мест забронировано");
 
-			await _rideRepository.UpdateAvailablePlacesCount(session, rideId, count, ct);
+			await _rideRepository.UpdateAvailablePlacesCount(session, rideId, newCount, ct);
 			await session.CommitAsync(ct);
+
+			_logger.Information("For ride {RideId} was updated seats count from {PreviousSeatsCount} to {NewSeatsCount}",
+				rideId, rides[0].TotalAvailablePlacesCount, newCount);
 		}
 
 		public async Task<RideDto?> GetRideById(Guid rideId, CancellationToken ct)
@@ -375,6 +387,16 @@ namespace WebApi.Services.Core
 			var result = dbResult is not null ? _rideCountsMapper.ToCounts(dbResult, dbFilter) : null;
 
 			return result;
+		}
+
+		public async Task DeleteRide(Guid rideId, CancellationToken ct)
+		{
+			using var session = _sessionFactory.OpenPostgresConnection().BeginTransaction().StartTrace();
+
+			await _rideRepository.DeleteRide(session, rideId, ct);
+			await session.CommitAsync(ct);
+
+			_logger.Information("Ride {RideId} was deleted", rideId);
 		}
 
 		public async Task<ReservationDto> MakeReservation(MakeReservationRequest request, CancellationToken ct)
@@ -461,6 +483,10 @@ namespace WebApi.Services.Core
 
 			var result = _reservationMapper.ToDto(reservation);
 			result.Leg = _legDtoMapper.ToDto(reservingLeg);
+			result.Leg.WaypointFrom = waypointsDict[reservingLeg.WaypointFromId].Point;
+			result.Leg.WaypointTo = waypointsDict[reservingLeg.WaypointToId].Point;
+
+			_logger.Information("Created reservation {ReservationId}", reservation.Id);
 
 			return result;
 		}
@@ -470,6 +496,7 @@ namespace WebApi.Services.Core
 			using var session = _sessionFactory.OpenPostgresConnection().StartTrace().BeginTransaction();
 			await _reservationRepository.CancelReservation(session, reservationId, ct);
 			await session.CommitAsync(ct);
+			_logger.Information("Reservation {ReservationId} was cancelled", reservationId);
 		}
 
 		private IReadOnlyList<Guid> GetAffectedLegIds(IReadOnlyList<Leg> allLegs, IReadOnlyDictionary<Guid, Waypoint> waypoints, Leg checkingLeg)
