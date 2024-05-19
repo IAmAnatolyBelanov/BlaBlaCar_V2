@@ -1,7 +1,5 @@
 ﻿using Dapper;
 using FluentValidation;
-using NetTopologySuite.Geometries;
-
 using WebApi.DataAccess;
 using WebApi.Models;
 using WebApi.Models.ControllersModels.RideControllerModels;
@@ -19,15 +17,17 @@ namespace WebApi.Services.Core
 		public const string CarHasLessSeatsThanRideAvailablePlaces = "RideService_CarHasLessSeatsThanRideAvailablePlaces";
 		public const string UnableToReserveRide = "RideService_UnableToReserveRide";
 		public const string UnknownCoordinates = "RideService_UnknownCoordinates";
+		public const string NotEnoughDataForStatistics = "RideService_NotEnoughDataForStatistics";
 	}
 
 	public interface IRideService
 	{
 		Task<RideDto> CreateRide(RideDto dto, CancellationToken ct);
-		ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct);
 		Task<IReadOnlyList<SearchRideResponse>> SearchRides(RideFilter filter, CancellationToken ct);
 		Task<RideDto?> GetRideById(Guid rideId, CancellationToken ct);
 		Task<ReservationDto> MakeReservation(MakeReservationRequest request, CancellationToken ct);
+		Task<PriceRecommendation?> GetPriceRecommendation(GetPriceRecommendationRequest request, CancellationToken ct);
+		Task<RideCounts?> GetCounts(RideFilter filter, CancellationToken ct);
 	}
 
 	public class RideService : IRideService
@@ -56,6 +56,7 @@ namespace WebApi.Services.Core
 		private readonly ICarMapper _carMapper;
 		private readonly IValidator<MakeReservationRequest> _makeReservationRequestValidator;
 		private readonly IReservationRepository _reservationRepository;
+		private readonly IRideCountsMapper _rideCountsMapper;
 
 		public RideService(
 			IRideServiceConfig config,
@@ -79,7 +80,8 @@ namespace WebApi.Services.Core
 			ISearchRideResponseMapper searchRideResponseMapper,
 			ICarMapper carMapper,
 			IValidator<MakeReservationRequest> makeReservationRequestValidator,
-			IReservationRepository reservationRepository)
+			IReservationRepository reservationRepository,
+			IRideCountsMapper rideCountsMapper)
 		{
 			_config = config;
 			_rideDtoMapper = rideDtoMapper;
@@ -103,6 +105,7 @@ namespace WebApi.Services.Core
 			_carMapper = carMapper;
 			_makeReservationRequestValidator = makeReservationRequestValidator;
 			_reservationRepository = reservationRepository;
+			_rideCountsMapper = rideCountsMapper;
 		}
 
 		public async Task<RideDto> CreateRide(RideDto rideDto, CancellationToken ct)
@@ -327,6 +330,24 @@ namespace WebApi.Services.Core
 			return result;
 		}
 
+		public async Task<RideCounts?> GetCounts(RideFilter filter, CancellationToken ct)
+		{
+			_rideFilterValidator.ValidateAndThrowFriendly(filter);
+
+			var dbFilter = _rideFilterMapper.MapToDbCountsFilter(filter);
+			dbFilter.CloseDistanceInKilometers = _config.CloseDistanceInKilometers;
+			dbFilter.MiddleDistanceInKilometers = _config.MiddleDistanceInKilometers;
+			dbFilter.FarAwayDistanceInKilometers = _config.FarAwayDistanceInKilometers;
+
+			using var session = _sessionFactory.OpenPostgresConnection().StartTrace();
+
+			var dbResult = await _rideRepository.GetCounts(session, dbFilter, ct);
+
+			var result = dbResult is not null ? _rideCountsMapper.ToCounts(dbResult, dbFilter) : null;
+
+			return result;
+		}
+
 		public async Task<ReservationDto> MakeReservation(MakeReservationRequest request, CancellationToken ct)
 		{
 			// Сравнивать двоичные числа просто на равенство опасно. Поэтому приходится вычислять дистанцию.
@@ -442,86 +463,39 @@ namespace WebApi.Services.Core
 			return result;
 		}
 
-		// private async ValueTask FillLegDescription(LegDto_Obsolete leg, CancellationToken ct)
-		// {
-		// 	var from = await _geocodeService.PointToGeoCode(leg.From.Point, ct);
-		// 	_yaGeocodeResponseValidator.ValidateAndThrowFriendly((leg.From.Point, from));
-
-		// 	var to = await _geocodeService.PointToGeoCode(leg.To.Point, ct);
-		// 	_yaGeocodeResponseValidator.ValidateAndThrowFriendly((leg.To.Point, to));
-
-
-		// 	var fromStr = from!.Geoobjects[0].FormattedAddress;
-		// 	var toStr = to!.Geoobjects[0].FormattedAddress;
-
-		// 	leg.Description = $"{fromStr}{_addressesDelimiter}{toStr}";
-		// }
-
-		//		public async ValueTask<(decimal low, decimal high)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct)
-		//		{
-		//			using var scope = BuildScope();
-		//			using var context = GetDbContext(scope);
-		//			return await GetRecommendedPriceAsync(context, from, to, ct);
-		//		}
-
-		//		public async ValueTask<(decimal low, decimal high)> GetRecommendedPriceAsync(ApplicationContext context, Point pointFrom, Point pointTo, CancellationToken ct)
-		//		{
-		//			var connection = context.Database.GetDbConnection();
-
-		//			var maxDistanceInMeters = _config.PriceStatisticsRadiusMeters;
-		//			var lowPercentile = 0 + (1 - _config.PriceStatisticsPercentile) / 2f;
-		//			var highPercentile = 1 - (1 - _config.PriceStatisticsPercentile) / 2f;
-		//			var now = _clock.Now;
-		//			var minEndTime = now - _config.PriceStatisticsMaxPastPeriod;
-
-		//			const string query = $@"
-		//WITH prices AS (
-		//	SELECT ""{nameof(Leg.PriceInRub)}""
-		//	FROM public.""{nameof(ApplicationContext.Legs)}""
-		//	WHERE
-		//		ST_Distance(""{nameof(Leg.From)}"", @{nameof(pointFrom)}) <= @{nameof(maxDistanceInMeters)}
-		//		AND ST_Distance(""{nameof(Leg.To)}"", @{nameof(pointTo)}) <= @{nameof(maxDistanceInMeters)}
-		//		AND ""{nameof(Leg.EndTime)}"" < @{nameof(now)}
-		//		AND ""{nameof(Leg.EndTime)}"" >= @{nameof(minEndTime)}
-		//	ORDER BY ""{nameof(Leg.PriceInRub)}""
-		//)
-		//SELECT
-		//	CASE WHEN (SELECT COUNT(*) FROM prices) > @{nameof(_config.PriceStatisticsMinRowsCount)}
-		//		THEN PERCENTILE_CONT(@{nameof(lowPercentile)}) WITHIN GROUP (ORDER BY ""{nameof(Leg.PriceInRub)}"")
-		//		ELSE -1
-		//		END AS {nameof(Tuple<double, double>.Item1)},
-		//	CASE WHEN (SELECT COUNT(*) FROM prices) > @{nameof(_config.PriceStatisticsMinRowsCount)}
-		//		THEN PERCENTILE_CONT(@{nameof(highPercentile)}) WITHIN GROUP (ORDER BY ""{nameof(Leg.PriceInRub)}"")
-		//		ELSE -1
-		//		END AS {nameof(Tuple<double, double>.Item2)}
-		//FROM prices
-		//LIMIT 1;
-		//";
-
-		//			var command = new CommandDefinition(
-		//				commandText: query,
-		//				parameters: new
-		//				{
-		//					pointFrom,
-		//					pointTo,
-		//					now,
-		//					minEndTime,
-		//					_config.PriceStatisticsMinRowsCount,
-		//					maxDistanceInMeters,
-		//					lowPercentile,
-		//					highPercentile,
-		//				},
-		//				cancellationToken: ct);
-		//			var result = await connection.QueryFirstAsync<Tuple<double, double>>(command);
-
-		//			return ((decimal)result.Item1, (decimal)result.Item2);
-
-		//			throw new NotImplementedException();
-		//		}
-
-		public async ValueTask<(decimal Low, decimal High)> GetRecommendedPriceAsync(Point from, Point to, CancellationToken ct)
+		public async Task<PriceRecommendation?> GetPriceRecommendation(GetPriceRecommendationRequest request, CancellationToken ct)
 		{
-			throw new NotImplementedException();
+			var now = _clock.Now;
+
+			var dbRequest = new PriceRecommendationDbRequest
+			{
+				ArrivalDateFrom = now.Add(-_config.PriceStatisticsMaxPastPeriod),
+				ArrivalDateTo = now,
+
+				HigherPercentile = _config.PriceStatisticsHigherPercentile,
+				MiddlePercentile = _config.PriceStatisticsMiddlePercentile,
+				LowerPercentile = _config.PriceStatisticsLowerPercentile,
+
+				PointFrom = request.PointFrom.ToPoint(),
+				PointTo = request.PointTo.ToPoint(),
+
+				RadiusInKilometers = _config.PriceStatisticsRadiusKilometers,
+			};
+
+			using var session = _sessionFactory.OpenPostgresConnection().StartTrace();
+
+			var result = await _rideRepository.GetPriceRecommendation(session, dbRequest, ct);
+
+			if (result is null || result.RowsCount < _config.PriceStatisticsMinRowsCount)
+				throw new UserFriendlyException(RideServiceValidationCodes.NotEnoughDataForStatistics, "Недостаточно данных для построения статистики");
+
+			if (result.MiddleRecommendedPrice - result.LowerRecommendedPrice < _config.PriceRecommendationMinStep)
+				result.LowerRecommendedPrice = result.MiddleRecommendedPrice - _config.PriceRecommendationMinStep;
+
+			if (result.HigherRecommendedPrice - result.MiddleRecommendedPrice < _config.PriceRecommendationMinStep)
+				result.HigherRecommendedPrice = result.MiddleRecommendedPrice + _config.PriceRecommendationMinStep;
+
+			return result;
 		}
 	}
 }

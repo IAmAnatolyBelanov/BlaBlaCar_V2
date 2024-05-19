@@ -318,7 +318,7 @@ public class RideRepositoryTests : BaseRepositoryTest
 			}
 		});
 
-		var request = new PriceRecommendationRequest
+		var request = new PriceRecommendationDbRequest
 		{
 			ArrivalDateFrom = yesterday.AddDays(-3),
 			ArrivalDateTo = yesterday.AddDays(3),
@@ -337,5 +337,27 @@ public class RideRepositoryTests : BaseRepositoryTest
 		priceRecommendation.Should().NotBeNull();
 		priceRecommendation!.RowsCount.Should().Be(usersCount * ridesCount * reservationsCount);
 		priceRecommendation.HigherRecommendedPrice.Should().BeGreaterThanOrEqualTo(priceRecommendation.LowerRecommendedPrice);
+	}
+
+	[Fact]
+	public async Task CountersTest()
+	{
+		var ct = CancellationToken.None;
+
+		using var session = _sessionFactory.OpenPostgresConnection();
+
+		var rideFilter = new RideDbCountsFilter
+		{
+			MinArrivalTime = DateTimeOffset.Now.AddYears(-50),
+			DeparturePoint = CityInfoManager.GetUnique().GetPoint().ToPoint(),
+			ArrivalPoint = CityInfoManager.GetUnique().GetPoint().ToPoint(),
+			CloseDistanceInKilometers = 5,
+			MiddleDistanceInKilometers = 15,
+			FarAwayDistanceInKilometers = 40,
+		};
+
+		var result = await _rideRepository.GetCounts(session, rideFilter, ct);
+
+		result.Should().NotBeNull();
 	}
 }

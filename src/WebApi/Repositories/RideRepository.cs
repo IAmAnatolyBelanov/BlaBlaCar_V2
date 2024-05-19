@@ -10,7 +10,8 @@ public interface IRideRepository : IRepository
 	Task<Ride?> GetById(IPostgresSession session, Guid rideId, CancellationToken ct);
 	Task<IReadOnlyList<SearchRideDbResponse>> GetByFilter(IPostgresSession session, RideDbFilter filter, CancellationToken ct);
 	Task<string> GetCounts(IPostgresSession session, CancellationToken ct);
-	Task<PriceRecommendation?> GetPriceRecommendation(IPostgresSession session, PriceRecommendationRequest request, CancellationToken ct);
+	Task<PriceRecommendation?> GetPriceRecommendation(IPostgresSession session, PriceRecommendationDbRequest request, CancellationToken ct);
+	Task<RideDbCounts?> GetCounts(IPostgresSession session, RideDbCountsFilter filter, CancellationToken ct);
 }
 
 public class RideRepository : IRideRepository
@@ -88,16 +89,7 @@ public class RideRepository : IRideRepository
 	public async Task<IReadOnlyList<SearchRideDbResponse>> GetByFilter(IPostgresSession session, RideDbFilter filter, CancellationToken ct)
 	{
 		var sql = $@"
-			WITH leg_reserved_seats AS(
-				SELECT
-					{_defaultAffectedLegAlias}.""{nameof(AffectedByReservationLeg.LegId)}"" AS ""LegId""
-					, SUM({_defaultReservationAlias}.""{nameof(Reservation.PeopleCount)}"") AS ""AlreadyReservedSeatsCount""
-				FROM {_affectedByReservationsLegsTableName} {_defaultAffectedLegAlias}
-				INNER JOIN {_reservationsTableName} {_defaultReservationAlias}
-					ON {_defaultReservationAlias}.""{nameof(Reservation.Id)}"" = {_defaultAffectedLegAlias}.""{nameof(AffectedByReservationLeg.ReservationId)}""
-				WHERE {_defaultReservationAlias}.""{nameof(Reservation.IsDeleted)}"" = FALSE
-				GROUP BY {_defaultAffectedLegAlias}.""{nameof(AffectedByReservationLeg.LegId)}""
-			)
+			WITH {BuildLegReservedSeatsCte()}
 
 			SELECT
 				{_defaultRideAlias}.""{nameof(Ride.Id)}"" AS ""{nameof(SearchRideDbResponse.RideId)}""
@@ -158,7 +150,46 @@ public class RideRepository : IRideRepository
 		return result;
 	}
 
-	public async Task<PriceRecommendation?> GetPriceRecommendation(IPostgresSession session, PriceRecommendationRequest request, CancellationToken ct)
+	public async Task<RideDbCounts?> GetCounts(IPostgresSession session, RideDbCountsFilter filter, CancellationToken ct)
+	{
+		var sql = $@"
+			WITH {BuildLegReservedSeatsCte()}
+
+			SELECT
+				COUNT(*) AS ""{nameof(RideDbCounts.TotalCount)}""
+
+				, COUNT(*) FILTER (WHERE ({_defaultRideAlias}.""{nameof(Ride.IsCashPaymentMethodAvailable)}"" = TRUE)) AS ""{nameof(RideDbCounts.CashAvailableCount)}""
+				, COUNT(*) FILTER (WHERE ({_defaultRideAlias}.""{nameof(Ride.IsCashlessPaymentMethodAvailable)}"" = TRUE)) AS ""{nameof(RideDbCounts.CashlessAvailableCount)}""
+
+				, COUNT(*) FILTER (WHERE ({_defaultRideAlias}.""{nameof(Ride.ValidationMethod)}"" = {(int)RideValidationMethod.ValidationBeforeAccessPassenger})) AS ""{nameof(RideDbCounts.WithValidationCount)}""
+				, COUNT(*) FILTER (WHERE ({_defaultRideAlias}.""{nameof(Ride.ValidationMethod)}"" = {(int)RideValidationMethod.WithoutValidation})) AS ""{nameof(RideDbCounts.WithoutValidationCount)}""
+
+				, COUNT(*) FILTER (WHERE ((ST_DISTANCE({_defaultWaypointDepartureAlias}.""{nameof(Waypoint.Point)}"", COALESCE(@{nameof(RideDbFilter.DeparturePoint)}, {_defaultWaypointDepartureAlias}.""{nameof(Waypoint.Point)}"")) / 1000) <= @{nameof(RideDbCountsFilter.CloseDistanceInKilometers)})) AS ""{nameof(RideDbCounts.CloseDepartureDistanceCount)}""
+				, COUNT(*) FILTER (WHERE ((ST_DISTANCE({_defaultWaypointDepartureAlias}.""{nameof(Waypoint.Point)}"", COALESCE(@{nameof(RideDbFilter.DeparturePoint)}, {_defaultWaypointDepartureAlias}.""{nameof(Waypoint.Point)}"")) / 1000) <= @{nameof(RideDbCountsFilter.MiddleDistanceInKilometers)})) AS ""{nameof(RideDbCounts.MiddleDepartureDistanceCount)}""
+				, COUNT(*) FILTER (WHERE ((ST_DISTANCE({_defaultWaypointDepartureAlias}.""{nameof(Waypoint.Point)}"", COALESCE(@{nameof(RideDbFilter.DeparturePoint)}, {_defaultWaypointDepartureAlias}.""{nameof(Waypoint.Point)}"")) / 1000) <= @{nameof(RideDbCountsFilter.FarAwayDistanceInKilometers)})) AS ""{nameof(RideDbCounts.FarAwayDepartureDistanceCount)}""
+
+				, COUNT(*) FILTER (WHERE ((ST_DISTANCE({_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Point)}"", COALESCE(@{nameof(RideDbFilter.ArrivalPoint)}, {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Point)}"")) / 1000) <= @{nameof(RideDbCountsFilter.CloseDistanceInKilometers)})) AS ""{nameof(RideDbCounts.CloseArrivalDistanceCount)}""
+				, COUNT(*) FILTER (WHERE ((ST_DISTANCE({_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Point)}"", COALESCE(@{nameof(RideDbFilter.ArrivalPoint)}, {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Point)}"")) / 1000) <= @{nameof(RideDbCountsFilter.MiddleDistanceInKilometers)})) AS ""{nameof(RideDbCounts.MiddleArrivalDistanceCount)}""
+				, COUNT(*) FILTER (WHERE ((ST_DISTANCE({_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Point)}"", COALESCE(@{nameof(RideDbFilter.ArrivalPoint)}, {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Point)}"")) / 1000) <= @{nameof(RideDbCountsFilter.FarAwayDistanceInKilometers)})) AS ""{nameof(RideDbCounts.FarAwayArrivalDistanceCount)}""
+			FROM {_rideTableName} {_defaultRideAlias}
+			INNER JOIN {_legsTableName} {_defaultLegAlias}
+				ON {_defaultLegAlias}.""{nameof(Leg.RideId)}"" = {_defaultRideAlias}.""{nameof(Ride.Id)}""
+			INNER JOIN {_waypointsTableName} {_defaultWaypointDepartureAlias}
+				ON {_defaultWaypointDepartureAlias}.""{nameof(Waypoint.RideId)}"" = {_defaultRideAlias}.""{nameof(Ride.Id)}""
+				AND {_defaultLegAlias}.""{nameof(Leg.WaypointFromId)}"" = {_defaultWaypointDepartureAlias}.""{nameof(Waypoint.Id)}""
+			INNER JOIN {_waypointsTableName} {_defaultWaypointArrivalAlias}
+				ON {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.RideId)}"" = {_defaultRideAlias}.""{nameof(Ride.Id)}""
+				AND {_defaultLegAlias}.""{nameof(Leg.WaypointToId)}"" = {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Id)}""
+			LEFT JOIN leg_reserved_seats leg_reserved_seat
+				ON leg_reserved_seat.""LegId"" = {_defaultLegAlias}.""{nameof(Leg.Id)}""
+			{BuildWhereSection(filter)};
+		";
+
+		var result = await session.QueryFirstOrDefaultAsync<RideDbCounts>(sql, filter, ct);
+		return result;
+	}
+
+	public async Task<PriceRecommendation?> GetPriceRecommendation(IPostgresSession session, PriceRecommendationDbRequest request, CancellationToken ct)
 	{
 		var sql = $@"
 			SELECT
@@ -188,6 +219,32 @@ public class RideRepository : IRideRepository
 		";
 
 		var result = await session.QueryFirstOrDefaultAsync<PriceRecommendation>(sql, request, ct);
+		return result;
+	}
+
+	private string BuildLegReservedSeatsCte(
+		string cteName = "leg_reserved_seats",
+		string affectedLegAlias = _defaultAffectedLegAlias,
+		string reservationAlias = _defaultReservationAlias
+		)
+	{
+		if (!affectedLegAlias.IsNullOrEmpty() && affectedLegAlias.EndsWith('.'))
+			affectedLegAlias = affectedLegAlias.TrimEnd('.');
+		if (!reservationAlias.IsNullOrEmpty() && reservationAlias.EndsWith('.'))
+			reservationAlias = reservationAlias.TrimEnd('.');
+
+		var result = $@"
+			{cteName} AS(
+				SELECT
+					{affectedLegAlias}.""{nameof(AffectedByReservationLeg.LegId)}"" AS ""LegId""
+					, SUM({reservationAlias}.""{nameof(Reservation.PeopleCount)}"") AS ""AlreadyReservedSeatsCount""
+				FROM {_affectedByReservationsLegsTableName} {affectedLegAlias}
+				INNER JOIN {_reservationsTableName} {reservationAlias}
+					ON {reservationAlias}.""{nameof(Reservation.Id)}"" = {affectedLegAlias}.""{nameof(AffectedByReservationLeg.ReservationId)}""
+				WHERE {reservationAlias}.""{nameof(Reservation.IsDeleted)}"" = FALSE
+				GROUP BY {affectedLegAlias}.""{nameof(AffectedByReservationLeg.LegId)}""
+			)
+		";
 		return result;
 	}
 

@@ -18,16 +18,15 @@ namespace WebApi.Controllers
 		}
 
 		[HttpPost]
-		public async ValueTask<BaseResponse<Tuple<decimal, decimal>>> GetRecommendedPrice(Tuple<FormattedPoint, FormattedPoint> coordinates, CancellationToken ct)
+		public async Task<BaseResponse<PriceRecommendation?>> GetRecommendedPrice([FromBody] GetPriceRecommendationRequest request, CancellationToken ct)
 		{
-			(var from, var to) = coordinates;
-			var result = await _rideService.GetRecommendedPriceAsync(from.ToPoint(), to.ToPoint(), ct);
+			var result = await _rideService.GetPriceRecommendation(request, ct);
 
-			return new Tuple<decimal, decimal>(result.Low, result.High);
+			return result;
 		}
 
 		[HttpPost]
-		public async Task<BaseResponse<RideDto>> CreateRide(RideDto ride, CancellationToken ct)
+		public async Task<BaseResponse<RideDto>> CreateRide([FromBody] RideDto ride, CancellationToken ct)
 		{
 			var result = await _rideService.CreateRide(ride, ct);
 			return result;
@@ -51,6 +50,19 @@ namespace WebApi.Controllers
 		public async Task<BaseResponse<ReservationDto>> CreateReservation([FromBody] MakeReservationRequest request, CancellationToken ct)
 		{
 			var result = await _rideService.MakeReservation(request, ct);
+			return result;
+		}
+
+		[HttpPost]
+		public async Task<BaseResponse<RideCounts?>> GetCounts([FromBody] RideFilter filter, CancellationToken ct)
+		{
+			// Для каунтеров эти поля не важны, но на эти поля будет ругаться валидатор, если фронт их не заполнил.
+			filter.SortDirection = SortDirection.Asc;
+			filter.SortType = RideSortType.ByEndTime;
+			filter.Offset = 0;
+			filter.Limit = 20;
+
+			var result = await _rideService.GetCounts(filter, ct);
 			return result;
 		}
 	}

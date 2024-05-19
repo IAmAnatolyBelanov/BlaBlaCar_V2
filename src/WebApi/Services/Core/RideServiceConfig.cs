@@ -5,19 +5,35 @@
 		/// <summary>
 		/// Радиус, в котором нужно искать поездки для подсчёта средней цены.
 		/// </summary>
-		int PriceStatisticsRadiusMeters { get; }
+		int PriceStatisticsRadiusKilometers { get; }
+
 		/// <summary>
-		/// Перценталь. Если на графике нормального распределения взять самую верхнюю точку, то минус Percentile/2 - нижняя граница, а плюс Percentile/2 - верхняя.
+		/// Нижний перцентиль.
 		/// </summary>
-		float PriceStatisticsPercentile { get; }
+		float PriceStatisticsLowerPercentile { get; }
+
+		/// <summary>
+		/// Средний перцентиль.
+		/// </summary>
+		float PriceStatisticsMiddlePercentile { get; }
+
+		/// <summary>
+		/// Верхний перцентиль.
+		/// </summary>
+		float PriceStatisticsHigherPercentile { get; }
+
+		int PriceRecommendationMinStep { get; }
+
 		/// <summary>
 		/// Насколько старые записи просматриваются для оценки рекомендуемой цены.
 		/// </summary>
 		TimeSpan PriceStatisticsMaxPastPeriod { get; }
+
 		/// <summary>
 		/// Минимальное число записей в бд, при котором можно ориентироваться на статистику и на нормальное распределение.
 		/// </summary>
 		int PriceStatisticsMinRowsCount { get; }
+
 		/// <summary>
 		/// Максимальное число точек в поездке, включая конечные.
 		/// </summary>
@@ -27,14 +43,18 @@
 
 		TimeSpan MinTimeForValidationPassengerBeforeDeparture { get; }
 
-		public int MinRadiusForSearchKilometers { get; }
-		public int MaxRadiusForSearchKilometers { get; }
+		int MinRadiusForSearchKilometers { get; }
+		int MaxRadiusForSearchKilometers { get; }
 
-		public TimeSpan MaxSearchPeriod { get; }
+		TimeSpan MaxSearchPeriod { get; }
 
-		public int MaxSqlLimit { get; }
+		int MaxSqlLimit { get; }
 
-		public int MinDistanceBetweenPointsInKilometers { get; }
+		int MinDistanceBetweenPointsInKilometers { get; }
+
+		float CloseDistanceInKilometers { get; }
+		float MiddleDistanceInKilometers { get; }
+		float FarAwayDistanceInKilometers { get; }
 	}
 
 	public class RideServiceConfig : IBaseConfig, IRideServiceConfig
@@ -42,10 +62,18 @@
 		public string Position => "RideService";
 
 		/// <inheritdoc/>
-		public int PriceStatisticsRadiusMeters { get; set; } = 20_000;
+		public int PriceStatisticsRadiusKilometers { get; set; } = 50;
 
 		/// <inheritdoc/>
-		public float PriceStatisticsPercentile { get; set; } = 0.1f;
+		public float PriceStatisticsLowerPercentile { get; set; } = 0.65f;
+
+		/// <inheritdoc/>
+		public float PriceStatisticsMiddlePercentile { get; set; } = 0.75f;
+
+		/// <inheritdoc/>
+		public float PriceStatisticsHigherPercentile { get; set; } = 0.85f;
+
+		public int PriceRecommendationMinStep { get; set; } = 50;
 
 		/// <inheritdoc/>
 		public TimeSpan PriceStatisticsMaxPastPeriod { get; set; } = TimeSpan.FromDays(3 * 30);
@@ -70,13 +98,24 @@
 
 		public int MinDistanceBetweenPointsInKilometers { get; set; } = 1;
 
+		public float CloseDistanceInKilometers { get; set; } = 5;
+		public float MiddleDistanceInKilometers { get; set; } = 15;
+		public float FarAwayDistanceInKilometers { get; set; } = 40;
+
 		public IEnumerable<string> GetValidationErrors()
 		{
-			if (PriceStatisticsRadiusMeters <= 0)
-				yield return $"{nameof(PriceStatisticsRadiusMeters)} must be > 0";
+			if (PriceStatisticsRadiusKilometers <= 0)
+				yield return $"{nameof(PriceStatisticsRadiusKilometers)} must be > 0";
 
-			if (PriceStatisticsPercentile <= 0 || PriceStatisticsPercentile >= 1)
-				yield return $"{nameof(PriceStatisticsPercentile)} must be in diapason (0, 1). Other words, > 0 and < 1";
+			if (PriceStatisticsLowerPercentile <= 0 || PriceStatisticsLowerPercentile >= 1)
+				yield return $"{nameof(PriceStatisticsLowerPercentile)} must be in diapason (0, 1). Other words, > 0 and < 1";
+			if (PriceStatisticsMiddlePercentile <= 0 || PriceStatisticsMiddlePercentile >= 1)
+				yield return $"{nameof(PriceStatisticsMiddlePercentile)} must be in diapason (0, 1). Other words, > 0 and < 1";
+			if (PriceStatisticsHigherPercentile <= 0 || PriceStatisticsHigherPercentile >= 1)
+				yield return $"{nameof(PriceStatisticsHigherPercentile)} must be in diapason (0, 1). Other words, > 0 and < 1";
+
+			if (PriceRecommendationMinStep <= 0)
+				yield return $"{nameof(PriceRecommendationMinStep)} must be > 0";
 
 			if (PriceStatisticsMaxPastPeriod <= TimeSpan.Zero)
 				yield return $"{nameof(PriceStatisticsMaxPastPeriod)} must be > 0";
@@ -114,6 +153,13 @@
 
 			if (MinDistanceBetweenPointsInKilometers <= 0)
 				yield return $"{nameof(MinDistanceBetweenPointsInKilometers)} must be > 0";
+
+			if (CloseDistanceInKilometers <= 0)
+				yield return $"{nameof(CloseDistanceInKilometers)} must be > 0";
+			if (MiddleDistanceInKilometers <= 0)
+				yield return $"{nameof(MiddleDistanceInKilometers)} must be > 0";
+			if (FarAwayDistanceInKilometers <= 0)
+				yield return $"{nameof(FarAwayDistanceInKilometers)} must be > 0";
 		}
 	}
 }

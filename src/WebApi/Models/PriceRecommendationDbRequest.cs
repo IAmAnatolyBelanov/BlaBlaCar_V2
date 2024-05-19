@@ -2,7 +2,7 @@ using NetTopologySuite.Geometries;
 
 namespace WebApi.Models;
 
-public class PriceRecommendationRequest
+public class PriceRecommendationDbRequest
 {
 	public float LowerPercentile { get; set; }
 	public float MiddlePercentile { get; set; }

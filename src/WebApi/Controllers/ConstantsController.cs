@@ -9,9 +9,10 @@ namespace WebApi.Controllers
 	public class ConstantsController : ControllerBase
 	{
 		[HttpGet]
-		public BaseResponse<IEnumerable<string>> GetAllValidationCodes()
+		public BaseResponse<IOrderedEnumerable<string>> GetAllValidationCodes()
 		{
-			var result = ValidationCodes.AllConstants.Keys;
+			var result = ValidationCodes.AllConstants.Keys
+				.OrderBy(x => x);
 			return BaseResponse.From(result);
 		}
 	}

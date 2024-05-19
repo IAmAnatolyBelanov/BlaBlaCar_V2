@@ -117,10 +117,6 @@ public class RideFilterValidator : AbstractValidator<RideFilter>
 			.WithErrorCode(RideFilterValidationCodes.EmptyMinDepartureTime)
 			.WithMessage("Не задано минимальное время отправления");
 
-		RuleFor(x => x.MinArrivalTime)
-			.Must((filter, _) => filter.MinArrivalTime <= filter.MaxDepartureTime)
-			.WithErrorCode(RideFilterValidationCodes.ImpossibleTimeCombination)
-			.WithMessage($"{nameof(RideFilter.MinArrivalTime)} не может быть больше {nameof(RideFilter.MaxDepartureTime)}");
 		RuleFor(x => x.MaxArrivalTime)
 			.Must((filter, _) => filter.MaxArrivalTime >= filter.MinArrivalTime)
 			.WithErrorCode(RideFilterValidationCodes.ImpossibleTimeCombination)
