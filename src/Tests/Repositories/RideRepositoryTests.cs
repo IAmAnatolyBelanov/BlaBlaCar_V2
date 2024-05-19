@@ -33,7 +33,7 @@ public class RideRepositoryTests : BaseRepositoryTest
 		var user = _fixture.Create<User>();
 		var ride = _fixture.Build<Ride>()
 			.With(x => x.AuthorId, user.Id)
-			.Without(x => x.DriverId)
+			.With(x => x.DriverId, user.Id)
 			.Create();
 
 		using (var session = _sessionFactory.OpenPostgresConnection().BeginTransaction())
@@ -54,7 +54,8 @@ public class RideRepositoryTests : BaseRepositoryTest
 		var user = _fixture.Create<User>();
 		var ride = _fixture.Build<Ride>()
 			.With(x => x.AuthorId, user.Id)
-			.Without(x => x.DriverId)
+			.With(x => x.DriverId, user.Id)
+			.With(x => x.IsDeleted, false)
 			.Create();
 
 		using (var session = _sessionFactory.OpenPostgresConnection().BeginTransaction())
@@ -81,6 +82,7 @@ public class RideRepositoryTests : BaseRepositoryTest
 		var ride = _fixture.Build<Ride>()
 			.With(x => x.AuthorId, user.Id)
 			.With(x => x.DriverId, user.Id)
+			.With(x => x.IsDeleted, false)
 			.Create();
 
 		using (var session = _sessionFactory.OpenPostgresConnection().BeginTransaction())
@@ -114,7 +116,8 @@ public class RideRepositoryTests : BaseRepositoryTest
 				var user = _fixture.Create<User>();
 				var rides = _fixture.Build<Ride>()
 					.With(x => x.AuthorId, user.Id)
-					.Without(x => x.DriverId)
+					.With(x => x.DriverId)
+					.With(x => x.IsDeleted, false)
 					.CreateMany(300);
 
 				using (var session = _sessionFactory.OpenPostgresConnection())
@@ -227,7 +230,7 @@ public class RideRepositoryTests : BaseRepositoryTest
 
 		using var session = _sessionFactory.OpenPostgresConnection();
 
-		var result = _rideRepository.GetByFilter(session, filter, ct);
+		var result = await _rideRepository.GetByFilter(session, filter, ct);
 		result.Should().NotBeNull();
 	}
 
@@ -255,7 +258,7 @@ public class RideRepositoryTests : BaseRepositoryTest
 				var ride = _fixture.Build<Ride>()
 					.With(x => x.DriverId, user.Id)
 					.With(x => x.AuthorId, user.Id)
-					.With(x => x.Status, RideStatus.StartedOrDone)
+					.With(x => x.IsDeleted, false)
 					.With(x => x.Created, yesterday.AddHours(-8))
 					.Create();
 
@@ -359,5 +362,31 @@ public class RideRepositoryTests : BaseRepositoryTest
 		var result = await _rideRepository.GetCounts(session, rideFilter, ct);
 
 		result.Should().NotBeNull();
+	}
+
+	[Fact]
+	public async Task UpdateAvailablePlacesCountTest()
+	{
+		var ct = CancellationToken.None;
+
+		var user = _fixture.Create<User>();
+		var ride = _fixture.Build<Ride>()
+			.With(x => x.AuthorId, user.Id)
+			.With(x => x.DriverId, user.Id)
+			.With(x => x.IsDeleted, false)
+			.Create();
+
+		using (var session = _sessionFactory.OpenPostgresConnection().BeginTransaction())
+		{
+			await _userRepository.Insert(session, user, ct);
+			await _rideRepository.Insert(session, ride, ct);
+			await session.CommitAsync(ct);
+		}
+
+		using (var session = _sessionFactory.OpenPostgresConnection().BeginTransaction())
+		{
+			var result = await _rideRepository.UpdateAvailablePlacesCount(session, ride.Id, _fixture.Create<int>(), ct);
+			result.Should().Be(1);
+		}
 	}
 }

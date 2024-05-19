@@ -11,13 +11,16 @@ namespace WebApi.Services.Core
 {
 	public class RideServiceValidationCodes : ValidationCodes
 	{
-		public const string DriverIdIsEmpty = "RideService_DriverIdIsEmpty";
 		public const string CarIdIsEmpty = "RideService_CarIdIsEmpty";
 		public const string DriverDataDoesNotExist = "RideService_DriverDataDoesNotExist";
 		public const string CarHasLessSeatsThanRideAvailablePlaces = "RideService_CarHasLessSeatsThanRideAvailablePlaces";
 		public const string UnableToReserveRide = "RideService_UnableToReserveRide";
 		public const string UnknownCoordinates = "RideService_UnknownCoordinates";
 		public const string NotEnoughDataForStatistics = "RideService_NotEnoughDataForStatistics";
+
+		public const string UnableToUpdateRide = "RideService_UnableToUpdateRide";
+		public const string UnableToUpdateRideInPast = "RideService_UnableToUpdateRideInPast";
+		public const string UnableToSetPassengersCountLessThanReserved = "RideService_UnableToSetPassengersCountLessThanReserved";
 	}
 
 	public interface IRideService
@@ -28,6 +31,7 @@ namespace WebApi.Services.Core
 		Task<ReservationDto> MakeReservation(MakeReservationRequest request, CancellationToken ct);
 		Task<PriceRecommendation?> GetPriceRecommendation(GetPriceRecommendationRequest request, CancellationToken ct);
 		Task<RideCounts?> GetCounts(RideFilter filter, CancellationToken ct);
+		Task UpdateRideAvailablePlacesCount(Guid rideId, int count, CancellationToken ct);
 	}
 
 	public class RideService : IRideService
@@ -117,20 +121,18 @@ namespace WebApi.Services.Core
 			using var session = _sessionFactory.OpenPostgresConnection().BeginTransaction().StartTrace();
 
 			var getAuthorTask = _userRepository.GetById(session, rideDto.AuthorId, ct);
-			var getDriverTask = rideDto.DriverId is null
-				? null
-				: rideDto.DriverId.Value == rideDto.AuthorId
-					? getAuthorTask
-					: _userRepository.GetById(session, rideDto.DriverId.Value, ct);
+			var getDriverTask = rideDto.DriverId == rideDto.AuthorId
+				? getAuthorTask
+				: _userRepository.GetById(session, rideDto.DriverId, ct);
 
 			var author = await getAuthorTask;
 			if (author is null)
 				throw new UserFriendlyException(CommonValidationCodes.UserNotFound, $"Пользователь {rideDto.AuthorId} не найден");
 			var driver = getAuthorTask is null ? null : await getAuthorTask;
-			if (rideDto.DriverId is not null && driver is null)
+			if (driver is null)
 				throw new UserFriendlyException(CommonValidationCodes.UserNotFound, $"Пользователь {rideDto.DriverId} не найден");
 
-			if (driver is not null && rideDto.Status == RideStatus.ActiveNotStarted)
+			if (driver is not null)
 			{
 				var driverData = await _driverDataRepository.GetByUserId(session, driver.Id, ct);
 				if (driverData is null)
@@ -155,16 +157,6 @@ namespace WebApi.Services.Core
 
 		private void ValidateRideOnCreation(RideDto rideDto)
 		{
-			if (rideDto.Status != RideStatus.Draft && rideDto.Status != RideStatus.ActiveNotStarted)
-				throw new UserFriendlyException(RideValidationCodes.InvalidCreationStatus, $"При создании поездки доступны лишь статусы {nameof(RideStatus.Draft)} и {nameof(RideStatus.ActiveNotStarted)}");
-
-			// TODO - для менеджеров условие не должно выполняться.
-			if (rideDto.Status == RideStatus.ActiveNotStarted)
-			{
-				if (rideDto.DriverId is null)
-					throw new UserFriendlyException(RideServiceValidationCodes.DriverIdIsEmpty, "Водитель может быть не указан только для черновика");
-			}
-
 			_rideDtoValidator.ValidateAndThrowFriendly(rideDto);
 		}
 
@@ -276,6 +268,36 @@ namespace WebApi.Services.Core
 			return legs;
 		}
 
+		public async Task UpdateRideAvailablePlacesCount(Guid rideId, int count, CancellationToken ct)
+		{
+			if (count < 1)
+				throw new UserFriendlyException(RideValidationCodes.TooLittlePassengerSeats, "Количество мест для пассажиров должно быть минимум 1");
+
+			using var session = _sessionFactory.OpenPostgresConnection().BeginTransaction().StartTrace();
+
+			var dbFilter = new RideDbFilter
+			{
+				RideIds = [rideId],
+				Offset = 0,
+				Limit = int.MaxValue,
+			};
+
+			var rides = await _rideRepository.GetByFilter(session, dbFilter, ct);
+
+			if (rides.Count == 0)
+				throw new UserFriendlyException(CommonValidationCodes.RideNotFound, $"Поездка {rideId} не найдена");
+
+			var arrival = rides.Min(x => x.FromArrival);
+			if (arrival < _clock.Now)
+				throw new UserFriendlyException(RideServiceValidationCodes.UnableToUpdateRideInPast, "Невозможно изменить данные об уже начавшейся либо закончившейся поездке");
+
+			var alreadyReserved = rides.Max(x => x.AlreadyReservedSeatsCount);
+			if (count < alreadyReserved)
+				throw new UserFriendlyException(RideServiceValidationCodes.CarHasLessSeatsThanRideAvailablePlaces, "Невозможно выставить количество доступных мест меньше, чем уже мест забронировано");
+
+			await _rideRepository.UpdateAvailablePlacesCount(session, rideId, count, ct);
+			await session.CommitAsync(ct);
+		}
 
 		public async Task<RideDto?> GetRideById(Guid rideId, CancellationToken ct)
 		{
@@ -367,7 +389,6 @@ namespace WebApi.Services.Core
 				ArrivalPointSearchRadiusKilometers = 0.3f,
 				DeparturePoint = request.WaypointFrom!.Value.ToPoint(),
 				DeparturePointSearchRadiusKilometers = 0.3f,
-				AvailableStatuses = [(int)RideStatus.ActiveNotStarted],
 				Limit = 1,
 				Offset = 0,
 			};

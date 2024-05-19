@@ -37,6 +37,4 @@ public class RideDbFilter
 
 	public PaymentMethod[]? PaymentMethods { get; set; }
 	public int[]? ValidationMethods { get; set; }
-
-	public int[]? AvailableStatuses { get; set; }
 }

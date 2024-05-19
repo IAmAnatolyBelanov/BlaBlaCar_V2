@@ -10,9 +10,7 @@ namespace WebApi.Models
             target.AuthorId = src.AuthorId;
             target.DriverId = src.DriverId;
             target.Created = src.Created;
-            target.Status = src.Status;
             target.AvailablePlacesCount = src.AvailablePlacesCount;
-            target.Comment = src.Comment;
             target.ValidationMethod = src.ValidationMethod;
             target.ValidationTimeBeforeDeparture = src.ValidationTimeBeforeDeparture;
             target.AfterRideValidationTimeoutAction = src.AfterRideValidationTimeoutAction;
@@ -24,9 +22,7 @@ namespace WebApi.Models
             target.AuthorId = src.AuthorId;
             target.DriverId = src.DriverId;
             target.Created = src.Created;
-            target.Status = src.Status;
             target.AvailablePlacesCount = src.AvailablePlacesCount;
-            target.Comment = src.Comment;
             target.ValidationMethod = src.ValidationMethod;
             target.ValidationTimeBeforeDeparture = src.ValidationTimeBeforeDeparture;
             target.AfterRideValidationTimeoutAction = src.AfterRideValidationTimeoutAction;

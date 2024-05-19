@@ -10,9 +10,7 @@ namespace WebApi.Models
             target.AuthorId = source.AuthorId;
             target.DriverId = source.DriverId;
             target.Created = source.Created;
-            target.Status = source.Status;
             target.AvailablePlacesCount = source.TotalAvailablePlacesCount;
-            target.Comment = source.Comment;
             target.ValidationMethod = source.ValidationMethod;
             target.ValidationTimeBeforeDeparture = source.ValidationTimeBeforeDeparture;
             target.AfterRideValidationTimeoutAction = source.AfterRideValidationTimeoutAction;

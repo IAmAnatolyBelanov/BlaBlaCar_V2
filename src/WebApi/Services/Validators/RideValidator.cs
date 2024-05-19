@@ -9,6 +9,7 @@ namespace WebApi.Services.Validators;
 public class RideValidationCodes : ValidationCodes
 {
 	public const string EmptyAuthorId = "RideValidator_EmptyAuthorId";
+	public const string EmptyDriverId = "RideValidator_EmptyDriverId";
 
 	public const string EmptyPaymentMethods = "RideValidator_EmptyPaymentMethods";
 	public const string DoubledPaymentMethods = "RideValidator_DoubledPaymentMethods";
@@ -67,16 +68,10 @@ public class RideDtoValidator : AbstractValidator<RideDto>
 			.NotEmpty()
 			.WithErrorCode(RideValidationCodes.EmptyAuthorId)
 			.WithMessage("Не заполнен автор");
-
-		RuleFor(x => x.Status)
-			.IsInEnum()
-			.WithErrorCode(RideValidationCodes.StatusOutOfEnum)
-			.WithMessage(x => $"Статус {x.Status} не поддерживается");
-
-		RuleFor(x => x.Status)
-			.NotEqual(RideStatus.Unknown)
-			.WithErrorCode(RideValidationCodes.StatusUnknown)
-			.WithMessage($"Статус {nameof(RideStatus.Unknown)} не поддерживается");
+		RuleFor(x => x.DriverId)
+			.NotEmpty()
+			.WithErrorCode(RideValidationCodes.EmptyDriverId)
+			.WithMessage("Не заполнен водитель");
 
 		RuleFor(x => x.PaymentMethods)
 			.NotEmpty()
@@ -137,25 +132,22 @@ public class RideDtoValidator : AbstractValidator<RideDto>
 				});
 		});
 
-		When(x => x.Status != RideStatus.Draft && x.Status != RideStatus.Deleted, () =>
-		{
-			RuleFor(x => x.Waypoints)
-				.NotNull()
-				.WithErrorCode(RideValidationCodes.EmptyWaypoints)
-				.WithMessage("Не заполнены пункты назначения и промежуточные точки поездки")
-				.DependentRules(() =>
-				{
-					RuleFor(x => x.Waypoints)
-						.Must(x => x.Count >= 2)
-						.WithErrorCode(RideValidationCodes.EmptyWaypoints)
-						.WithMessage("Не заполнены пункты назначения и промежуточные точки поездки");
-				});
+		RuleFor(x => x.Waypoints)
+			.NotNull()
+			.WithErrorCode(RideValidationCodes.EmptyWaypoints)
+			.WithMessage("Не заполнены пункты назначения и промежуточные точки поездки")
+			.DependentRules(() =>
+			{
+				RuleFor(x => x.Waypoints)
+					.Must(x => x.Count >= 2)
+					.WithErrorCode(RideValidationCodes.EmptyWaypoints)
+					.WithMessage("Не заполнены пункты назначения и промежуточные точки поездки");
+			});
 
-			RuleFor(x => x.Legs)
-				.NotEmpty()
-				.WithErrorCode(RideValidationCodes.EmptyLegs)
-				.WithMessage("Не заполнены сегменты маршрута между пунктами назначения и/или промежуточными точками поездки");
-		});
+		RuleFor(x => x.Legs)
+			.NotEmpty()
+			.WithErrorCode(RideValidationCodes.EmptyLegs)
+			.WithMessage("Не заполнены сегменты маршрута между пунктами назначения и/или промежуточными точками поездки");
 
 		When(x => x.Waypoints?.Count >= 2 && x.Legs?.Count >= 1, () =>
 		{

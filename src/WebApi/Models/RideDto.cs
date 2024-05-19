@@ -7,20 +7,18 @@ public class RideDto
 	/// </summary>
 	public Guid Id { get; set; }
 	public Guid AuthorId { get; set; }
-	public Guid? DriverId { get; set; }
+	public Guid DriverId { get; set; }
 
 	/// <summary>
 	/// Время создания поездки. Поле заполняется самим сервисом. Таким образом, даже если при создании или редактировании поездки передать поле в запросе, сервис никак не отреагирует на него.
 	/// </summary>
 	public DateTimeOffset Created { get; set; }
-	public RideStatus Status { get; set; }
 
 	/// <summary>
 	/// Количество свободных мест в авто.
 	/// Если выбрана машина, то количество свободных мест не может быть больше, чем кол-во сидений в авто минус 1 (водительское). Если авто не выбрано, можно выставить любое число, однако при последующем выборе авто количество свободных мест будет уменьшено до количества сидений в авто минус 1. Увеличиться количество свободных мест при выборе авто автоматически не может.
 	/// </summary>
 	public int AvailablePlacesCount { get; set; }
-	public string? Comment { get; set; }
 	public IReadOnlyList<PaymentMethod> PaymentMethods { get; set; } = default!;
 	public RideValidationMethod ValidationMethod { get; set; }
 

@@ -7,11 +7,9 @@ public class Ride
 
 	public Guid Id { get; set; }
 	public Guid AuthorId { get; set; }
-	public Guid? DriverId { get; set; }
+	public Guid DriverId { get; set; }
 	public DateTimeOffset Created { get => created; set => created = value.ToUniversalTime(); }
-	public RideStatus Status { get; set; }
 	public int AvailablePlacesCount { get; set; }
-	public string? Comment { get; set; }
 	public bool IsCashPaymentMethodAvailable { get; set; }
 	public bool IsCashlessPaymentMethodAvailable { get; set; }
 	public RideValidationMethod ValidationMethod { get; set; }
@@ -25,4 +23,6 @@ public class Ride
 	/// Действия, что необходимо автоматически предпринять по окончанию <see cref="ValidationTimeBeforeDeparture"/>.
 	/// </summary>
 	public AfterRideValidationTimeoutAction? AfterRideValidationTimeoutAction { get; set; }
+
+	public bool IsDeleted { get; set; }
 }

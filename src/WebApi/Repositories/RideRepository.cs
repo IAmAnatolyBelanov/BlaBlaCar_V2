@@ -12,6 +12,7 @@ public interface IRideRepository : IRepository
 	Task<string> GetCounts(IPostgresSession session, CancellationToken ct);
 	Task<PriceRecommendation?> GetPriceRecommendation(IPostgresSession session, PriceRecommendationDbRequest request, CancellationToken ct);
 	Task<RideDbCounts?> GetCounts(IPostgresSession session, RideDbCountsFilter filter, CancellationToken ct);
+	Task<int> UpdateAvailablePlacesCount(IPostgresSession session, Guid rideId, int count, CancellationToken ct);
 }
 
 public class RideRepository : IRideRepository
@@ -44,16 +45,15 @@ public class RideRepository : IRideRepository
 
 		await importer.Write(ride.Id, ct);
 		await importer.Write(ride.AuthorId, ct);
-		await importer.WriteValueOrNull(ride.DriverId, ct);
+		await importer.Write(ride.DriverId, ct);
 		await importer.Write(ride.Created, ct);
-		await importer.Write((int)ride.Status, ct);
 		await importer.Write(ride.AvailablePlacesCount, ct);
-		await importer.WriteValueOrNull(ride.Comment, ct);
 		await importer.Write(ride.IsCashPaymentMethodAvailable, ct);
 		await importer.Write(ride.IsCashlessPaymentMethodAvailable, ct);
 		await importer.Write((int)ride.ValidationMethod, ct);
 		await importer.WriteValueOrNull(ride.ValidationTimeBeforeDeparture, NpgsqlDbType.Time, ct);
 		await importer.WriteValueOrNull((int?)ride.AfterRideValidationTimeoutAction, ct);
+		await importer.Write(ride.IsDeleted, ct);
 
 		var result = await importer.Complete(ct);
 
@@ -96,14 +96,13 @@ public class RideRepository : IRideRepository
 				, {_defaultRideAlias}.""{nameof(Ride.AuthorId)}"" AS ""{nameof(SearchRideDbResponse.AuthorId)}""
 				, {_defaultRideAlias}.""{nameof(Ride.DriverId)}"" AS ""{nameof(SearchRideDbResponse.DriverId)}""
 				, {_defaultRideAlias}.""{nameof(Ride.Created)}"" AS ""{nameof(SearchRideDbResponse.Created)}""
-				, {_defaultRideAlias}.""{nameof(Ride.Status)}"" AS ""{nameof(SearchRideDbResponse.Status)}""
 				, {_defaultRideAlias}.""{nameof(Ride.AvailablePlacesCount)}"" AS ""{nameof(SearchRideDbResponse.TotalAvailablePlacesCount)}""
-				, {_defaultRideAlias}.""{nameof(Ride.Comment)}"" AS ""{nameof(SearchRideDbResponse.Comment)}""
 				, {_defaultRideAlias}.""{nameof(Ride.IsCashPaymentMethodAvailable)}"" AS ""{nameof(SearchRideDbResponse.IsCashPaymentMethodAvailable)}""
 				, {_defaultRideAlias}.""{nameof(Ride.IsCashlessPaymentMethodAvailable)}"" AS ""{nameof(SearchRideDbResponse.IsCashlessPaymentMethodAvailable)}""
 				, {_defaultRideAlias}.""{nameof(Ride.ValidationMethod)}"" AS ""{nameof(SearchRideDbResponse.ValidationMethod)}""
 				, {_defaultRideAlias}.""{nameof(Ride.ValidationTimeBeforeDeparture)}"" AS ""{nameof(SearchRideDbResponse.ValidationTimeBeforeDeparture)}""
 				, {_defaultRideAlias}.""{nameof(Ride.AfterRideValidationTimeoutAction)}"" AS ""{nameof(SearchRideDbResponse.AfterRideValidationTimeoutAction)}""
+				, {_defaultRideAlias}.""{nameof(Ride.IsDeleted)}"" AS ""{nameof(SearchRideDbResponse.IsDeleted)}""
 
 				, {_defaultWaypointDepartureAlias}.""{nameof(Waypoint.Id)}"" AS ""{nameof(SearchRideDbResponse.WaypointFromId)}""
 				, {_defaultWaypointDepartureAlias}.""{nameof(Waypoint.Point)}"" AS ""{nameof(SearchRideDbResponse.FromPoint)}""
@@ -210,7 +209,7 @@ public class RideRepository : IRideRepository
 			INNER JOIN {_waypointsTableName} {_defaultWaypointArrivalAlias}
 				ON {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Id)}"" = {_defaultLegAlias}.""{nameof(Leg.WaypointToId)}""
 			WHERE
-				{_defaultRideAlias}.""{nameof(Ride.Status)}"" = {(int)RideStatus.StartedOrDone}
+				{_defaultRideAlias}.""{nameof(Ride.IsDeleted)}"" = FALSE
 				AND {_defaultReservationAlias}.""{nameof(Reservation.IsDeleted)}"" = FALSE
 				AND {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Arrival)}"" <= @{nameof(request.ArrivalDateTo)}
 				AND {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Arrival)}"" >= @{nameof(request.ArrivalDateFrom)}
@@ -219,6 +218,21 @@ public class RideRepository : IRideRepository
 		";
 
 		var result = await session.QueryFirstOrDefaultAsync<PriceRecommendation>(sql, request, ct);
+		return result;
+	}
+
+	public async Task<int> UpdateAvailablePlacesCount(IPostgresSession session, Guid rideId, int count, CancellationToken ct)
+	{
+		var sql = $@"
+			UPDATE
+				{_rideTableName}
+			SET
+				""{nameof(Ride.AvailablePlacesCount)}"" = {count}
+			WHERE
+				""{nameof(Ride.Id)}"" = '{rideId}';
+			";
+
+		var result = await session.ExecuteAsync(sql, ct);
 		return result;
 	}
 
@@ -295,7 +309,7 @@ public class RideRepository : IRideRepository
 			yield return $"{rideAliasWithDot}\"{nameof(Ride.Id)}\" = ANY(@{nameof(RideDbFilter.RideIds)})";
 
 		if (filter.HideDeleted)
-			yield return $"{rideAliasWithDot}\"{nameof(Ride.Status)}\" != {(int)RideStatus.Deleted}";
+			yield return $"{rideAliasWithDot}\"{nameof(Ride.IsDeleted)}\" = FALSE";
 
 		if (filter.DeparturePoint is not null)
 			yield return $"(ST_DISTANCE({waypointDepartureAliasWithDot}\"{nameof(Waypoint.Point)}\", @{nameof(RideDbFilter.DeparturePoint)}) / 1000) <= @{nameof(RideDbFilter.DeparturePointSearchRadiusKilometers)}";
@@ -323,9 +337,6 @@ public class RideRepository : IRideRepository
 
 		if (filter.ValidationMethods is not null)
 			yield return $"{rideAliasWithDot}\"{nameof(Ride.ValidationMethod)}\" = ANY(@{nameof(RideDbFilter.ValidationMethods)})";
-
-		if (filter.AvailableStatuses is not null)
-			yield return $"{rideAliasWithDot}\"{nameof(Ride.Status)}\" = ANY(@{nameof(RideDbFilter.AvailableStatuses)})";
 
 		if (filter.MinPriceInRub.HasValue)
 			yield return $"{legAliasWithDot}\"{nameof(Leg.PriceInRub)}\" >= @{nameof(RideDbFilter.MinPriceInRub)}";
@@ -390,13 +401,12 @@ public class RideRepository : IRideRepository
 		, ""{nameof(Ride.AuthorId)}""
 		, ""{nameof(Ride.DriverId)}""
 		, ""{nameof(Ride.Created)}""
-		, ""{nameof(Ride.Status)}""
 		, ""{nameof(Ride.AvailablePlacesCount)}""
-		, ""{nameof(Ride.Comment)}""
 		, ""{nameof(Ride.IsCashPaymentMethodAvailable)}""
 		, ""{nameof(Ride.IsCashlessPaymentMethodAvailable)}""
 		, ""{nameof(Ride.ValidationMethod)}""
 		, ""{nameof(Ride.ValidationTimeBeforeDeparture)}""
 		, ""{nameof(Ride.AfterRideValidationTimeoutAction)}""
+		, ""{nameof(Ride.IsDeleted)}""
 	";
 }

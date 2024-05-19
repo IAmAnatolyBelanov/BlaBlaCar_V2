@@ -22,14 +22,6 @@ namespace WebApi.Models
             {
                 target.ArrivalPoint = null;
             }
-            if (src.AvailableStatuses != null)
-            {
-                target.AvailableStatuses = MapToInt32Array1(src.AvailableStatuses);
-            }
-            else
-            {
-                target.AvailableStatuses = null;
-            }
             target.Offset = src.Offset;
             target.Limit = src.Limit;
             target.SortType = src.SortType;
@@ -48,18 +40,6 @@ namespace WebApi.Models
         }
 
         private int[] MapToInt32Array(global::System.Collections.Generic.IReadOnlyList<global::WebApi.Models.RideValidationMethod> source)
-        {
-            var target = new int[source.Count];
-            var i = 0;
-            foreach (var item in source)
-            {
-                target[i] = (int)item;
-                i++;
-            }
-            return target;
-        }
-
-        private int[] MapToInt32Array1(global::System.Collections.Generic.IReadOnlyList<global::WebApi.Models.RideStatus> source)
         {
             var target = new int[source.Count];
             var i = 0;

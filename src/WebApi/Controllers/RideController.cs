@@ -65,5 +65,12 @@ namespace WebApi.Controllers
 			var result = await _rideService.GetCounts(filter, ct);
 			return result;
 		}
+
+		[HttpPost]
+		public async Task<StringResponse> UpdateRideAvailablePlacesCount(UpdateRideAvailablePlacesCountRequest request, CancellationToken ct)
+		{
+			await _rideService.UpdateRideAvailablePlacesCount(request.RideId, request.Count, ct);
+			return StringResponse.Empty;
+		}
 	}
 }

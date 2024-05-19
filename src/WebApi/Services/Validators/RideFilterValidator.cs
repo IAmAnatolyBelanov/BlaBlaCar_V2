@@ -35,8 +35,6 @@ public class RideFilterValidationCodes : ValidationCodes
 	public const string EmptyValidationMethods = "RideFilterValidation_ValidationMethods";
 	public const string UnknownValidationMethod = "RideFilterValidation_UnknownValidationMethod";
 
-	public const string UnknownAvailableStatus = "RideFilterValidation_UnknownAvailableStatus";
-
 	public const string InvalidOffset = "RideFilterValidation_InvalidOffset";
 	public const string InvalidLimit = "RideFilterValidation_InvalidLimit";
 }
@@ -191,13 +189,5 @@ public class RideFilterValidator : AbstractValidator<RideFilter>
 					.WithErrorCode(RideFilterValidationCodes.UnknownValidationMethod)
 					.WithErrorCode("Список способов валидации пассажиров содержит неизвестные значения");
 			});
-
-		When(x => x.AvailableStatuses is not null, () =>
-		{
-			RuleFor(x => x.AvailableStatuses)
-				.Must(x => x!.All(s => s != RideStatus.Unknown && Enum.IsDefined(s)))
-				.WithErrorCode(RideFilterValidationCodes.UnknownAvailableStatus)
-				.WithMessage("Список допустимых статусов поездки содержит неизвестные значения");
-		});
 	}
 }

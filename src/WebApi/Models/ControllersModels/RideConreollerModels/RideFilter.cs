@@ -41,6 +41,4 @@ public class RideFilter
 	public IReadOnlyList<PaymentMethod> PaymentMethods { get; set; } = default!;
 
 	public IReadOnlyList<RideValidationMethod> ValidationMethods { get; set; } = default!;
-
-	public IReadOnlyList<RideStatus>? AvailableStatuses { get; set; }
 }

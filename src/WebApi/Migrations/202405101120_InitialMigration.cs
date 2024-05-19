@@ -119,9 +119,8 @@ public class InitialMigration : PostgresMigrator
 		Create.Table("Rides")
 			.WithColumn("Id").AsGuid().PrimaryKey()
 			.WithColumn("AuthorId").AsGuid()
-			.WithColumn("DriverId").AsGuid().Nullable()
+			.WithColumn("DriverId").AsGuid()
 			.WithColumn("Created").AsDateTimeOffset()
-			.WithColumn("Status").AsInt32()
 			.WithColumn("AvailablePlacesCount").AsInt32()
 			.WithColumn("Comment").AsString().Nullable()
 			.WithColumn("IsCashPaymentMethodAvailable").AsBoolean()
@@ -129,6 +128,7 @@ public class InitialMigration : PostgresMigrator
 			.WithColumn("ValidationMethod").AsInt32()
 			.WithColumn("ValidationTimeBeforeDeparture").AsTime().Nullable()
 			.WithColumn("AfterRideValidationTimeoutAction").AsInt32().Nullable()
+			.WithColumn("IsDeleted").AsBoolean()
 			.WithTechnicalCommentColumn();
 
 		Create.ForeignKey()

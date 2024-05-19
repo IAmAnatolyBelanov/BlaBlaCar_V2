@@ -10,10 +10,8 @@ public class SearchRideDbResponse
 
 	public Guid RideId { get; set; }
 	public Guid AuthorId { get; set; }
-	public Guid? DriverId { get; set; }
-	public Guid? CarId { get; set; }
+	public Guid DriverId { get; set; }
 	public DateTimeOffset Created { get => created; set => created = value.ToUniversalTime(); }
-	public RideStatus Status { get; set; }
 
 	/// <summary>
 	/// Количество доступных для брони мест в поездке.
@@ -33,6 +31,8 @@ public class SearchRideDbResponse
 	/// Действия, что необходимо автоматически предпринять по окончанию <see cref="ValidationTimeBeforeDeparture"/>.
 	/// </summary>
 	public AfterRideValidationTimeoutAction? AfterRideValidationTimeoutAction { get; set; }
+
+	public bool IsDeleted { get; set; }
 
 
 
