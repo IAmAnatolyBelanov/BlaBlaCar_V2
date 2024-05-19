@@ -3,8 +3,14 @@ using WebApi.DataAccess;
 using WebApi.Models.DriverServiceModels;
 using WebApi.Repositories;
 using WebApi.Services.Driver;
+using WebApi.Services.Validators;
 
 namespace WebApi.Services.User;
+
+public class UserServiceValidationCodes : ValidationCodes
+{
+	public const string PassportIsAlreadyInUse = "UserService_PassportIsAlreadyInUse";
+}
 
 public interface IUserService
 {
@@ -61,7 +67,7 @@ public class UserService : IUserService
 
 		if (checkedPersonData.UserId.HasValue && checkedPersonData.UserId.Value != userId)
 		{
-			throw new UserFriendlyException("ПридуматьКод", "Паспорт уже использован кем-то ещё. Обратитесь к поддержке.");
+			throw new UserFriendlyException(UserServiceValidationCodes.PassportIsAlreadyInUse, "Паспорт уже использован кем-то ещё. Если Вы считаете, что паспорт использован посторонним лицом без вашего на то согласия, обратитесь к поддержке.");
 		}
 
 		if (currentPersonData is null || checkedPersonData.UserId == null)
