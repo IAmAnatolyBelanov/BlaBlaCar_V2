@@ -47,7 +47,7 @@ namespace WebApi.Controllers
 		}
 
 		[HttpPost]
-		public async Task<BaseResponse<ReservationDto>> CreateReservation([FromBody] MakeReservationRequest request, CancellationToken ct)
+		public async Task<BaseResponse<ReservationDto>> MakeReservation([FromBody] MakeReservationRequest request, CancellationToken ct)
 		{
 			var result = await _rideService.MakeReservation(request, ct);
 			return result;

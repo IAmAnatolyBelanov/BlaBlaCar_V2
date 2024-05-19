@@ -25,4 +25,7 @@ public class Ride
 	public AfterRideValidationTimeoutAction? AfterRideValidationTimeoutAction { get; set; }
 
 	public bool IsDeleted { get; set; }
+
+	// На поле не висит Foreign Key, так как в этом случае получится зацикленная зависимость. А их разруливать больно.
+	public Guid StartWaypointId { get; set; }
 }

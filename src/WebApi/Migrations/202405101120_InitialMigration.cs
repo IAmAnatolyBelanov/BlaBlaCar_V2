@@ -129,6 +129,7 @@ public class InitialMigration : PostgresMigrator
 			.WithColumn("ValidationTimeBeforeDeparture").AsTime().Nullable()
 			.WithColumn("AfterRideValidationTimeoutAction").AsInt32().Nullable()
 			.WithColumn("IsDeleted").AsBoolean()
+			.WithColumn("StartWaypointId").AsGuid().WithColumnDescription("Column does not have FK because it would be cycled loop. And cycled loop is painful")
 			.WithTechnicalCommentColumn();
 
 		Create.ForeignKey()

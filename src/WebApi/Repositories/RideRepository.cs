@@ -27,6 +27,7 @@ public class RideRepository : IRideRepository
 	private const string _defaultRideAlias = "ride";
 	private const string _defaultWaypointDepartureAlias = "waypoint_departure";
 	private const string _defaultWaypointArrivalAlias = "waypoint_arrival";
+	private const string _defaultWaypointStartAlias = "waypoint_start";
 	private const string _defaultLegAlias = "leg";
 	private const string _defaultReservationAlias = "reservation";
 	private const string _defaultAffectedLegAlias = "affected_leg";
@@ -54,6 +55,7 @@ public class RideRepository : IRideRepository
 		await importer.WriteValueOrNull(ride.ValidationTimeBeforeDeparture, NpgsqlDbType.Time, ct);
 		await importer.WriteValueOrNull((int?)ride.AfterRideValidationTimeoutAction, ct);
 		await importer.Write(ride.IsDeleted, ct);
+		await importer.Write(ride.StartWaypointId, ct);
 
 		var result = await importer.Complete(ct);
 
@@ -133,6 +135,9 @@ public class RideRepository : IRideRepository
 			INNER JOIN {_waypointsTableName} {_defaultWaypointArrivalAlias}
 				ON {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.RideId)}"" = {_defaultRideAlias}.""{nameof(Ride.Id)}""
 				AND {_defaultLegAlias}.""{nameof(Leg.WaypointToId)}"" = {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Id)}""
+			INNER JOIN {_waypointsTableName} {_defaultWaypointStartAlias}
+				ON {_defaultWaypointStartAlias}.""{nameof(Waypoint.RideId)}"" = {_defaultRideAlias}.""{nameof(Ride.Id)}""
+				AND {_defaultRideAlias}.""{nameof(Ride.StartWaypointId)}"" = {_defaultWaypointStartAlias}.""{nameof(Waypoint.Id)}""
 			LEFT JOIN leg_reserved_seats leg_reserved_seat
 				ON leg_reserved_seat.""LegId"" = {_defaultLegAlias}.""{nameof(Leg.Id)}""
 			{BuildWhereSection(filter)}
@@ -179,6 +184,9 @@ public class RideRepository : IRideRepository
 			INNER JOIN {_waypointsTableName} {_defaultWaypointArrivalAlias}
 				ON {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.RideId)}"" = {_defaultRideAlias}.""{nameof(Ride.Id)}""
 				AND {_defaultLegAlias}.""{nameof(Leg.WaypointToId)}"" = {_defaultWaypointArrivalAlias}.""{nameof(Waypoint.Id)}""
+			INNER JOIN {_waypointsTableName} {_defaultWaypointStartAlias}
+				ON {_defaultWaypointStartAlias}.""{nameof(Waypoint.RideId)}"" = {_defaultRideAlias}.""{nameof(Ride.Id)}""
+				AND {_defaultRideAlias}.""{nameof(Ride.StartWaypointId)}"" = {_defaultWaypointStartAlias}.""{nameof(Waypoint.Id)}""
 			LEFT JOIN leg_reserved_seats leg_reserved_seat
 				ON leg_reserved_seat.""LegId"" = {_defaultLegAlias}.""{nameof(Leg.Id)}""
 			{BuildWhereSection(filter)};
@@ -267,7 +275,8 @@ public class RideRepository : IRideRepository
 		string legAlias = _defaultLegAlias + ".",
 		string rideAlias = _defaultRideAlias + ".",
 		string waypointDepartureAlias = _defaultWaypointDepartureAlias + ".",
-		string waypointArrivalAlias = _defaultWaypointArrivalAlias + "."
+		string waypointArrivalAlias = _defaultWaypointArrivalAlias + ".",
+		string waypointStartAlias = _defaultWaypointStartAlias + "."
 		)
 	{
 		if (!rideAlias.IsNullOrEmpty() && !rideAlias.EndsWith('.'))
@@ -278,13 +287,16 @@ public class RideRepository : IRideRepository
 			waypointDepartureAlias += '.';
 		if (!waypointArrivalAlias.IsNullOrEmpty() && !waypointArrivalAlias.EndsWith('.'))
 			waypointArrivalAlias += '.';
+		if (!waypointStartAlias.IsNullOrEmpty() && !waypointStartAlias.EndsWith('.'))
+			waypointStartAlias += '.';
 
 		var clauses = BuildClauses(
 			filter: filter,
 			rideAliasWithDot: rideAlias,
 			legAliasWithDot: legAlias,
 			waypointDepartureAliasWithDot: waypointDepartureAlias,
-			waypointArrivalAliasWithDot: waypointArrivalAlias);
+			waypointArrivalAliasWithDot: waypointArrivalAlias,
+			waypointStartAliasWithDot: waypointStartAlias);
 
 		var clausesArray = clauses
 			.Select(x => $"({x})")
@@ -302,7 +314,8 @@ public class RideRepository : IRideRepository
 		string rideAliasWithDot,
 		string legAliasWithDot,
 		string waypointDepartureAliasWithDot,
-		string waypointArrivalAliasWithDot
+		string waypointArrivalAliasWithDot,
+		string waypointStartAliasWithDot
 		)
 	{
 		if (filter.RideIds is not null)
@@ -310,6 +323,9 @@ public class RideRepository : IRideRepository
 
 		if (filter.HideDeleted)
 			yield return $"{rideAliasWithDot}\"{nameof(Ride.IsDeleted)}\" = FALSE";
+
+		if (filter.HideStarted)
+			yield return $"{waypointStartAliasWithDot}\"{nameof(Waypoint.Arrival)}\" < NOW() AT TIME ZONE 'UTC'";
 
 		if (filter.DeparturePoint is not null)
 			yield return $"(ST_DISTANCE({waypointDepartureAliasWithDot}\"{nameof(Waypoint.Point)}\", @{nameof(RideDbFilter.DeparturePoint)}) / 1000) <= @{nameof(RideDbFilter.DeparturePointSearchRadiusKilometers)}";
@@ -408,5 +424,6 @@ public class RideRepository : IRideRepository
 		, ""{nameof(Ride.ValidationTimeBeforeDeparture)}""
 		, ""{nameof(Ride.AfterRideValidationTimeoutAction)}""
 		, ""{nameof(Ride.IsDeleted)}""
+		, ""{nameof(Ride.StartWaypointId)}""
 	";
 }

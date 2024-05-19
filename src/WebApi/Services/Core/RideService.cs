@@ -143,8 +143,10 @@ namespace WebApi.Services.Core
 			rideDto.Created = start;
 			var ride = _rideDtoMapper.ToRide(rideDto);
 
-			var waypoints = FillWaypointsOnRideCreation(rideDto);
+			var waypoints = FillWaypointsOnRideCreationOrderedByArrivalAsc(rideDto);
 			var legs = FillLegsOnRideCreation(rideDto, waypoints);
+
+			ride.StartWaypointId = waypoints[0].Id;
 
 			await _rideRepository.Insert(session, ride, ct);
 			await _waypointRepository.BulkInsert(session, waypoints, ct);
@@ -160,7 +162,7 @@ namespace WebApi.Services.Core
 			_rideDtoValidator.ValidateAndThrowFriendly(rideDto);
 		}
 
-		private IReadOnlyList<Waypoint> FillWaypointsOnRideCreation(RideDto rideDto)
+		private IReadOnlyList<Waypoint> FillWaypointsOnRideCreationOrderedByArrivalAsc(RideDto rideDto)
 		{
 			var waypoints = _waypointMapper.ToWaypoints(rideDto)
 				.OrderBy(x => x.Arrival)
@@ -389,6 +391,7 @@ namespace WebApi.Services.Core
 				ArrivalPointSearchRadiusKilometers = 0.3f,
 				DeparturePoint = request.WaypointFrom!.Value.ToPoint(),
 				DeparturePointSearchRadiusKilometers = 0.3f,
+				MaxDepartureTime = start,
 				Limit = 1,
 				Offset = 0,
 			};

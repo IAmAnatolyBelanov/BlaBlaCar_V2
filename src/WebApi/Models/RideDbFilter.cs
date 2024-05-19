@@ -11,6 +11,7 @@ public class RideDbFilter
 
 	public Guid[]? RideIds { get; set; }
 	public bool HideDeleted { get; set; } = true;
+	public bool HideStarted { get; set; } = true;
 
 	public int Offset { get; set; }
 	public int Limit { get; set; }
