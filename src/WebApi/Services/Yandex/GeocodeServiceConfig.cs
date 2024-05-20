@@ -11,6 +11,7 @@ namespace WebApi.Services.Yandex
 		int RetryCount { get; }
 		TimeSpan InMemoryCacheObjectLifetime { get; }
 		IInMemoryCacheConfig InMemoryCacheConfig { get; }
+		int MinInput { get; }
 	}
 
 	public class GeocodeServiceConfig : IBaseConfig, IGeocodeServiceConfig
@@ -25,6 +26,8 @@ namespace WebApi.Services.Yandex
 		public TimeSpan InMemoryCacheObjectLifetime { get; set; } = TimeSpan.FromHours(8);
 
 		public IInMemoryCacheConfig InMemoryCacheConfig { get; set; } = new InMemoryCacheConfig();
+
+		public int MinInput { get; set; } = 2;
 
 		public IEnumerable<string> GetValidationErrors()
 		{
@@ -47,7 +50,9 @@ namespace WebApi.Services.Yandex
 				yield return $"{nameof(InMemoryCacheConfig)} must be not null";
 			foreach (var error in InMemoryCacheConfig?.GetValidationErrors() ?? Array.Empty<string>())
 				yield return $"{nameof(InMemoryCacheConfig)} error: {error}";
-		}
 
+			if (MinInput <= 0)
+				yield return $"{nameof(MinInput)} must be > 0";
+		}
 	}
 }

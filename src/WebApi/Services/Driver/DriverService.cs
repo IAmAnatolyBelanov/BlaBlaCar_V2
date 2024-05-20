@@ -14,6 +14,7 @@ namespace WebApi.Services.Driver;
 public class DriverServiceValidationCodes : ValidationCodes
 {
 	public const string VinContainsBannedSymbols = "DriverService_VinContainsBannedSymbols";
+	public const string CarCheckerSystemIsTemporaryUnavailable = "DriverService_CarCheckerSystemIsTemporaryUnavailable";
 }
 
 public interface IDriverService
@@ -133,15 +134,23 @@ public class DriverService : IDriverService
 		var decodedVin = decoderVinResponse.Result;
 		if (decodedVin.Found == false)
 		{
-			dbCar = new Car
+			if (decodedVin.Status == 200)
 			{
-				Id = Guid.NewGuid(),
-				Vin = vinCode,
-				Created = start,
-				IsVinValid = false,
-			};
-			await _carRepository.Insert(session, dbCar, CancellationToken.None);
-			throw new UserFriendlyException(VinValidationCodes.InvalidVinCode, "VIN код невалиден");
+				dbCar = new Car
+				{
+					Id = Guid.NewGuid(),
+					Vin = vinCode,
+					Created = start,
+					IsVinValid = false,
+				};
+				await _carRepository.Insert(session, dbCar, CancellationToken.None);
+				await session.CommitAsync(CancellationToken.None);
+				throw new UserFriendlyException(VinValidationCodes.InvalidVinCode, "VIN код невалиден");
+			}
+			else
+			{
+				throw new UserFriendlyException(DriverServiceValidationCodes.CarCheckerSystemIsTemporaryUnavailable, "Сервис проверки авто временно недоступен. Пожалуйста, повторите попытку позднее");
+			}
 		}
 
 		var convertVinRequestUrl = BuildVinConvertRequest(vinCode);
@@ -151,7 +160,16 @@ public class DriverService : IDriverService
 		var gibddVinTask = ExecuteCloudApiRequest<GibddServiceVinSearchResponse>(gibddVinRequestUrl, ct);
 
 		var convertVinResponse = await convertVinTask;
+		if (convertVinResponse.Result.Status != 200)
+		{
+			throw new UserFriendlyException(DriverServiceValidationCodes.CarCheckerSystemIsTemporaryUnavailable, "Сервис проверки авто временно недоступен. Пожалуйста, повторите попытку позднее");
+		}
+
 		var gibddVin = await gibddVinTask;
+		if (gibddVin.Result.Status != 200)
+		{
+			throw new UserFriendlyException(DriverServiceValidationCodes.CarCheckerSystemIsTemporaryUnavailable, "Сервис проверки авто временно недоступен. Пожалуйста, повторите попытку позднее");
+		}
 
 		string? modelName = null;
 		if (convertVinResponse.Result.Partner?.Result?.BrandModel?.IsNullOrWhiteSpace() == false)
@@ -208,6 +226,7 @@ public class DriverService : IDriverService
 			Vin = vinCode,
 		};
 		await _carRepository.Insert(session, dbCar, CancellationToken.None);
+		await session.CommitAsync(CancellationToken.None);
 
 		var result = _carMapper.ToCarDto(dbCar);
 		return result;
@@ -269,7 +288,7 @@ public class DriverService : IDriverService
 
 			_logger.Error("Failed to get driver license info. Request {Request}, Response {Response}",
 				requestUrl, json);
-			throw new Exception("Failed to get driver license info");
+			throw new UserFriendlyException(DriverServiceValidationCodes.CarCheckerSystemIsTemporaryUnavailable, "Сервис проверки авто временно недоступен. Пожалуйста, повторите попытку позднее");
 		}
 
 		if (gibddResponse.Found == false || gibddResponse.Doc?.Num.IsNullOrWhiteSpace() != false)
@@ -399,7 +418,7 @@ public class DriverService : IDriverService
 
 			_logger.Error("Failed to get inn. Request {Request}, Response {Response}",
 				requestUrl, json);
-			throw new Exception("Failed to get inn");
+			throw new UserFriendlyException(DriverServiceValidationCodes.CarCheckerSystemIsTemporaryUnavailable, "Сервис проверки авто временно недоступен. Пожалуйста, повторите попытку позднее");
 		}
 
 		if (innResponse.Found == false || innResponse.Inn.IsNullOrWhiteSpace())

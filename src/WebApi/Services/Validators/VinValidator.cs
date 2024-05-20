@@ -77,7 +77,7 @@ public class VinValidator : IVinValidator
 
 	public void ValidateAndThrowFriendly(string vin)
 	{
-		if (vin.Length != 17)
+		if (vin is null || vin.Length != 17)
 			throw new UserFriendlyException(VinValidationCodes.InvalidLength, "Длина VIN кода должна быть 17 символов");
 
 		var sum = 0;
