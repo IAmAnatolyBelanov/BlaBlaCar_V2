@@ -5,6 +5,8 @@
 
 https://www.figma.com/design/AR99isiDi2YcCXZgGFMxHz/bbc
 
+Либо [локальная копия](/docs/bbc.fig)
+
 # Полезные команды:
 
 ## Запуск 3rd party
